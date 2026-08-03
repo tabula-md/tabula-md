@@ -104,14 +104,13 @@ export function ModalSurface({
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    dialogRef.current?.focus();
     const unregisterModal = registerModal(modalIdRef.current);
-    const frame = window.requestAnimationFrame(() => {
-      const initialFocus = dialogRef.current?.querySelector<HTMLElement>(
-        "[data-modal-initial-focus], button:not([disabled]), input:not([disabled]), select:not([disabled])",
-      );
-      initialFocus?.focus();
-    });
+    const initialFocus = dialogRef.current?.querySelector<HTMLElement>(
+      "[data-modal-initial-focus]",
+    ) ?? dialogRef.current?.querySelector<HTMLElement>(
+      "button:not([disabled]), input:not([disabled]), select:not([disabled])",
+    );
+    (initialFocus ?? dialogRef.current)?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isTopModal(modalIdRef.current)) return;
       if (event.key === "Escape") {
@@ -125,10 +124,11 @@ export function ModalSurface({
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => {
-      window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown, true);
       unregisterModal();
-      window.requestAnimationFrame(() => restoreFocusRef.current?.focus());
+      window.requestAnimationFrame(() => {
+        if (modalStack.length === 0) restoreFocusRef.current?.focus();
+      });
     };
   }, []);
 

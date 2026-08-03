@@ -8,8 +8,6 @@ import type {
 
 type UiValueUpdater<T> = T | ((currentValue: T) => T);
 
-export type WorkspaceSearchMode = "palette" | "search";
-
 const applyUiValueUpdater = <T>(value: T, update: UiValueUpdater<T>) =>
   typeof update === "function" ? (update as (currentValue: T) => T)(value) : update;
 
@@ -22,7 +20,6 @@ type WorkspaceUiStoreState = {
   rightPanelView: RightPanelView;
   workspaceMenuOpen: boolean;
   workspaceSearchOpen: boolean;
-  workspaceSearchMode: WorkspaceSearchMode;
   preferencesOpen: boolean;
   searchOpen: boolean;
   splitDragging: boolean;
@@ -45,7 +42,6 @@ type WorkspaceUiStoreActions = {
   setTopPopover: (popover: UiValueUpdater<TopPopover>) => void;
   setWorkspaceMenuOpen: (isOpen: UiValueUpdater<boolean>) => void;
   setWorkspaceSearchOpen: (isOpen: UiValueUpdater<boolean>) => void;
-  setWorkspaceSearchMode: (mode: WorkspaceSearchMode) => void;
   toggleLeftPanel: (view: LeftPanelView) => void;
   togglePreferences: () => void;
   toggleRightPanel: () => void;
@@ -65,7 +61,6 @@ const DEFAULT_WORKSPACE_UI_STORE_STATE: WorkspaceUiStoreState = {
   rightPanelView: "properties",
   workspaceMenuOpen: false,
   workspaceSearchOpen: false,
-  workspaceSearchMode: "palette",
   preferencesOpen: false,
   searchOpen: false,
   splitDragging: false,
@@ -163,10 +158,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
     set((state) => ({
       workspaceSearchOpen: applyUiValueUpdater(state.workspaceSearchOpen, isOpen),
     }));
-  },
-
-  setWorkspaceSearchMode: (mode) => {
-    set({ workspaceSearchMode: mode });
   },
 
   togglePreferences: () => {

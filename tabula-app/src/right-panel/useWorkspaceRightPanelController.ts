@@ -12,7 +12,6 @@ import {
   FileInput,
   FilePlus2,
   PanelLeft,
-  Search,
 } from "lucide-react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
@@ -35,13 +34,11 @@ import type {
 } from "../workspace/workspaceStorage";
 import { getWorkspaceName } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
-import type { WorkspaceSearchMode } from "../workspace/state/workspaceUiStore";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
-import { formatShortcut } from "../workspace/keyboardShortcuts";
 import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
 
 type FocusTextRange = (start: number, end?: number) => void;
@@ -97,7 +94,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
-  workspaceSearchMode: WorkspaceSearchMode;
   openFileIds: string[];
   workspaceMenuOpen: boolean;
   onImportFile: () => void;
@@ -119,7 +115,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
   setWorkspaceSearchOpen: (isOpen: boolean) => void;
-  setWorkspaceSearchMode: (mode: WorkspaceSearchMode) => void;
   text: string;
 };
 
@@ -142,7 +137,6 @@ export function useWorkspaceRightPanelController({
   language,
   leftPanelOpen,
   workspaceSearchOpen,
-  workspaceSearchMode,
   openFileIds,
   workspaceMenuOpen,
   onAddComment,
@@ -188,7 +182,6 @@ export function useWorkspaceRightPanelController({
   setRightPanelView,
   setLeftPanelOpen,
   setWorkspaceSearchOpen,
-  setWorkspaceSearchMode,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
@@ -333,24 +326,12 @@ export function useWorkspaceRightPanelController({
     folders,
     index: knowledgeIndex,
     isOpen: workspaceSearchOpen,
-    mode: workspaceSearchMode,
     language,
     activeFileId: visibleActiveFileId,
     openFileIds,
-    pending: knowledgeIndexPending,
     onClose: () => setWorkspaceSearchOpen(false),
-    onModeChange: setWorkspaceSearchMode,
     onSelectFile,
     commands: [
-      {
-        id: "search-workspace",
-        label: `${getWorkspaceInterfaceCopy(language).sidePanel.search.label}…`,
-        keywords: ["find", "content", "metadata", "files"],
-        shortcut: formatShortcut("Mod+Shift+F"),
-        icon: createElement(Search, { size: 16 }),
-        closeOnSelect: false,
-        onSelect: () => setWorkspaceSearchMode("search"),
-      },
       {
         id: "new-document",
         label: getWorkspaceInterfaceCopy(language).sidePanel.files.newDocument,

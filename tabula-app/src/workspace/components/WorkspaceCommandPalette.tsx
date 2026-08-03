@@ -4,7 +4,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { stripMarkdownExtension } from "@tabula-md/tabula";
+import {
+  getOkfFreshness,
+  stripMarkdownExtension,
+  type WorkspaceKnowledgeIndex,
+} from "@tabula-md/tabula";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,6 +18,12 @@ import {
   Search,
 } from "lucide-react";
 import { rankCommandPaletteCandidates } from "../commandPaletteModel";
+import { DEFAULT_SEARCH_OPTIONS } from "../../editor/editorSearchModel";
+import {
+  searchWorkspaceFiles,
+  type WorkspaceFileSearchEntry,
+  type WorkspaceFileSearchMatch,
+} from "../../editor/workspaceFileSearchModel";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
@@ -39,13 +49,19 @@ type CommandPaletteCopy = {
   actions: string;
 };
 
+type CommandPaletteSearchCopy = {
+  matchLabels: Record<WorkspaceFileSearchMatch["field"], string>;
+};
+
 type WorkspaceCommandPaletteProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
+  index?: WorkspaceKnowledgeIndex;
   activeFileId?: string;
   openFileIds: readonly string[];
   commands: readonly WorkspaceSearchCommand[];
   copy: CommandPaletteCopy;
+  searchCopy: CommandPaletteSearchCopy;
   onSelectFile: (fileId: string) => void;
 };
 
@@ -68,6 +84,7 @@ type PaletteDocumentEntry = {
   file: WorkspaceFile;
   isOpen: boolean;
   isMarkdown: boolean;
+  match?: WorkspaceFileSearchMatch;
 };
 
 type PaletteEntry = PaletteCommandEntry | PaletteDocumentEntry;
@@ -77,10 +94,12 @@ const MAX_VISIBLE_RESULTS = 12;
 export function WorkspaceCommandPalette({
   files,
   folders,
+  index,
   activeFileId,
   openFileIds,
   commands,
   copy,
+  searchCopy,
   onSelectFile,
 }: WorkspaceCommandPaletteProps) {
   const [query, setQuery] = useState("");
@@ -129,7 +148,53 @@ export function WorkspaceCommandPalette({
       isMarkdown: presentation.kind === "markdown",
     };
   }), [activeFileId, fileLabels, files, openFileOrder]);
+  const documentEntriesById = useMemo(
+    () => new Map(documentEntries.map((entry) => [entry.file.id, entry])),
+    [documentEntries],
+  );
+  const searchEntries = useMemo(
+    () => files.map((file): WorkspaceFileSearchEntry => {
+      const analysis = index?.analysesByDocumentId.get(file.id);
+      const metadata = analysis?.knowledgeMetadata;
+      const presentation = getWorkspaceFilePresentation(file);
+      const document = documentEntriesById.get(file.id);
+      return {
+        fileId: file.id,
+        displayPath: document?.path ?? file.title,
+        title: analysis?.title ?? document?.label,
+        description: metadata?.description,
+        type: metadata?.type ?? (
+          presentation.kind === "asset" ? presentation.format : undefined
+        ),
+        tags: metadata?.tags,
+        resource: metadata?.resource,
+        sourceValues: metadata?.sources.flatMap((source) => [
+          source.id,
+          source.title,
+          source.author,
+          source.resource,
+        ].filter((value): value is string => Boolean(value))),
+        generatedBy: metadata?.generated?.by,
+        verifiedBy: metadata?.verified.map((event) => event.by),
+        status: metadata?.type ? metadata.status : undefined,
+        trustTier: metadata?.type ? metadata.trustTier : undefined,
+        freshness: metadata?.type ? getOkfFreshness(metadata) : undefined,
+        markdown: presentation.kind === "markdown" || presentation.viewer === "text"
+          ? file.text
+          : undefined,
+      };
+    }),
+    [documentEntriesById, files, index],
+  );
   const normalizedQuery = query.trim();
+  const documentSearch = useMemo(
+    () => searchWorkspaceFiles(
+      searchEntries,
+      normalizedQuery,
+      DEFAULT_SEARCH_OPTIONS,
+    ),
+    [normalizedQuery, searchEntries],
+  );
   const visibleEntries = useMemo<PaletteEntry[]>(() => {
     if (!normalizedQuery) {
       const openDocuments = rankCommandPaletteCandidates(
@@ -138,11 +203,16 @@ export function WorkspaceCommandPalette({
       );
       return [...openDocuments, ...commandEntries].slice(0, MAX_VISIBLE_RESULTS);
     }
-    return rankCommandPaletteCandidates(
-      [...commandEntries, ...documentEntries],
+    const matchingCommands = rankCommandPaletteCandidates(
+      commandEntries,
       normalizedQuery,
-    ).slice(0, MAX_VISIBLE_RESULTS);
-  }, [commandEntries, documentEntries, normalizedQuery]);
+    );
+    const matchingDocuments = documentSearch.matches.flatMap((match) => {
+      const entry = documentEntriesById.get(match.file.fileId);
+      return entry ? [{ ...entry, match }] : [];
+    });
+    return [...matchingCommands, ...matchingDocuments].slice(0, MAX_VISIBLE_RESULTS);
+  }, [commandEntries, documentEntries, documentEntriesById, documentSearch.matches, normalizedQuery]);
 
   useEffect(() => setActiveIndex(0), [normalizedQuery]);
 
@@ -236,13 +306,39 @@ export function WorkspaceCommandPalette({
                     : (entry.isMarkdown ? <FileText size={16} /> : <File size={16} />)}
                 </span>
                 <span className="command-palette-result-copy">
-                  <span>{entry.label}</span>
+                  <span>
+                    <HighlightedText
+                      query={normalizedQuery}
+                      enabled={entry.kind === "document" && entry.match?.field === "title"}
+                    >
+                      {entry.label}
+                    </HighlightedText>
+                  </span>
                   {entry.kind === "document" && entry.path !== entry.label && (
-                    <span>{entry.path}</span>
+                    <span>
+                      <HighlightedText
+                        query={normalizedQuery}
+                        enabled={entry.match?.field === "path"}
+                      >
+                        {entry.path}
+                      </HighlightedText>
+                    </span>
+                  )}
+                  {entry.kind === "document" && getMatchContext(entry) && (
+                    <span className="command-palette-result-context">
+                      <HighlightedText query={normalizedQuery} enabled>
+                        {getMatchContext(entry) ?? ""}
+                      </HighlightedText>
+                    </span>
                   )}
                 </span>
                 {entry.kind === "command" && entry.command.shortcut && (
                   <kbd>{entry.command.shortcut}</kbd>
+                )}
+                {entry.kind === "document" && entry.match && (
+                  <span className="command-palette-result-kind">
+                    {searchCopy.matchLabels[entry.match.field]}
+                  </span>
                 )}
               </button>
             </div>
@@ -257,3 +353,33 @@ export function WorkspaceCommandPalette({
     </section>
   );
 }
+
+const HighlightedText = ({
+  children,
+  enabled,
+  query,
+}: {
+  children: string;
+  enabled: boolean;
+  query: string;
+}) => {
+  if (!enabled || !query) return children;
+  const index = children.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
+  if (index < 0) return children;
+  return (
+    <>
+      {children.slice(0, index)}
+      <mark>{children.slice(index, index + query.length)}</mark>
+      {children.slice(index + query.length)}
+    </>
+  );
+};
+
+const getMatchContext = (entry: PaletteDocumentEntry) => {
+  if (!entry.match?.snippet || entry.match.field === "title" || entry.match.field === "path") {
+    return undefined;
+  }
+  const snippet = entry.match.snippet.trim();
+  if (!snippet || snippet === entry.label || snippet === entry.path) return undefined;
+  return snippet;
+};

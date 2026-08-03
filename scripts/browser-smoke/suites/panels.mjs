@@ -601,21 +601,11 @@ export async function run(ctx) {
         name: "Search commands and documents",
         exact: true,
       }).isVisible() &&
-        await page.getByRole("option", { name: /Workspace search/ }).isVisible() &&
+        (await page.getByRole("option", { name: /Workspace search/ }).count()) === 0 &&
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0 &&
+        (await page.getByRole("button", { name: "Search settings", exact: true }).count()) === 0 &&
         await page.locator(".right-properties-context").isVisible(),
-      "The top search action should open the same launcher as the command shortcut.",
-    );
-
-    await page.getByRole("option", { name: /Workspace search/ }).click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
-    await page.getByRole("combobox", { name: "Workspace search", exact: true }).waitFor({
-      state: "visible",
-    });
-    expect(
-      await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
-        await page.getByRole("button", { name: "Back to launcher", exact: true }).isVisible(),
-      "Deep search should remain inside the launcher shell with progressive controls.",
+      "Search should expose one launcher instead of sending users into a second search modal.",
     );
 
     await page.keyboard.press("Escape");
@@ -627,7 +617,10 @@ export async function run(ctx) {
       name: "Search commands and documents",
       exact: true,
     });
-    await paletteSearchbox.focus();
+    expect(
+      await paletteSearchbox.evaluate((element) => document.activeElement === element),
+      "The launcher input should receive initial focus instead of the close button.",
+    );
     const initialPaletteResult = page.locator('[id^="command-palette-item-"][data-active="true"]');
     expect(
       await initialPaletteResult.count() === 1,
@@ -752,7 +745,7 @@ export async function run(ctx) {
           name: "Workspace issues",
           exact: true,
         }).count()) === 0 &&
-        (await page.locator(".workspace-deep-search-field").count()) === 0 &&
+        (await page.locator(".command-palette-search").count()) === 0 &&
        (await page.locator(".right-graph-panel").count()) === 0,
        "Metadata should remain a stable active-document inspector instead of a catalog or dashboard.",
     );

@@ -78,21 +78,11 @@ export async function run(ctx) {
     await emptyLauncher.waitFor({ state: "visible" });
     expect(
       await emptyLauncher.getByRole("option", { name: /New document/ }).isVisible() &&
-        await emptyLauncher.getByRole("option", { name: /Workspace search/ }).isVisible(),
+        (await emptyLauncher.getByRole("option", { name: /Workspace search/ }).count()) === 0,
       "Search should remain useful as a launcher before the workspace has documents.",
     );
-    await emptyLauncher.getByRole("option", { name: /Workspace search/ }).click();
-    const emptySearchDialog = page.getByRole("dialog", { name: "Search", exact: true });
-    await emptySearchDialog.waitFor({ state: "visible" });
-    await waitForText(emptySearchDialog, "No documents to search");
-    expect(
-      (await emptySearchDialog
-        .getByText("No documents to search", { exact: true }).count()) === 1,
-      "Workspace Search should describe the unavailable search scope.",
-    );
-    expect((await page.locator(".workspace-deep-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
     await page.keyboard.press("Escape");
-    await emptySearchDialog.waitFor({ state: "detached" });
+    await emptyLauncher.waitFor({ state: "detached" });
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
@@ -379,20 +369,28 @@ export async function run(ctx) {
       "The workspace menu should not expose the removed JSON backup importer.",
     );
     expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isEnabled(),
-      "The workspace menu should export the active document.",
-    );
-    expect(
       await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isEnabled(),
       "The workspace menu should export a ZIP when the workspace has documents.",
     );
+    expect(
+      (await page.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 0,
+      "Document export should live in the unified launcher instead of the workspace menu.",
+    );
+    await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    const exportSearch = page.getByRole("combobox", {
+      name: "Search commands and documents",
+      exact: true,
+    });
+    await exportSearch.fill("export");
     const documentDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export document (.md)", exact: true }).click();
+    await page.getByRole("option", { name: "Export document (.md)", exact: true }).click();
     const documentDownload = await documentDownloadPromise;
     expect(
       documentDownload.suggestedFilename() === "Untitled.md",
       "Document export should download the active Markdown file.",
     );
+    await openProjectMenu(page);
     await openProjectMenu(page);
     const workspaceDownloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).click();
@@ -1132,8 +1130,8 @@ export async function run(ctx) {
       "An unavailable room toast should not offer a retry loop.",
     );
     expect(
-      (await page.locator(".share-trigger").getAttribute("aria-label")) === "Share",
-      "An unavailable room should no longer present Share as an active disconnected session.",
+      (await page.locator(".share-trigger").count()) === 0,
+      "An unavailable empty room should return to a local workspace without a document-level Share action.",
     );
     expect(
       !page.url().includes("#room="),
@@ -1165,16 +1163,12 @@ export async function run(ctx) {
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Import document (.md)…"),
-      "The menu should keep the must-have document start actions.",
+      !menuSurface.menuRows.includes("New document") && !menuSurface.menuRows.includes("Import document (.md)…"),
+      "Document creation and import should stay in the launcher and Files surface, not the workspace menu.",
     );
     expect(
-      menuSurface.menuRows.includes("Export document (.md)") && menuSurface.menuRows.includes("Export workspace (.zip)"),
-      "The workspace menu should own document and workspace export.",
-    );
-    expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isDisabled(),
-      "Document export should stay disabled without an active document.",
+      !menuSurface.menuRows.includes("Export document (.md)") && menuSurface.menuRows.includes("Export workspace (.zip)"),
+      "The workspace menu should own workspace export while document export remains a launcher command.",
     );
     expect(
       await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isDisabled(),
@@ -1187,13 +1181,13 @@ export async function run(ctx) {
       "Clicking outside the workspace menu should close it.",
     );
 
-    await openProjectMenu(page);
-    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("option", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "visual" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title.startsWith("Untitled"), "Menu New document should create and activate the next blank document.");
+    expect(activeTab?.title.startsWith("Untitled"), "Launcher New document should create and activate the next blank document.");
     expect(activeTab?.mode === "Visual", "New blank documents should start in Visual edit.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });

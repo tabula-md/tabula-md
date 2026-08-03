@@ -36,6 +36,7 @@ export async function run(ctx) {
     openProjectMenu,
     waitForActiveTab,
     waitForEditorReady,
+    waitForLeftPanel,
     waitForPanelTab,
     withPage,
   } = ctx;
@@ -167,9 +168,10 @@ export async function run(ctx) {
       "Opening the root index should dismiss the one-time import orientation.",
     );
 
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    }
+    await waitForLeftPanel(page, "Workspace panel");
     expect(
       (await page.getByRole("button", {
         name: "Open .last-update.json",
@@ -238,23 +240,6 @@ export async function run(ctx) {
       `Safe raster assets should open as images instead of encoded text. `
         + `imageState=${JSON.stringify(imageState)}`,
     );
-    await page.getByRole("button", {
-      name: "Knowledge attention legend",
-      exact: true,
-    }).click();
-    const attentionLegend = page.locator(".workspace-file-knowledge-legend");
-    expect(
-      await attentionLegend.getByText(
-        "Dot: Tabula found an error or maintenance action for this document.",
-        { exact: true },
-      ).isVisible() &&
-        await attentionLegend.getByText(
-          "No dot: no attention was found, or the file is not an OKF concept.",
-          { exact: true },
-        ).isVisible(),
-      "Files should explain both the presence and absence of a knowledge attention dot.",
-    );
-    await page.keyboard.press("Escape");
     const runtimeKnowledgeStatus = page.locator(
       '.workspace-file-tree-row[data-file-name="runtime.md"] '
       + ".workspace-file-knowledge-status",
@@ -268,18 +253,14 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
-    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Metadata", exact: true }).click();
     await page.locator(".right-panel-properties").waitFor({ state: "visible" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
-    const documentKnowledgeContext = page.getByRole("region", {
-      name: "Properties",
-    });
-    await documentKnowledgeContext.getByRole("heading", {
-      name: "Metadata",
-      exact: true,
-    }).waitFor();
+    const documentKnowledgeContext = page.locator(".right-properties-context");
+    await documentKnowledgeContext.waitFor({ state: "visible" });
     expect(
       await documentKnowledgeContext.getByText(
           "How application services fit together at runtime.",
@@ -328,33 +309,27 @@ export async function run(ctx) {
     await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "visible",
     });
-    await page.getByRole("option", { name: /Workspace search/ }).click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
     const conceptSearch = page.getByRole("combobox", {
-      name: "Workspace search",
+      name: "Search commands and documents",
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
-    const runtimeSearchResult = page.locator(".workspace-deep-search-result").filter({
+    const runtimeSearchResult = page.locator(".command-palette-result").filter({
       hasText: "architecture/runtime",
     });
     await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
     expect(
       await runtimeSearchResult.isVisible() &&
-        (await page.locator(".workspace-deep-search-result").count()) === 1,
-      "Search should retrieve concept body text without turning Knowledge into a catalog.",
+        (await page.locator(".command-palette-result").count()) === 1,
+      "The unified launcher should retrieve concept body text without opening another search surface.",
     );
-    await page.getByRole("button", { name: "Back to launcher", exact: true }).click();
-    const launcherSearch = page.getByRole("combobox", {
-      name: "Search commands and documents",
-      exact: true,
-    });
-    await launcherSearch.fill("export");
+    await conceptSearch.fill("export");
     expect(
       await page.getByRole("option", { name: "Export document (.md)", exact: true }).isVisible() &&
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
-      "The launcher should expose commands without showing deep-search filters.",
+      "The same launcher should expose commands without changing search modes.",
     );
+    await page.keyboard.press("Escape");
 
     await openProjectMenu(page);
     await page.getByRole("button", {
@@ -474,9 +449,10 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "index.md" });
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    }
+    await waitForLeftPanel(page, "Workspace panel");
     const sourceKnowledgeStatus = page.locator(
       '.workspace-file-tree-row[data-file-name="source.md"] '
       + ".workspace-file-knowledge-status",
@@ -487,24 +463,15 @@ export async function run(ctx) {
           "attention",
       "Files should use an attention dot only when a document has a concrete maintenance action.",
     );
-    await sourceKnowledgeStatus.click();
-    const sourceAttention = page.locator(".workspace-file-knowledge-popover");
     expect(
-      await sourceAttention.getByText(
+      (await sourceKnowledgeStatus.getAttribute("aria-label"))?.includes(
         "Review due since 2020-01-01",
-        { exact: true },
-      ).isVisible(),
-      "The file dot should explain the concrete issue on demand.",
+      ),
+      "The file dot should expose the concrete issue to assistive technology.",
     );
-    await sourceAttention.getByRole("button", {
-      name: "Open Properties",
-      exact: true,
-    }).click();
+    await sourceKnowledgeStatus.click();
     await page.locator(".right-panel-properties").waitFor({ state: "visible" });
-    const sourceProperties = page.getByRole("region", {
-      name: "Properties",
-      exact: true,
-    });
+    const sourceProperties = page.locator(".right-properties-context");
     expect(
       await sourceProperties.getByRole("heading", {
         name: "Metadata",

@@ -401,9 +401,7 @@ export function useWorkspaceRuntime() {
     workspaceMenuOpen,
     setWorkspaceMenuOpen,
     workspaceSearchOpen,
-    workspaceSearchMode,
     setWorkspaceSearchOpen,
-    setWorkspaceSearchMode,
     preferencesOpen,
     setPreferencesOpen,
     leftPanelOpen,
@@ -860,7 +858,6 @@ export function useWorkspaceRuntime() {
       language: workspacePreferences.language,
       leftPanelOpen,
       workspaceSearchOpen,
-      workspaceSearchMode,
       openFileIds,
       workspaceMenuOpen,
       onAddComment: addFileComment,
@@ -906,7 +903,6 @@ export function useWorkspaceRuntime() {
       setRightPanelView,
       setLeftPanelOpen,
       setWorkspaceSearchOpen,
-      setWorkspaceSearchMode,
       text,
     });
   const resolveWorkspaceLink = useMemo(
@@ -1136,11 +1132,9 @@ export function useWorkspaceRuntime() {
     openHelp,
     openDocumentSearch: openSearchFromCurrentSelection,
     openCommandPalette: () => {
-      setWorkspaceSearchMode("palette");
       setWorkspaceSearchOpen(true);
     },
     openWorkspaceSearch: () => {
-      setWorkspaceSearchMode("search");
       setWorkspaceSearchOpen(true);
     },
     selectAdjacentFile,
