@@ -589,16 +589,16 @@ export async function run(ctx) {
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "visible",
     });
     await page.getByRole("combobox", {
-      name: "Search commands and documents",
+      name: "Search documents",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
       await page.getByRole("combobox", {
-        name: "Search commands and documents",
+        name: "Search documents",
         exact: true,
       }).isVisible() &&
         (await page.getByRole("option", { name: /Workspace search/ }).count()) === 0 &&
@@ -610,11 +610,11 @@ export async function run(ctx) {
 
     await page.keyboard.press("Escape");
     await page.keyboard.press("ControlOrMeta+K");
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "visible",
     });
     const paletteSearchbox = page.getByRole("combobox", {
-      name: "Search commands and documents",
+      name: "Search documents",
       exact: true,
     });
     expect(
@@ -637,21 +637,16 @@ export async function run(ctx) {
       "Arrow keys should move the active command palette result.",
     );
 
-    await page.getByRole("combobox", { name: "Search commands and documents" }).fill("export");
+    await page.getByRole("combobox", { name: "Search documents" }).fill("export");
     expect(
-      await page.getByRole("option", { name: "Export document (.md)", exact: true }).isVisible() &&
+      (await page.getByRole("option", { name: "Export document (.md)", exact: true }).count()) === 0 &&
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
-      "The command palette should retrieve executable actions with the command prefix.",
+      "Document queries should not be mixed with unrelated workspace commands.",
     );
-    await page.getByRole("combobox", { name: "Search commands and documents" }).fill("libraries");
-    await page.getByRole("combobox", { name: "Search commands and documents" }).press("Enter");
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.keyboard.press("Escape");
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "detached",
     });
-    expect(
-      await page.locator("#workspace-panel-libraries-view").isVisible(),
-      "A registry command should open Libraries inside the workspace panel.",
-    );
 
     await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
@@ -659,7 +654,7 @@ export async function run(ctx) {
     await page.locator(".right-panel").waitFor({ state: "detached" });
     await page.setViewportSize({ width: 568, height: 800 });
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "visible",
     });
     const closeWorkspaceSearch = page.getByRole("button", {
@@ -668,7 +663,7 @@ export async function run(ctx) {
     });
     await closeWorkspaceSearch.waitFor({ state: "visible" });
     await closeWorkspaceSearch.click();
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "detached",
     });
     await page.setViewportSize({ width: 1440, height: 900 });

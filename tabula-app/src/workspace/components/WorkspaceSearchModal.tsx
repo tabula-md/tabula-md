@@ -50,7 +50,7 @@ export function WorkspaceSearchModal({
 
   return (
     <ModalSurface
-      ariaLabel="Command palette"
+      ariaLabel={copy.search.label}
       className="workspace-search-modal command-palette-modal"
       layerClassName="workspace-search-layer"
       onClose={onClose}

@@ -306,11 +306,11 @@ export async function run(ctx) {
     );
 
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "visible",
     });
     const conceptSearch = page.getByRole("combobox", {
-      name: "Search commands and documents",
+      name: "Search documents",
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
@@ -323,11 +323,12 @@ export async function run(ctx) {
         (await page.locator(".command-palette-result").count()) === 1,
       "The unified launcher should retrieve concept body text without opening another search surface.",
     );
-    await conceptSearch.fill("export");
+    await conceptSearch.fill("type:architecture runtime");
     expect(
-      await page.getByRole("option", { name: "Export document (.md)", exact: true }).isVisible() &&
+      await runtimeSearchResult.isVisible() &&
+        (await page.locator(".command-palette-result").count()) === 1 &&
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
-      "The same launcher should expose commands without changing search modes.",
+      "Structured metadata clauses should narrow the same document search surface.",
     );
     await page.keyboard.press("Escape");
 

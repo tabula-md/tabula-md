@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SEARCH_OPTIONS } from "./editorSearchModel";
 import {
   getMetadataFacets,
+  parseWorkspaceFileSearchQuery,
   searchWorkspaceFiles,
 } from "./workspaceFileSearchModel";
 
@@ -101,6 +102,46 @@ describe("searchWorkspaceFiles", () => {
       trustTiers: new Set(["unverified"]),
       freshness: new Set(["stale"]),
     }).files).toEqual([files[1]]);
+  });
+
+  it("parses OKF field queries while preserving free-text search", () => {
+    const parsed = parseWorkspaceFileSearchQuery(
+      'payments type:runbook tag:oncall status:stable trust:human-reviewed freshness:current source:"Finance policy" generated-by:agent:research verified-by:human:taeha',
+    );
+
+    expect(parsed.text).toBe("payments");
+    expect([...parsed.filters.types]).toEqual(["runbook"]);
+    expect([...parsed.filters.tags]).toEqual(["oncall"]);
+    expect([...parsed.filters.statuses ?? []]).toEqual(["stable"]);
+    expect([...parsed.filters.trustTiers ?? []]).toEqual(["human-reviewed"]);
+    expect([...parsed.filters.freshness ?? []]).toEqual(["current"]);
+    expect([...parsed.filters.sources ?? []]).toEqual(["Finance policy"]);
+    expect([...parsed.filters.generatedBy ?? []]).toEqual(["agent:research"]);
+    expect([...parsed.filters.verifiedBy ?? []]).toEqual(["human:taeha"]);
+  });
+
+  it("applies structured OKF queries case-insensitively", () => {
+    const parsed = parseWorkspaceFileSearchQuery(
+      "type:runbook status:stable trust-tier:human-reviewed source:finance verified-by:taeha",
+    );
+
+    expect(searchWorkspaceFiles(
+      files,
+      parsed.text,
+      DEFAULT_SEARCH_OPTIONS,
+      parsed.filters,
+    ).files).toEqual([files[0]]);
+  });
+
+  it("combines structured filters with remaining body search", () => {
+    const parsed = parseWorkspaceFileSearchQuery("backoff status:draft freshness:stale");
+
+    expect(searchWorkspaceFiles(
+      files,
+      parsed.text,
+      DEFAULT_SEARCH_OPTIONS,
+      parsed.filters,
+    ).files).toEqual([files[1]]);
   });
 
   it("combines type facets with all selected tag facets", () => {

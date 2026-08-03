@@ -27,7 +27,7 @@ export const koWorkspaceInterfaceMessages = {
     panelKnowledge: "지식",
     panelKnowledgeDescription: "문서 지식, 링크, 워크스페이스 상태 검토",
     searchPlaceholder: "문서를 검색하거나 명령 실행",
-    palettePlaceholder: "명령과 문서 검색",
+    palettePlaceholder: "문서 검색",
     paletteOpenDocuments: "열린 문서",
     paletteDocuments: "문서",
     paletteNoResults: "일치하는 명령이나 문서가 없습니다",

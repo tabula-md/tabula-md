@@ -10,6 +10,7 @@ import {
   Code2,
   ChevronLeft,
   ChevronRight,
+  Download,
   Eye,
   ListChecks,
   MoreHorizontal,
@@ -31,7 +32,7 @@ import {
   type DocumentViewModeIcon,
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
-import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import { PopoverContent, PopoverRoot, PopoverTrigger } from "../ui/Popover";
 
@@ -55,6 +56,7 @@ type DocumentControlsProps = {
   onToggleLineWrapping: () => void;
   onToggleLineNumbers: () => void;
   onToggleSearch: () => void;
+  onExportFile?: () => void;
 };
 
 export type DocumentSearchBarProps = {
@@ -106,8 +108,10 @@ export function DocumentControls({
   onToggleLineWrapping,
   onToggleLineNumbers,
   onToggleSearch,
+  onExportFile,
 }: DocumentControlsProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
+  const menuCopy = getWorkspaceMenuCopy(language);
   const controls = buildDocumentControlsModel({
     activeEditingMode,
     activeLineNumbers,
@@ -305,6 +309,21 @@ export function DocumentControls({
                   </div>
                 </div>
               </section>
+              {onExportFile && (
+                <>
+                  <div className="editor-controls-divider" role="separator" />
+                  <button
+                    className="editor-controls-row"
+                    type="button"
+                    onClick={onExportFile}
+                  >
+                    <span className="editing-mode-option-icon">
+                      <Download size={14} />
+                    </span>
+                    <span>{menuCopy.actions.exportFile}</span>
+                  </button>
+                </>
+              )}
             </PopoverContent>
           </PopoverRoot>
         </div>

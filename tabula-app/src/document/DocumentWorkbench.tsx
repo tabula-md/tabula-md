@@ -105,6 +105,7 @@ export type DocumentWorkbenchProps = {
   onEditorScrollRatioChange: (ratio: number) => void;
   onEditorSelectionActionPositionChange: (position: MarkdownSelectionActionPosition | null) => void;
   onEditorSelectionChange: (selection?: LiveSelection) => void;
+  onExportFile: () => void;
   onFormat: (command: MarkdownFormatCommand) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
@@ -207,6 +208,7 @@ export function DocumentWorkbench({
   onEditorScrollRatioChange,
   onEditorSelectionActionPositionChange,
   onEditorSelectionChange,
+  onExportFile,
   onFormat,
   onLineAction,
   onOpenComment,
@@ -281,6 +283,7 @@ export function DocumentWorkbench({
           onToggleLineWrapping={onToggleLineWrapping}
           onToggleLineNumbers={onToggleLineNumbers}
           onToggleSearch={onToggleSearch}
+          onExportFile={onExportFile}
         />
       </section>
 

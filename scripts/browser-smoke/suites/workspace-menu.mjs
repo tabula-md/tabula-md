@@ -72,7 +72,7 @@ export async function run(ctx) {
     });
     await page.getByRole("button", { name: "Search", exact: true }).click();
     const emptyLauncher = page.getByRole("dialog", {
-      name: "Command palette",
+      name: "Search",
       exact: true,
     });
     await emptyLauncher.waitFor({ state: "visible" });
@@ -372,19 +372,10 @@ export async function run(ctx) {
       await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isEnabled(),
       "The workspace menu should export a ZIP when the workspace has documents.",
     );
-    expect(
-      (await page.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 0,
-      "Document export should live in the unified launcher instead of the workspace menu.",
-    );
     await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
-    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    const exportSearch = page.getByRole("combobox", {
-      name: "Search commands and documents",
-      exact: true,
-    });
-    await exportSearch.fill("export");
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     const documentDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("option", { name: "Export document (.md)", exact: true }).click();
+    await page.getByRole("button", { name: "Export document (.md)", exact: true }).click();
     const documentDownload = await documentDownloadPromise;
     expect(
       documentDownload.suggestedFilename() === "Untitled.md",
@@ -1168,7 +1159,7 @@ export async function run(ctx) {
     );
     expect(
       !menuSurface.menuRows.includes("Export document (.md)") && menuSurface.menuRows.includes("Export workspace (.zip)"),
-      "The workspace menu should own workspace export while document export remains a launcher command.",
+      "The workspace menu should own workspace export while document export remains a document control.",
     );
     expect(
       await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isDisabled(),

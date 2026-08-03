@@ -27,7 +27,7 @@ export const zhWorkspaceInterfaceMessages = {
     panelKnowledge: "知识",
     panelKnowledgeDescription: "查看文档知识、链接和工作区状态",
     searchPlaceholder: "搜索文档或运行命令",
-    palettePlaceholder: "搜索命令和文档",
+    palettePlaceholder: "搜索文档",
     paletteOpenDocuments: "打开的文档",
     paletteDocuments: "文档",
     paletteNoResults: "未找到命令或文档",

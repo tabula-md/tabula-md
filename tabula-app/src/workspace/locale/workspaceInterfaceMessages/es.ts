@@ -27,7 +27,7 @@ export const esWorkspaceInterfaceMessages = {
     panelKnowledge: "Conocimiento",
     panelKnowledgeDescription: "Revisar conocimiento, enlaces y estado del espacio",
     searchPlaceholder: "Buscar documentos o ejecutar un comando",
-    palettePlaceholder: "Buscar comandos y documentos",
+    palettePlaceholder: "Buscar documentos",
     paletteOpenDocuments: "Documentos abiertos",
     paletteDocuments: "Documentos",
     paletteNoResults: "No se encontraron comandos ni documentos",

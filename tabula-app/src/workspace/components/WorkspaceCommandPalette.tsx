@@ -19,6 +19,7 @@ import {
 import { rankCommandPaletteCandidates } from "../commandPaletteModel";
 import { DEFAULT_SEARCH_OPTIONS } from "../../editor/editorSearchModel";
 import {
+  parseWorkspaceFileSearchQuery,
   searchWorkspaceFiles,
   type WorkspaceFileSearchEntry,
   type WorkspaceFileSearchMatch,
@@ -103,7 +104,6 @@ export function WorkspaceCommandPalette({
     [openFileIds],
   );
   const commandEntries = useMemo<PaletteCommandEntry[]>(() => commands
-    .filter((command) => command.enabled !== false)
     .map((command, index) => ({
       id: `command-${command.id}`,
       kind: "command",
@@ -177,13 +177,19 @@ export function WorkspaceCommandPalette({
     [documentEntriesById, files, index],
   );
   const normalizedQuery = query.trim();
+  const structuredQuery = useMemo(
+    () => parseWorkspaceFileSearchQuery(normalizedQuery),
+    [normalizedQuery],
+  );
+  const highlightQuery = structuredQuery.text;
   const documentSearch = useMemo(
     () => searchWorkspaceFiles(
       searchEntries,
-      normalizedQuery,
+      structuredQuery.text,
       DEFAULT_SEARCH_OPTIONS,
+      structuredQuery.filters,
     ),
-    [normalizedQuery, searchEntries],
+    [searchEntries, structuredQuery],
   );
   const visibleEntries = useMemo<PaletteEntry[]>(() => {
     if (!normalizedQuery) {
@@ -193,15 +199,11 @@ export function WorkspaceCommandPalette({
       );
       return [...openDocuments, ...commandEntries].slice(0, MAX_VISIBLE_RESULTS);
     }
-    const matchingCommands = rankCommandPaletteCandidates(
-      commandEntries,
-      normalizedQuery,
-    );
     const matchingDocuments = documentSearch.matches.flatMap((match) => {
       const entry = documentEntriesById.get(match.file.fileId);
       return entry ? [{ ...entry, match }] : [];
     });
-    return [...matchingCommands, ...matchingDocuments].slice(0, MAX_VISIBLE_RESULTS);
+    return matchingDocuments.slice(0, MAX_VISIBLE_RESULTS);
   }, [commandEntries, documentEntries, documentEntriesById, documentSearch.matches, normalizedQuery]);
 
   useEffect(() => setActiveIndex(0), [normalizedQuery]);
@@ -299,7 +301,7 @@ export function WorkspaceCommandPalette({
                 <span className="command-palette-result-copy">
                   <span>
                     <HighlightedText
-                      query={normalizedQuery}
+                      query={highlightQuery}
                       enabled={entry.kind === "document" && entry.match?.field === "title"}
                     >
                       {entry.label}
@@ -308,7 +310,7 @@ export function WorkspaceCommandPalette({
                   {entry.kind === "document" && entry.path !== entry.label && (
                     <span>
                       <HighlightedText
-                        query={normalizedQuery}
+                        query={highlightQuery}
                         enabled={entry.match?.field === "path"}
                       >
                         {entry.path}
@@ -317,7 +319,7 @@ export function WorkspaceCommandPalette({
                   )}
                   {entry.kind === "document" && getMatchContext(entry) && (
                     <span className="command-palette-result-context">
-                      <HighlightedText query={normalizedQuery} enabled>
+                      <HighlightedText query={highlightQuery} enabled={Boolean(highlightQuery)}>
                         {getMatchContext(entry) ?? ""}
                       </HighlightedText>
                     </span>
@@ -325,11 +327,6 @@ export function WorkspaceCommandPalette({
                 </span>
                 {entry.kind === "command" && entry.command.shortcut && (
                   <kbd>{entry.command.shortcut}</kbd>
-                )}
-                {entry.kind === "command" && !entry.command.shortcut && (
-                  <span className="command-palette-result-kind" aria-hidden="true">
-                    {entry.command.category}
-                  </span>
                 )}
                 {entry.kind === "document" && entry.match && (
                   <span className="command-palette-result-kind">

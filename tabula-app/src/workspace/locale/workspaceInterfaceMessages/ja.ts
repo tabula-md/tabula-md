@@ -27,7 +27,7 @@ export const jaWorkspaceInterfaceMessages = {
     panelKnowledge: "ナレッジ",
     panelKnowledgeDescription: "ドキュメントの知識、リンク、ワークスペースの状態を確認",
     searchPlaceholder: "ドキュメントを検索またはコマンドを実行",
-    palettePlaceholder: "コマンドとドキュメントを検索",
+    palettePlaceholder: "ドキュメントを検索",
     paletteOpenDocuments: "開いているドキュメント",
     paletteDocuments: "ドキュメント",
     paletteNoResults: "一致するコマンドやドキュメントがありません",

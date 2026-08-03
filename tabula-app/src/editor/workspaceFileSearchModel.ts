@@ -31,6 +31,14 @@ export type WorkspaceFileSearchFilters = {
   statuses?: ReadonlySet<OkfLifecycleStatus>;
   trustTiers?: ReadonlySet<OkfTrustTier>;
   freshness?: ReadonlySet<OkfFreshness>;
+  sources?: ReadonlySet<string>;
+  generatedBy?: ReadonlySet<string>;
+  verifiedBy?: ReadonlySet<string>;
+};
+
+export type WorkspaceFileStructuredQuery = {
+  filters: WorkspaceFileSearchFilters;
+  text: string;
 };
 
 export type WorkspaceFileSearchResult = {
@@ -50,6 +58,66 @@ export type MetadataFacet<TValue extends string = string> = {
   value: TValue;
   count: number;
 };
+
+const structuredFieldPattern = /(?:^|\s)(type|tag|status|trust|trust-tier|freshness|source|generated-by|verified-by):(?:"([^"]+)"|(\S+))/giu;
+
+export const parseWorkspaceFileSearchQuery = (
+  query: string,
+): WorkspaceFileStructuredQuery => {
+  const filters: {
+    types: Set<string>;
+    tags: Set<string>;
+    statuses: Set<OkfLifecycleStatus>;
+    trustTiers: Set<OkfTrustTier>;
+    freshness: Set<OkfFreshness>;
+    sources: Set<string>;
+    generatedBy: Set<string>;
+    verifiedBy: Set<string>;
+  } = {
+    types: new Set(),
+    tags: new Set(),
+    statuses: new Set(),
+    trustTiers: new Set(),
+    freshness: new Set(),
+    sources: new Set(),
+    generatedBy: new Set(),
+    verifiedBy: new Set(),
+  };
+  const text = query.replace(
+    structuredFieldPattern,
+    (_match, rawField: string, quotedValue: string | undefined, value: string | undefined) => {
+      const field = rawField.toLocaleLowerCase();
+      const filterValue = (quotedValue ?? value ?? "").trim();
+      if (field === "type") filters.types.add(filterValue);
+      else if (field === "tag") filters.tags.add(filterValue);
+      else if (field === "status") filters.statuses.add(filterValue as OkfLifecycleStatus);
+      else if (field === "trust" || field === "trust-tier") {
+        filters.trustTiers.add(filterValue as OkfTrustTier);
+      } else if (field === "freshness") {
+        filters.freshness.add(filterValue as OkfFreshness);
+      } else if (field === "source") filters.sources.add(filterValue);
+      else if (field === "generated-by") filters.generatedBy.add(filterValue);
+      else if (field === "verified-by") filters.verifiedBy.add(filterValue);
+      return " ";
+    },
+  ).replace(/\s+/g, " ").trim();
+
+  return { filters, text };
+};
+
+const normalizeFilterValue = (value: string) => value.trim().toLocaleLowerCase();
+const includesFilterValue = (values: readonly string[] | undefined, expected: string) => {
+  const normalizedExpected = normalizeFilterValue(expected);
+  return values?.some((value) =>
+    normalizeFilterValue(value).includes(normalizedExpected)) ?? false;
+};
+const matchesAnyExactValue = (
+  value: string | undefined,
+  expected: ReadonlySet<string> | undefined,
+) => !expected?.size || Boolean(
+  value && [...expected].some((candidate) =>
+    normalizeFilterValue(candidate) === normalizeFilterValue(value)),
+);
 
 export const getMetadataFacets = <TEntry, TValue extends string>(
   entries: readonly TEntry[],
@@ -82,42 +150,57 @@ export const searchWorkspaceFiles = (
     filters.tags.size > 0 ||
     filters.statuses?.size ||
     filters.trustTiers?.size ||
-    filters.freshness?.size
+    filters.freshness?.size ||
+    filters.sources?.size ||
+    filters.generatedBy?.size ||
+    filters.verifiedBy?.size
   ));
   if (!hasQuery && !hasFilters) return { error: null, files: [], matches: [] };
 
   const matches: Array<WorkspaceFileSearchMatch & { sourceIndex: number }> = [];
   for (const [sourceIndex, entry] of entries.entries()) {
     if (
-      filters?.types.size &&
-      (!entry.type || !filters.types.has(entry.type))
+      !matchesAnyExactValue(entry.type, filters?.types)
     ) {
       continue;
     }
     if (
       filters?.tags.size &&
-      ![...filters.tags].every((tag) => entry.tags?.includes(tag))
+      ![...filters.tags].every((tag) =>
+        entry.tags?.some((entryTag) =>
+          normalizeFilterValue(entryTag) === normalizeFilterValue(tag)))
     ) {
       continue;
     }
     if (
-      filters?.statuses?.size &&
-      (!entry.status || !filters.statuses.has(entry.status))
+      !matchesAnyExactValue(entry.status, filters?.statuses)
     ) {
       continue;
     }
     if (
-      filters?.trustTiers?.size &&
-      (!entry.trustTier || !filters.trustTiers.has(entry.trustTier))
+      !matchesAnyExactValue(entry.trustTier, filters?.trustTiers)
     ) {
       continue;
     }
     if (
-      filters?.freshness?.size &&
-      (!entry.freshness || !filters.freshness.has(entry.freshness))
+      !matchesAnyExactValue(entry.freshness, filters?.freshness)
     ) {
       continue;
     }
+    if (
+      filters?.sources?.size &&
+      ![...filters.sources].every((source) => includesFilterValue(entry.sourceValues, source))
+    ) continue;
+    if (
+      filters?.generatedBy?.size &&
+      ![...filters.generatedBy].every((generator) =>
+        includesFilterValue(entry.generatedBy ? [entry.generatedBy] : undefined, generator))
+    ) continue;
+    if (
+      filters?.verifiedBy?.size &&
+      ![...filters.verifiedBy].every((verifier) =>
+        includesFilterValue(entry.verifiedBy, verifier))
+    ) continue;
     if (!hasQuery) {
       matches.push({ file: entry, field: "metadata", score: 0, sourceIndex });
       continue;

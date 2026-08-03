@@ -93,14 +93,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   onImportWorkspace: () => void;
   onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
-  onExportFile: () => void;
-  onExportWorkspace: () => void;
-  onCloseActiveFile: () => void;
-  onCloseAllFiles: () => void;
-  onCloseOtherFiles: () => void;
-  onReopenLastClosedFile: () => void;
-  hasLastClosedFile: boolean;
-  onOpenDocumentSearch: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -158,14 +150,6 @@ export function useWorkspaceRightPanelController({
   onImportWorkspace,
   onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
-  onExportFile,
-  onExportWorkspace,
-  onCloseActiveFile,
-  onCloseAllFiles,
-  onCloseOtherFiles,
-  onReopenLastClosedFile,
-  hasLastClosedFile,
-  onOpenDocumentSearch,
   onNewFile,
   onNewFolder,
   onRenameFile,
@@ -290,20 +274,6 @@ export function useWorkspaceRightPanelController({
       setLeftPanelOpen(false);
     }
   }, [onSelectFile, setLeftPanelOpen]);
-  const openLeftPanel = useCallback((view: LeftPanelView) => {
-    setLeftPanelView(view);
-    setLeftPanelOpen(true);
-    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-      setRightPanelOpen(false);
-    }
-  }, [setLeftPanelOpen, setLeftPanelView, setRightPanelOpen]);
-  const openRightPanel = useCallback((view: RightPanelView) => {
-    setRightPanelView(view);
-    setRightPanelOpen(true);
-    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-      setLeftPanelOpen(false);
-    }
-  }, [setLeftPanelOpen, setRightPanelOpen, setRightPanelView]);
   const openDocumentProperties = useCallback((
     fileId: string,
     section: MetadataFocusSection,
@@ -361,28 +331,11 @@ export function useWorkspaceRightPanelController({
     onSelectFile,
     commands: buildWorkspaceCommandRegistry({
       language,
-      activeFileId: activeFile?.id,
-      fileCount: visibleFiles.length,
-      openFileCount: openFileIds.length,
-      hasLastClosedFile,
       actions: {
         newFile: () => { onNewFile(); },
         newFolder: () => { onNewFolder(); },
         importFile: onImportFile,
-        exportActiveFile: onExportFile,
-        duplicateActiveFile: () => {
-          if (activeFile) onDuplicateFile(activeFile.id);
-        },
-        openDocumentSearch: onOpenDocumentSearch,
-        closeActiveFile: onCloseActiveFile,
-        closeOtherFiles: onCloseOtherFiles,
-        closeAllFiles: onCloseAllFiles,
-        reopenLastClosedFile: onReopenLastClosedFile,
         importWorkspace: onImportWorkspace,
-        exportWorkspace: onExportWorkspace,
-        toggleWorkspaceMenu: onToggleWorkspaceMenu,
-        openLeftPanel,
-        openRightPanel,
       },
     }),
   };

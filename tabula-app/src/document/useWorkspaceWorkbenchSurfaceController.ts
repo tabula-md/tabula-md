@@ -30,6 +30,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   editorRef: RefObject<MarkdownEditorHandle | null>;
   focusedCommentId: string | null;
   language: WorkspaceLanguage;
+  onExportFile: () => void;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
   persistence: Pick<WorkspacePersistence, "persistedRevision">;
@@ -59,6 +60,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   editorRef,
   focusedCommentId,
   language,
+  onExportFile,
   onOpenWorkspaceLink,
   onSetViewMode,
   persistence,
@@ -160,6 +162,7 @@ export function useWorkspaceWorkbenchSurfaceController({
         room.stopFollowingForLocalNavigation();
         document.handleEditorSelectionChange(selection);
       },
+      onExportFile,
       onFormat: (command: Parameters<typeof documentWorkbenchController.onFormat>[0]) => {
         room.stopFollowing("local-edit");
         documentWorkbenchController.onFormat(command);

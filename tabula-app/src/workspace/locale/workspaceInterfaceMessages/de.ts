@@ -27,7 +27,7 @@ export const deWorkspaceInterfaceMessages = {
     panelKnowledge: "Wissen",
     panelKnowledgeDescription: "Wissen, Links und Workspace-Status des Dokuments prüfen",
     searchPlaceholder: "Dokumente suchen oder einen Befehl ausführen",
-    palettePlaceholder: "Befehle und Dokumente suchen",
+    palettePlaceholder: "Dokumente suchen",
     paletteOpenDocuments: "Geöffnete Dokumente",
     paletteDocuments: "Dokumente",
     paletteNoResults: "Keine Befehle oder Dokumente gefunden",
