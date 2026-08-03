@@ -589,22 +589,33 @@ export async function run(ctx) {
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "visible",
     });
-    await page.getByRole("searchbox", {
-      name: "Workspace search",
+    await page.getByRole("combobox", {
+      name: "Search commands and documents",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
-      await page.getByRole("searchbox", {
-        name: "Workspace search",
+      await page.getByRole("combobox", {
+        name: "Search commands and documents",
         exact: true,
       }).isVisible() &&
-        (await page.getByRole("button", { name: "New document", exact: true }).count()) === 0 &&
-        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
+        await page.getByRole("option", { name: /Workspace search/ }).isVisible() &&
+        (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0 &&
         await page.locator(".right-properties-context").isVisible(),
-      "Workspace Search should open as a modal retrieval surface over document context.",
+      "The top search action should open the same launcher as the command shortcut.",
+    );
+
+    await page.getByRole("option", { name: /Workspace search/ }).click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
+    await page.getByRole("combobox", { name: "Workspace search", exact: true }).waitFor({
+      state: "visible",
+    });
+    expect(
+      await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
+        await page.getByRole("button", { name: "Back to launcher", exact: true }).isVisible(),
+      "Deep search should remain inside the launcher shell with progressive controls.",
     );
 
     await page.keyboard.press("Escape");
@@ -650,7 +661,7 @@ export async function run(ctx) {
     await page.locator(".right-panel").waitFor({ state: "detached" });
     await page.setViewportSize({ width: 568, height: 800 });
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "visible",
     });
     const closeWorkspaceSearch = page.getByRole("button", {
@@ -659,7 +670,7 @@ export async function run(ctx) {
     });
     await closeWorkspaceSearch.waitFor({ state: "visible" });
     await closeWorkspaceSearch.click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "detached",
     });
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -741,7 +752,7 @@ export async function run(ctx) {
           name: "Workspace issues",
           exact: true,
         }).count()) === 0 &&
-        (await page.locator(".right-panel-search-field").count()) === 0 &&
+        (await page.locator(".workspace-deep-search-field").count()) === 0 &&
        (await page.locator(".right-graph-panel").count()) === 0,
        "Metadata should remain a stable active-document inspector instead of a catalog or dashboard.",
     );

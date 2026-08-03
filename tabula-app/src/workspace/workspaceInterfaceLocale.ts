@@ -50,9 +50,11 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
       noDocumentOpen: copy.panelNoDocumentOpen,
       search: {
         placeholder: copy.searchPlaceholder,
+        hint: copy.searchHint,
         settings: copy.searchSettings,
         filters: copy.searchFilters,
         backToResults: copy.searchBackToResults,
+        backToLauncher: copy.searchBackToLauncher,
         noMatches: copy.searchNoMatches,
         noDocuments: copy.searchNoDocuments,
         results: copy.searchResults,
@@ -82,6 +84,12 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
           ? copy.searchOneConcept
           : format(copy.searchConcepts, { count }),
         untyped: copy.searchUntyped,
+        matchLabels: {
+          title: copy.searchMatchTitle,
+          path: copy.searchMatchPath,
+          metadata: copy.searchMatchMetadata,
+          body: copy.searchMatchContent,
+        },
       },
       commandPalette: {
         placeholder: copy.palettePlaceholder,
@@ -90,6 +98,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         noResults: copy.paletteNoResults,
         navigate: copy.paletteNavigate,
         run: copy.paletteRun,
+        open: copy.paletteOpen,
       },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,

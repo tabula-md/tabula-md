@@ -325,27 +325,35 @@ export async function run(ctx) {
     );
 
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+      state: "visible",
+    });
+    await page.getByRole("option", { name: /Workspace search/ }).click();
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
-    const conceptSearch = page.getByRole("searchbox", {
-      name: "Search documents or run a command",
+    const conceptSearch = page.getByRole("combobox", {
+      name: "Workspace search",
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
-    const runtimeSearchResult = page.getByRole("button", {
-      name: "architecture/runtime",
-      exact: true,
+    const runtimeSearchResult = page.locator(".workspace-deep-search-result").filter({
+      hasText: "architecture/runtime",
     });
     await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
     expect(
       await runtimeSearchResult.isVisible() &&
-        (await page.locator(".right-panel-search-result").count()) === 1,
+        (await page.locator(".workspace-deep-search-result").count()) === 1,
       "Search should retrieve concept body text without turning Knowledge into a catalog.",
     );
-    await conceptSearch.fill("> export");
+    await page.getByRole("button", { name: "Back to launcher", exact: true }).click();
+    const launcherSearch = page.getByRole("combobox", {
+      name: "Search commands and documents",
+      exact: true,
+    });
+    await launcherSearch.fill("export");
     expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isVisible() &&
+      await page.getByRole("option", { name: "Export document (.md)", exact: true }).isVisible() &&
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
-      "The global retrieval surface should expose commands without showing advanced filters by default.",
+      "The launcher should expose commands without showing deep-search filters.",
     );
 
     await openProjectMenu(page);

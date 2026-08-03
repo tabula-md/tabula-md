@@ -339,6 +339,7 @@ export function useWorkspaceRightPanelController({
     openFileIds,
     pending: knowledgeIndexPending,
     onClose: () => setWorkspaceSearchOpen(false),
+    onModeChange: setWorkspaceSearchMode,
     onSelectFile,
     commands: [
       {

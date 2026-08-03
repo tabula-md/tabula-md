@@ -71,6 +71,17 @@ export async function run(ctx) {
       };
     });
     await page.getByRole("button", { name: "Search", exact: true }).click();
+    const emptyLauncher = page.getByRole("dialog", {
+      name: "Command palette",
+      exact: true,
+    });
+    await emptyLauncher.waitFor({ state: "visible" });
+    expect(
+      await emptyLauncher.getByRole("option", { name: /New document/ }).isVisible() &&
+        await emptyLauncher.getByRole("option", { name: /Workspace search/ }).isVisible(),
+      "Search should remain useful as a launcher before the workspace has documents.",
+    );
+    await emptyLauncher.getByRole("option", { name: /Workspace search/ }).click();
     const emptySearchDialog = page.getByRole("dialog", { name: "Search", exact: true });
     await emptySearchDialog.waitFor({ state: "visible" });
     await waitForText(emptySearchDialog, "No documents to search");
@@ -79,7 +90,7 @@ export async function run(ctx) {
         .getByText("No documents to search", { exact: true }).count()) === 1,
       "Workspace Search should describe the unavailable search scope.",
     );
-    expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
+    expect((await page.locator(".workspace-deep-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
     await page.keyboard.press("Escape");
     await emptySearchDialog.waitFor({ state: "detached" });
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");

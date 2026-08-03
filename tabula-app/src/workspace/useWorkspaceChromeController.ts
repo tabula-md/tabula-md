@@ -74,7 +74,7 @@ export function useWorkspaceChromeController({
 
   const toggleWorkspaceSearch = () => {
     const willOpen = !workspaceSearchOpen;
-    if (willOpen) setWorkspaceSearchMode("search");
+    if (willOpen) setWorkspaceSearchMode("palette");
     toggleUiWorkspaceSearch();
     if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
   };

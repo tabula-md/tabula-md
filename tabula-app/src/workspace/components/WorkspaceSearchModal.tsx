@@ -12,8 +12,8 @@ import type { WorkspaceSearchMode } from "../state/workspaceUiStore";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspaceLocale";
 
-const WorkspaceSearch = lazy(() => import("../../right-panel/RightPanelSearch").then(
-  ({ RightPanelSearch }) => ({ default: RightPanelSearch }),
+const WorkspaceSearch = lazy(() => import("./WorkspaceDeepSearch").then(
+  ({ WorkspaceDeepSearch }) => ({ default: WorkspaceDeepSearch }),
 ));
 
 export type WorkspaceSearchModalProps = {
@@ -27,6 +27,7 @@ export type WorkspaceSearchModalProps = {
   openFileIds: readonly string[];
   pending: boolean;
   onClose: () => void;
+  onModeChange: (mode: WorkspaceSearchMode) => void;
   onSelectFile: (fileId: string) => void;
   commands: readonly WorkspaceSearchCommand[];
 };
@@ -42,6 +43,7 @@ export function WorkspaceSearchModal({
   openFileIds,
   pending,
   onClose,
+  onModeChange,
   onSelectFile,
   commands,
 }: WorkspaceSearchModalProps) {
@@ -61,7 +63,7 @@ export function WorkspaceSearchModal({
   return (
     <ModalSurface
       ariaLabel={mode === "palette" ? "Command palette" : copy.tabs.search}
-      className={`workspace-search-modal ${mode === "palette" ? "command-palette-modal" : ""}`.trim()}
+      className="workspace-search-modal command-palette-modal"
       layerClassName="workspace-search-layer"
       onClose={onClose}
     >
@@ -96,10 +98,12 @@ export function WorkspaceSearchModal({
         <Suspense fallback={<section className="workspace-search-loading" aria-busy="true" />}>
           <WorkspaceSearch
             copy={copy.search}
+            paletteCopy={copy.commandPalette}
             files={files}
             folders={folders}
             index={index}
             language={language}
+            onBack={() => onModeChange("palette")}
             onSelectFile={selectFile}
           />
         </Suspense>
