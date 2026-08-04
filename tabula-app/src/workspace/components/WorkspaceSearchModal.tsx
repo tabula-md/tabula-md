@@ -8,7 +8,7 @@ import {
   type WorkspaceSearchCommand,
 } from "./WorkspaceCommandPalette";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspaceLocale";
+import { getWorkspaceChromeCopy } from "../workspaceLocale";
 
 export type WorkspaceSearchModalProps = {
   files: WorkspaceFile[];
@@ -39,10 +39,6 @@ export function WorkspaceSearchModal({
 
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closeLabel = getWorkspaceChromeCopy(language).documentControls.closeSearch;
-  const paletteCopy = {
-    ...copy.commandPalette,
-    actions: getWorkspaceMenuCopy(language).aria.workspaceActions,
-  };
   const selectFile = (fileId: string) => {
     onSelectFile(fileId);
     onClose();
@@ -70,7 +66,7 @@ export function WorkspaceSearchModal({
         index={index}
         activeFileId={activeFileId}
         openFileIds={openFileIds}
-        copy={paletteCopy}
+        copy={copy.commandPalette}
         searchCopy={copy.search}
         onSelectFile={selectFile}
         commands={commands.map((command) => ({

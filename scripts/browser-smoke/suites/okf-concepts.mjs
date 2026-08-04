@@ -306,13 +306,23 @@ export async function run(ctx) {
     );
 
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Workspace search", exact: true }).waitFor({
       state: "visible",
     });
     const conceptSearch = page.getByRole("combobox", {
-      name: "Search documents",
+      name: "Search documents or type > for commands",
       exact: true,
     });
+    expect(
+      (await page.getByRole("heading", { name: "Explore", exact: true }).count()) === 1 &&
+        (await page.getByRole("option", { name: "Type: Architecture", exact: true }).count()) === 1,
+      "The launcher should expose metadata facets as wiki navigation before a query is entered.",
+    );
+    await page.getByRole("option", { name: "Type: Architecture", exact: true }).click();
+    expect(
+      await conceptSearch.inputValue() === "type:Architecture",
+      "Choosing a metadata facet should turn it into an inspectable structured query.",
+    );
     await conceptSearch.fill("dispatches work");
     const runtimeSearchResult = page.locator(".command-palette-result").filter({
       hasText: "architecture/runtime",

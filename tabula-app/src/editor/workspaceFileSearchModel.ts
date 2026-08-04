@@ -59,7 +59,7 @@ export type MetadataFacet<TValue extends string = string> = {
   count: number;
 };
 
-const structuredFieldPattern = /(?:^|\s)(type|tag|status|trust|trust-tier|freshness|source|generated-by|verified-by):(?:"([^"]+)"|(\S+))/giu;
+const structuredFieldPattern = /(?:^|\s)(type|tags?|status|trust|trust-tier|freshness|source|generated-by|verified-by):(?:"([^"]+)"|(\S+))/giu;
 
 export const parseWorkspaceFileSearchQuery = (
   query: string,
@@ -89,7 +89,7 @@ export const parseWorkspaceFileSearchQuery = (
       const field = rawField.toLocaleLowerCase();
       const filterValue = (quotedValue ?? value ?? "").trim();
       if (field === "type") filters.types.add(filterValue);
-      else if (field === "tag") filters.tags.add(filterValue);
+      else if (field === "tag" || field === "tags") filters.tags.add(filterValue);
       else if (field === "status") filters.statuses.add(filterValue as OkfLifecycleStatus);
       else if (field === "trust" || field === "trust-tier") {
         filters.trustTiers.add(filterValue as OkfTrustTier);

@@ -1,5 +1,11 @@
 import { createElement, type ReactNode } from "react";
-import { FileInput, FilePlus2, FolderInput, FolderPlus } from "lucide-react";
+import {
+  FileInput,
+  FilePlus2,
+  FolderInput,
+  FolderPlus,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "./workspaceInterfaceLocale";
@@ -12,6 +18,7 @@ export type WorkspaceSearchCommand = {
   shortcut?: string;
   icon?: ReactNode;
   closeOnSelect?: boolean;
+  section?: "commands" | "settings";
   onSelect: () => void;
 };
 
@@ -21,6 +28,7 @@ type WorkspaceCommandRegistryOptions = {
     importWorkspace: () => void;
     newFile: () => void;
     newFolder: () => void;
+    openPreferences: () => void;
   };
   language: WorkspaceLanguage;
 };
@@ -40,6 +48,7 @@ export const buildWorkspaceCommandRegistry = ({
       label: interfaceCopy.sidePanel.files.newDocument,
       keywords: ["create", "file", "document"],
       icon: icon(FilePlus2),
+      section: "commands",
       onSelect: actions.newFile,
     },
     {
@@ -47,6 +56,7 @@ export const buildWorkspaceCommandRegistry = ({
       label: interfaceCopy.sidePanel.files.newFolder,
       keywords: ["create", "directory", "folder"],
       icon: icon(FolderPlus),
+      section: "commands",
       onSelect: actions.newFolder,
     },
     {
@@ -54,6 +64,7 @@ export const buildWorkspaceCommandRegistry = ({
       label: menuCopy.actions.importFile,
       keywords: ["open", "markdown", "file"],
       icon: icon(FileInput),
+      section: "commands",
       onSelect: actions.importFile,
     },
     {
@@ -61,7 +72,16 @@ export const buildWorkspaceCommandRegistry = ({
       label: menuCopy.actions.importWorkspace,
       keywords: ["open", "folder", "bundle", "workspace"],
       icon: icon(FolderInput),
+      section: "commands",
       onSelect: actions.importWorkspace,
+    },
+    {
+      id: "settings.preferences",
+      label: menuCopy.actions.preferences,
+      keywords: ["settings", "preferences", "theme", "language"],
+      icon: icon(SlidersHorizontal),
+      section: "settings",
+      onSelect: actions.openPreferences,
     },
   ];
 };

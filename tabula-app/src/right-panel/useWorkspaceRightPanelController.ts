@@ -91,6 +91,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   workspaceMenuOpen: boolean;
   onImportFile: () => void;
   onImportWorkspace: () => void;
+  onOpenPreferences: () => void;
   onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
   outlineHeadings: MarkdownHeading[];
@@ -148,6 +149,7 @@ export function useWorkspaceRightPanelController({
   onIdentityNameCommit,
   onImportFile,
   onImportWorkspace,
+  onOpenPreferences,
   onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
   onNewFile,
@@ -336,6 +338,7 @@ export function useWorkspaceRightPanelController({
         newFolder: () => { onNewFolder(); },
         importFile: onImportFile,
         importWorkspace: onImportWorkspace,
+        openPreferences: onOpenPreferences,
       },
     }),
   };

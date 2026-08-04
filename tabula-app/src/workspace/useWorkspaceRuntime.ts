@@ -878,6 +878,10 @@ export function useWorkspaceRuntime() {
       onIdentityNameCommit: normalizeIdentityName,
       onImportFile: () => importInputRef.current?.click(),
       onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+      onOpenPreferences: () => {
+        setWorkspaceMenuOpen(true);
+        setPreferencesOpen(true);
+      },
       onToggleWorkspaceMenu: toggleWorkspaceMenu,
       onToggleWorkspaceSearch: toggleWorkspaceSearch,
       onNewFile: addFile,

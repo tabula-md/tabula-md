@@ -133,6 +133,13 @@ describe("searchWorkspaceFiles", () => {
     ).files).toEqual([files[0]]);
   });
 
+  it("accepts the wiki-friendly tags alias", () => {
+    const parsed = parseWorkspaceFileSearchQuery("tags:payments");
+
+    expect(parsed.text).toBe("");
+    expect([...parsed.filters.tags]).toEqual(["payments"]);
+  });
+
   it("combines structured filters with remaining body search", () => {
     const parsed = parseWorkspaceFileSearchQuery("backoff status:draft freshness:stale");
 
