@@ -5,6 +5,7 @@ import {
 } from "react";
 import {
   getOkfFreshness,
+  inspectFrontmatterData,
   stripMarkdownExtension,
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
@@ -16,16 +17,18 @@ import {
   FileText,
   Hash,
   Search,
-  Shapes,
+  SlidersHorizontal,
 } from "lucide-react";
 import { rankCommandPaletteCandidates } from "../commandPaletteModel";
 import { DEFAULT_SEARCH_OPTIONS } from "../../editor/editorSearchModel";
 import {
-  getMetadataFacets,
+  flattenWorkspaceMetadata,
+  getWorkspaceMetadataFields,
   parseWorkspaceFileSearchQuery,
   searchWorkspaceFiles,
   type WorkspaceFileSearchEntry,
   type WorkspaceFileSearchMatch,
+  type WorkspaceMetadataField,
 } from "../../editor/workspaceFileSearchModel";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
@@ -42,14 +45,13 @@ type CommandPaletteCopy = {
   searchResults: string;
   noResults: string;
   noCommands: string;
+  filterDocuments: string;
   navigate: string;
   run: string;
 };
 
 type CommandPaletteSearchCopy = {
   documentCount: (count: number) => string;
-  tagFilter: (name: string) => string;
-  typeFilter: (name: string) => string;
   matchLabels: Record<WorkspaceFileSearchMatch["field"], string>;
 };
 
@@ -93,7 +95,8 @@ type PaletteFilterEntry = {
   label: string;
   description: string;
   query: string;
-  filterKind: "tag" | "type";
+  filterKind: "field" | "value";
+  fieldKey?: string;
 };
 
 type PaletteEntry = PaletteCommandEntry | PaletteDocumentEntry | PaletteFilterEntry;
@@ -166,6 +169,15 @@ export function WorkspaceCommandPalette({
       const metadata = analysis?.knowledgeMetadata;
       const presentation = getWorkspaceFilePresentation(file);
       const document = documentEntriesById.get(file.id);
+      const searchableText = presentation.kind === "markdown" || presentation.viewer === "text";
+      const frontmatter = searchableText
+        ? inspectFrontmatterData(file.text)
+        : undefined;
+      const rawMetadataValues = flattenWorkspaceMetadata(frontmatter?.metadata ?? {});
+      const freshness = metadata?.type ? getOkfFreshness(metadata) : undefined;
+      const metadataValues = freshness && !rawMetadataValues.freshness
+        ? { ...rawMetadataValues, freshness: [freshness] }
+        : rawMetadataValues;
       return {
         fileId: file.id,
         displayPath: document?.path ?? file.title,
@@ -186,45 +198,30 @@ export function WorkspaceCommandPalette({
         verifiedBy: metadata?.verified.map((event) => event.by),
         status: metadata?.type ? metadata.status : undefined,
         trustTier: metadata?.type ? metadata.trustTier : undefined,
-        freshness: metadata?.type ? getOkfFreshness(metadata) : undefined,
-        markdown: presentation.kind === "markdown" || presentation.viewer === "text"
-          ? file.text
+        freshness,
+        metadataValues,
+        markdown: searchableText
+          ? frontmatter?.body ?? file.text
           : undefined,
       };
     }),
     [documentEntriesById, files, index],
   );
   const normalizedQuery = query.trim();
-  const commandMode = normalizedQuery.startsWith(">");
-  const commandQuery = commandMode ? normalizedQuery.slice(1).trim() : "";
-  const exploreEntries = useMemo<PaletteFilterEntry[]>(() => {
-    const types = getMetadataFacets(searchEntries, (entry) => entry.type)
-      .sort((first, second) => second.count - first.count || first.value.localeCompare(second.value))
-      .slice(0, 3)
-      .map(({ value, count }) => ({
-        id: `filter-type-${value}`,
-        kind: "filter" as const,
-        label: searchCopy.typeFilter(value),
-        description: searchCopy.documentCount(count),
-        query: `type:${quoteFilterValue(value)}`,
-        filterKind: "type" as const,
-      }));
-    const tags = getMetadataFacets(searchEntries, (entry) => entry.tags)
-      .sort((first, second) => second.count - first.count || first.value.localeCompare(second.value))
-      .slice(0, 3)
-      .map(({ value, count }) => ({
-        id: `filter-tag-${value}`,
-        kind: "filter" as const,
-        label: searchCopy.tagFilter(value),
-        description: searchCopy.documentCount(count),
-        query: `tag:${quoteFilterValue(value)}`,
-        filterKind: "tag" as const,
-      }));
-    return [...types, ...tags];
-  }, [searchCopy, searchEntries]);
+  const metadataFields = useMemo(
+    () => getWorkspaceMetadataFields(searchEntries),
+    [searchEntries],
+  );
+  const filterCompletion = useMemo(
+    () => getFilterCompletion(query, metadataFields, searchCopy.documentCount),
+    [metadataFields, query, searchCopy.documentCount],
+  );
   const structuredQuery = useMemo(
-    () => parseWorkspaceFileSearchQuery(commandMode ? "" : normalizedQuery),
-    [commandMode, normalizedQuery],
+    () => parseWorkspaceFileSearchQuery(
+      filterCompletion?.exclusive ? "" : normalizedQuery,
+      metadataFields.map(({ key }) => key),
+    ),
+    [filterCompletion?.exclusive, metadataFields, normalizedQuery],
   );
   const highlightQuery = structuredQuery.text;
   const documentSearch = useMemo(
@@ -237,24 +234,35 @@ export function WorkspaceCommandPalette({
     [searchEntries, structuredQuery],
   );
   const visibleEntries = useMemo<PaletteEntry[]>(() => {
-    if (commandMode) {
-      return rankCommandPaletteCandidates(commandEntries, commandQuery)
-        .slice(0, MAX_VISIBLE_RESULTS);
-    }
+    if (filterCompletion?.exclusive) return filterCompletion.entries.slice(0, MAX_VISIBLE_RESULTS);
     if (!normalizedQuery) {
+      const openDocuments = documentEntries.filter(({ isOpen }) => isOpen);
       const suggestions = rankCommandPaletteCandidates(
-        documentEntries.filter(({ isOpen }) => isOpen),
+        openDocuments.length > 0 ? openDocuments : documentEntries,
         "",
-      );
-      return [...suggestions, ...exploreEntries, ...commandEntries]
+      ).slice(0, 4);
+      const filterStarter: PaletteFilterEntry[] = metadataFields.length > 0 ? [{
+        id: "filter-fields",
+        kind: "filter",
+        label: copy.filterDocuments,
+        description: "",
+        query: ":",
+        filterKind: "field",
+      }] : [];
+      return [...suggestions, ...filterStarter, ...commandEntries]
         .slice(0, MAX_VISIBLE_RESULTS);
     }
     const matchingDocuments = documentSearch.matches.flatMap((match) => {
       const entry = documentEntriesById.get(match.file.fileId);
       return entry ? [{ ...entry, match }] : [];
     });
-    return matchingDocuments.slice(0, MAX_VISIBLE_RESULTS);
-  }, [commandEntries, commandMode, commandQuery, documentEntries, documentEntriesById, documentSearch.matches, exploreEntries, normalizedQuery]);
+    const matchingCommands = rankCommandPaletteCandidates(commandEntries, normalizedQuery);
+    return [
+      ...(filterCompletion?.entries ?? []),
+      ...matchingDocuments,
+      ...matchingCommands,
+    ].slice(0, MAX_VISIBLE_RESULTS);
+  }, [commandEntries, copy.filterDocuments, documentEntries, documentEntriesById, documentSearch.matches, filterCompletion, metadataFields.length, normalizedQuery]);
 
   useEffect(() => setActiveIndex(0), [normalizedQuery]);
 
@@ -332,7 +340,7 @@ export function WorkspaceCommandPalette({
       <div className="command-palette-results" id="command-palette-results" role="listbox">
         {visibleEntries.length === 0 ? (
           <p className="command-palette-empty">
-            {commandMode ? copy.noCommands : copy.noResults}
+            {copy.noResults}
           </p>
         ) : visibleEntries.map((entry, index) => {
           const sectionLabel = getSectionLabel(entry, index);
@@ -355,7 +363,7 @@ export function WorkspaceCommandPalette({
                   {entry.kind === "command"
                     ? (entry.command.icon ?? <CornerDownLeft size={16} />)
                     : entry.kind === "filter"
-                      ? (entry.filterKind === "tag" ? <Hash size={16} /> : <Shapes size={16} />)
+                      ? (entry.filterKind === "value" ? <Hash size={16} /> : <SlidersHorizontal size={16} />)
                       : (entry.isMarkdown ? <FileText size={16} /> : <File size={16} />)}
                 </span>
                 <span className="command-palette-result-copy">
@@ -367,8 +375,8 @@ export function WorkspaceCommandPalette({
                       {entry.label}
                     </HighlightedText>
                   </span>
-                  {entry.kind === "filter" && (
-                    <span>{entry.query} · {entry.description}</span>
+                  {entry.kind === "filter" && entry.description && (
+                    <span>{entry.description}</span>
                   )}
                   {entry.kind === "document" && entry.path !== entry.label && (
                     <span>
@@ -393,7 +401,7 @@ export function WorkspaceCommandPalette({
                 )}
                 {entry.kind === "document" && entry.match && (
                   <span className="command-palette-result-kind">
-                    {searchCopy.matchLabels[entry.match.field]}
+                    {entry.match.metadataKey ?? searchCopy.matchLabels[entry.match.field]}
                   </span>
                 )}
               </button>
@@ -434,6 +442,87 @@ const HighlightedText = ({
 const quoteFilterValue = (value: string) => /\s/u.test(value)
   ? `"${value.split('"').join('\\"')}"`
   : value;
+
+type FilterCompletion = {
+  entries: PaletteFilterEntry[];
+  exclusive: boolean;
+};
+
+const normalizeFilterToken = (value: string) => value.trim().toLocaleLowerCase();
+
+const getFilterCompletion = (
+  query: string,
+  fields: readonly WorkspaceMetadataField[],
+  documentCount: (count: number) => string,
+): FilterCompletion | undefined => {
+  if (!query || /\s$/u.test(query)) return undefined;
+  const tokenStart = query.lastIndexOf(" ") + 1;
+  const prefix = query.slice(0, tokenStart);
+  const token = query.slice(tokenStart);
+  const colonIndex = token.indexOf(":");
+  const fieldFragment = colonIndex < 0 ? token : token.slice(0, colonIndex);
+  const normalizedFieldFragment = normalizeFilterToken(fieldFragment);
+  const fieldMatches = fields.filter(({ key }) => {
+    const normalizedKey = normalizeFilterToken(key);
+    if (!normalizedFieldFragment) return true;
+    if (normalizedFieldFragment === "tag" && normalizedKey === "tags") return true;
+    return normalizedKey.includes(normalizedFieldFragment);
+  });
+
+  if (colonIndex < 0) {
+    if (normalizedFieldFragment.length < 2 || fieldMatches.length === 0) return undefined;
+    return {
+      exclusive: false,
+      entries: fieldMatches.slice(0, 8).map((field) => ({
+        id: `filter-field-${field.key}`,
+        kind: "filter",
+        label: field.key,
+        description: documentCount(field.documentCount),
+        query: `${prefix}${field.key}:`,
+        filterKind: "field",
+        fieldKey: field.key,
+      })),
+    };
+  }
+
+  const exactField = fieldMatches.find(({ key }) => {
+    const normalizedKey = normalizeFilterToken(key);
+    return normalizedKey === normalizedFieldFragment
+      || (normalizedFieldFragment === "tag" && normalizedKey === "tags");
+  });
+  if (!exactField) {
+    if (fieldMatches.length === 0) return undefined;
+    return {
+      exclusive: true,
+      entries: fieldMatches.slice(0, 8).map((field) => ({
+        id: `filter-field-${field.key}`,
+        kind: "filter",
+        label: field.key,
+        description: documentCount(field.documentCount),
+        query: `${prefix}${field.key}:`,
+        filterKind: "field",
+        fieldKey: field.key,
+      })),
+    };
+  }
+
+  const valueFragment = normalizeFilterToken(token.slice(colonIndex + 1).replace(/^"/u, ""));
+  return {
+    exclusive: true,
+    entries: exactField.values
+      .filter(({ value }) => normalizeFilterToken(value).includes(valueFragment))
+      .slice(0, 12)
+      .map(({ value, count }) => ({
+        id: `filter-value-${exactField.key}-${value}`,
+        kind: "filter",
+        label: value,
+        description: `${exactField.key} · ${documentCount(count)}`,
+        query: `${prefix}${exactField.key}:${quoteFilterValue(value)} `,
+        filterKind: "value",
+        fieldKey: exactField.key,
+      })),
+  };
+};
 
 const getMatchContext = (entry: PaletteDocumentEntry) => {
   if (!entry.match?.snippet || entry.match.field === "title" || entry.match.field === "path") {

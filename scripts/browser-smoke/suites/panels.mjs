@@ -593,12 +593,12 @@ export async function run(ctx) {
       state: "visible",
     });
     await page.getByRole("combobox", {
-      name: "Search documents or type > for commands",
+      name: "Search documents, metadata, or commands",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
       await page.getByRole("combobox", {
-        name: "Search documents or type > for commands",
+        name: "Search documents, metadata, or commands",
         exact: true,
       }).isVisible() &&
         (await page.getByRole("option", { name: /Workspace search/ }).count()) === 0 &&
@@ -614,7 +614,7 @@ export async function run(ctx) {
       state: "visible",
     });
     const paletteSearchbox = page.getByRole("combobox", {
-      name: "Search documents or type > for commands",
+      name: "Search documents, metadata, or commands",
       exact: true,
     });
     expect(
@@ -643,13 +643,13 @@ export async function run(ctx) {
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
       "Document queries should not be mixed with unrelated workspace commands.",
     );
-    await paletteSearchbox.fill("> import");
+    await paletteSearchbox.fill("import");
     expect(
       (await page.getByRole("option", { name: "Import document (.md)…", exact: true }).count()) === 1 &&
         (await page.getByRole("heading", { name: "Commands", exact: true }).count()) === 1,
-      "The > prefix should switch the same launcher into command mode.",
+      "Commands should be discoverable from ordinary search without a special prefix.",
     );
-    await paletteSearchbox.fill("> preferences");
+    await paletteSearchbox.fill("preferences");
     await page.getByRole("option", { name: "Preferences", exact: true }).click();
     await page.getByRole("region", { name: "Preferences", exact: true }).waitFor({ state: "visible" });
     expect(

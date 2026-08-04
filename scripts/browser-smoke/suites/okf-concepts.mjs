@@ -310,18 +310,39 @@ export async function run(ctx) {
       state: "visible",
     });
     const conceptSearch = page.getByRole("combobox", {
-      name: "Search documents or type > for commands",
+      name: "Search documents, metadata, or commands",
       exact: true,
     });
+    await conceptSearch.fill("type:");
     expect(
-      (await page.getByRole("heading", { name: "Explore", exact: true }).count()) === 1 &&
-        (await page.getByRole("option", { name: "Type: Architecture", exact: true }).count()) === 1,
-      "The launcher should expose metadata facets as wiki navigation before a query is entered.",
+      (await page.getByRole("heading", { name: "Filters", exact: true }).count()) === 1 &&
+        (await page.getByRole("option", { name: "Architecture", exact: true }).count()) === 1,
+      "The launcher should infer metadata values from the workspace while a filter is composed.",
     );
-    await page.getByRole("option", { name: "Type: Architecture", exact: true }).click();
+    await page.getByRole("option", { name: "Architecture", exact: true }).click();
     expect(
-      await conceptSearch.inputValue() === "type:Architecture",
+      await conceptSearch.inputValue() === "type:Architecture ",
       "Choosing a metadata facet should turn it into an inspectable structured query.",
+    );
+    await conceptSearch.fill("review_policy:");
+    await page.getByRole("option", { name: "quarterly-platform-review", exact: true }).waitFor({
+      state: "visible",
+    });
+    await page.getByRole("option", { name: "quarterly-platform-review", exact: true }).click();
+    expect(
+      await conceptSearch.inputValue() === "review_policy:quarterly-platform-review ",
+      "Custom YAML keys should become filters without Tabula defining their schema.",
+    );
+    await conceptSearch.fill("tags:r");
+    await page.getByRole("option", { name: "runtime", exact: true }).waitFor({ state: "visible" });
+    expect(
+      (await page.locator(".command-palette-result-kind", { hasText: "Content" }).count()) === 0,
+      "An unfinished metadata value should show value completions instead of raw frontmatter body hits.",
+    );
+    await page.getByRole("option", { name: "runtime", exact: true }).click();
+    expect(
+      await conceptSearch.inputValue() === "tags:runtime ",
+      "Selecting an inferred tag should commit the filter and preserve editable query text.",
     );
     await conceptSearch.fill("dispatches work");
     const runtimeSearchResult = page.locator(".command-palette-result").filter({

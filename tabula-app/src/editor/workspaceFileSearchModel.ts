@@ -22,6 +22,7 @@ export type WorkspaceFileSearchEntry = {
   status?: OkfLifecycleStatus;
   trustTier?: OkfTrustTier;
   freshness?: OkfFreshness;
+  metadataValues?: Readonly<Record<string, readonly string[]>>;
   markdown?: string;
 };
 
@@ -34,6 +35,7 @@ export type WorkspaceFileSearchFilters = {
   sources?: ReadonlySet<string>;
   generatedBy?: ReadonlySet<string>;
   verifiedBy?: ReadonlySet<string>;
+  metadata?: ReadonlyMap<string, ReadonlySet<string>>;
 };
 
 export type WorkspaceFileStructuredQuery = {
@@ -52,6 +54,7 @@ export type WorkspaceFileSearchMatch = {
   field: "title" | "path" | "metadata" | "body";
   score: number;
   snippet?: string;
+  metadataKey?: string;
 };
 
 export type MetadataFacet<TValue extends string = string> = {
@@ -59,10 +62,17 @@ export type MetadataFacet<TValue extends string = string> = {
   count: number;
 };
 
-const structuredFieldPattern = /(?:^|\s)(type|tags?|status|trust|trust-tier|freshness|source|generated-by|verified-by):(?:"([^"]+)"|(\S+))/giu;
+export type WorkspaceMetadataField = {
+  key: string;
+  documentCount: number;
+  values: MetadataFacet[];
+};
+
+const structuredFieldPattern = /(?:^|\s)([\p{L}\p{N}_.-]+):(?:"([^"]+)"|(\S+))/giu;
 
 export const parseWorkspaceFileSearchQuery = (
   query: string,
+  metadataFieldKeys: readonly string[] = [],
 ): WorkspaceFileStructuredQuery => {
   const filters: {
     types: Set<string>;
@@ -73,6 +83,7 @@ export const parseWorkspaceFileSearchQuery = (
     sources: Set<string>;
     generatedBy: Set<string>;
     verifiedBy: Set<string>;
+    metadata: Map<string, Set<string>>;
   } = {
     types: new Set(),
     tags: new Set(),
@@ -82,10 +93,14 @@ export const parseWorkspaceFileSearchQuery = (
     sources: new Set(),
     generatedBy: new Set(),
     verifiedBy: new Set(),
+    metadata: new Map(),
   };
+  const metadataFieldsByNormalizedKey = new Map(
+    metadataFieldKeys.map((key) => [key.toLocaleLowerCase(), key]),
+  );
   const text = query.replace(
     structuredFieldPattern,
-    (_match, rawField: string, quotedValue: string | undefined, value: string | undefined) => {
+    (match, rawField: string, quotedValue: string | undefined, value: string | undefined) => {
       const field = rawField.toLocaleLowerCase();
       const filterValue = (quotedValue ?? value ?? "").trim();
       if (field === "type") filters.types.add(filterValue);
@@ -98,6 +113,13 @@ export const parseWorkspaceFileSearchQuery = (
       } else if (field === "source") filters.sources.add(filterValue);
       else if (field === "generated-by") filters.generatedBy.add(filterValue);
       else if (field === "verified-by") filters.verifiedBy.add(filterValue);
+      else {
+        const metadataKey = metadataFieldsByNormalizedKey.get(field);
+        if (!metadataKey) return match;
+        const values = filters.metadata.get(metadataKey) ?? new Set<string>();
+        values.add(filterValue);
+        filters.metadata.set(metadataKey, values);
+      }
       return " ";
     },
   ).replace(/\s+/g, " ").trim();
@@ -118,6 +140,79 @@ const matchesAnyExactValue = (
   value && [...expected].some((candidate) =>
     normalizeFilterValue(candidate) === normalizeFilterValue(value)),
 );
+
+const appendMetadataValue = (
+  values: Record<string, string[]>,
+  key: string,
+  value: unknown,
+) => {
+  if (!key || value === null || typeof value === "undefined") return;
+  if (Array.isArray(value)) {
+    for (const item of value) appendMetadataValue(values, key, item);
+    return;
+  }
+  if (typeof value === "object") {
+    for (const [nestedKey, nestedValue] of Object.entries(value)) {
+      appendMetadataValue(values, `${key}.${nestedKey}`, nestedValue);
+    }
+    return;
+  }
+  const serialized = String(value).trim();
+  if (!serialized) return;
+  const existing = values[key] ?? [];
+  if (!existing.some((candidate) => normalizeFilterValue(candidate) === normalizeFilterValue(serialized))) {
+    existing.push(serialized);
+  }
+  values[key] = existing;
+};
+
+export const flattenWorkspaceMetadata = (
+  metadata: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, readonly string[]>> => {
+  const values: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(metadata)) appendMetadataValue(values, key, value);
+  return values;
+};
+
+export const getWorkspaceMetadataFields = (
+  entries: readonly WorkspaceFileSearchEntry[],
+): WorkspaceMetadataField[] => {
+  const fields = new Map<string, {
+    key: string;
+    documentIds: Set<string>;
+    values: Map<string, { value: string; documentIds: Set<string> }>;
+  }>();
+  for (const entry of entries) {
+    for (const [key, entryValues] of Object.entries(entry.metadataValues ?? {})) {
+      const normalizedKey = key.toLocaleLowerCase();
+      const field = fields.get(normalizedKey) ?? {
+        key,
+        documentIds: new Set<string>(),
+        values: new Map(),
+      };
+      field.documentIds.add(entry.fileId);
+      for (const value of entryValues) {
+        const normalizedValue = normalizeFilterValue(value);
+        const facet = field.values.get(normalizedValue) ?? {
+          value,
+          documentIds: new Set<string>(),
+        };
+        facet.documentIds.add(entry.fileId);
+        field.values.set(normalizedValue, facet);
+      }
+      fields.set(normalizedKey, field);
+    }
+  }
+  return [...fields.values()]
+    .map((field) => ({
+      key: field.key,
+      documentCount: field.documentIds.size,
+      values: [...field.values.values()]
+        .map(({ value, documentIds }) => ({ value, count: documentIds.size }))
+        .sort((first, second) => second.count - first.count || first.value.localeCompare(second.value)),
+    }))
+    .sort((first, second) => second.documentCount - first.documentCount || first.key.localeCompare(second.key));
+};
 
 export const getMetadataFacets = <TEntry, TValue extends string>(
   entries: readonly TEntry[],
@@ -153,7 +248,8 @@ export const searchWorkspaceFiles = (
     filters.freshness?.size ||
     filters.sources?.size ||
     filters.generatedBy?.size ||
-    filters.verifiedBy?.size
+    filters.verifiedBy?.size ||
+    filters.metadata?.size
   ));
   if (!hasQuery && !hasFilters) return { error: null, files: [], matches: [] };
 
@@ -201,29 +297,56 @@ export const searchWorkspaceFiles = (
       ![...filters.verifiedBy].every((verifier) =>
         includesFilterValue(entry.verifiedBy, verifier))
     ) continue;
+    if (filters?.metadata?.size) {
+      const entryFields = new Map(
+        Object.entries(entry.metadataValues ?? {}).map(([key, values]) => [
+          key.toLocaleLowerCase(),
+          values,
+        ]),
+      );
+      const matchesMetadata = [...filters.metadata].every(([key, expectedValues]) => {
+        const actualValues = entryFields.get(key.toLocaleLowerCase());
+        return [...expectedValues].every((expected) => includesFilterValue(actualValues, expected));
+      });
+      if (!matchesMetadata) continue;
+    }
     if (!hasQuery) {
       matches.push({ file: entry, field: "metadata", score: 0, sourceIndex });
       continue;
     }
 
-    const searchableValues = [
-      { value: entry.title, field: "title" as const, score: 400 },
-      { value: entry.displayPath, field: "path" as const, score: 300 },
-      ...[
-        entry.description,
-        entry.type,
-        ...(entry.tags ?? []),
-        entry.resource,
-        ...(entry.sourceValues ?? []),
-        entry.generatedBy,
-        ...(entry.verifiedBy ?? []),
-        entry.status,
-        entry.trustTier,
-        entry.freshness,
-      ].map((value) => ({ value, field: "metadata" as const, score: 200 })),
-      { value: entry.markdown, field: "body" as const, score: 100 },
-    ].filter((candidate): candidate is { value: string; field: WorkspaceFileSearchMatch["field"]; score: number } =>
-      Boolean(candidate.value));
+    const searchableValues: Array<{
+      value: string;
+      field: WorkspaceFileSearchMatch["field"];
+      score: number;
+      metadataKey?: string;
+    }> = [];
+    const addSearchableValue = (
+      value: string | undefined,
+      field: WorkspaceFileSearchMatch["field"],
+      score: number,
+      metadataKey?: string,
+    ) => {
+      if (value) searchableValues.push({ value, field, score, metadataKey });
+    };
+    addSearchableValue(entry.title, "title", 400);
+    addSearchableValue(entry.displayPath, "path", 300);
+    for (const [metadataKey, values] of Object.entries(entry.metadataValues ?? {})) {
+      for (const value of values) addSearchableValue(value, "metadata", 220, metadataKey);
+    }
+    for (const value of [
+      entry.description,
+      entry.type,
+      ...(entry.tags ?? []),
+      entry.resource,
+      ...(entry.sourceValues ?? []),
+      entry.generatedBy,
+      ...(entry.verifiedBy ?? []),
+      entry.status,
+      entry.trustTier,
+      entry.freshness,
+    ]) addSearchableValue(value, "metadata", 200);
+    addSearchableValue(entry.markdown, "body", 100);
     let bestMatch: WorkspaceFileSearchMatch | undefined;
     for (const candidate of searchableValues) {
       const value = candidate.value;
@@ -242,6 +365,7 @@ export const searchWorkspaceFiles = (
             field: candidate.field,
             score,
             snippet: firstMatch?.preview,
+            metadataKey: candidate.metadataKey,
           };
         }
       }

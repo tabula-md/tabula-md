@@ -100,6 +100,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         searchResults: copy.paletteSearchResults,
         noResults: copy.paletteNoResults,
         noCommands: copy.paletteNoCommands,
+        filterDocuments: copy.paletteFilterDocuments,
         navigate: copy.paletteNavigate,
         run: copy.paletteRun,
         open: copy.paletteOpen,

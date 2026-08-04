@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SEARCH_OPTIONS } from "./editorSearchModel";
 import {
+  flattenWorkspaceMetadata,
   getMetadataFacets,
+  getWorkspaceMetadataFields,
   parseWorkspaceFileSearchQuery,
   searchWorkspaceFiles,
 } from "./workspaceFileSearchModel";
@@ -85,6 +87,63 @@ describe("searchWorkspaceFiles", () => {
       .toEqual([files[0]]);
     expect(searchWorkspaceFiles(files, "human:taeha", DEFAULT_SEARCH_OPTIONS).files)
       .toEqual([files[0]]);
+  });
+
+  it("flattens arbitrary YAML fields without prescribing a schema", () => {
+    expect(flattenWorkspaceMetadata({
+      audience: ["support", "engineering"],
+      generated: { by: "human:taeha", at: "2026-08-03T08:00:00Z" },
+      custom_score: 0.82,
+    })).toEqual({
+      audience: ["support", "engineering"],
+      "generated.by": ["human:taeha"],
+      "generated.at": ["2026-08-03T08:00:00Z"],
+      custom_score: ["0.82"],
+    });
+  });
+
+  it("infers fields and value counts from workspace metadata", () => {
+    const metadataEntries = [
+      { fileId: "one", displayPath: "One", metadataValues: { owner: ["team:ops"], audience: ["support"] } },
+      { fileId: "two", displayPath: "Two", metadataValues: { owner: ["team:ops"], audience: ["engineering"] } },
+    ];
+
+    expect(getWorkspaceMetadataFields(metadataEntries)).toEqual([
+      {
+        key: "audience",
+        documentCount: 2,
+        values: [
+          { value: "engineering", count: 1 },
+          { value: "support", count: 1 },
+        ],
+      },
+      {
+        key: "owner",
+        documentCount: 2,
+        values: [{ value: "team:ops", count: 2 }],
+      },
+    ]);
+  });
+
+  it("filters arbitrary inferred fields", () => {
+    const metadataEntries = [
+      { fileId: "one", displayPath: "One", metadataValues: { owner: ["team:ops"] } },
+      { fileId: "two", displayPath: "Two", metadataValues: { owner: ["team:product"] } },
+    ];
+    const parsed = parseWorkspaceFileSearchQuery("owner:team:ops", ["owner"]);
+
+    expect(searchWorkspaceFiles(
+      metadataEntries,
+      parsed.text,
+      DEFAULT_SEARCH_OPTIONS,
+      parsed.filters,
+    ).files).toEqual([metadataEntries[0]]);
+  });
+
+  it("keeps unknown field-like text as a normal search query", () => {
+    expect(parseWorkspaceFileSearchQuery("unknown:value", ["owner"])).toMatchObject({
+      text: "unknown:value",
+    });
   });
 
   it("filters lifecycle, trust, and freshness metadata", () => {
