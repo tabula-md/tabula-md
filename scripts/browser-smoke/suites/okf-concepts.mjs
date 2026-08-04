@@ -339,15 +339,27 @@ export async function run(ctx) {
       (await page.locator(".command-palette-result-kind", { hasText: "Content" }).count()) === 0,
       "An unfinished metadata value should show value completions instead of raw frontmatter body hits.",
     );
+    await conceptSearch.fill("tags:runtime");
+    await page.getByRole("heading", { name: "Search results", exact: true }).waitFor({
+      state: "visible",
+    });
+    const runtimeSearchResult = page.locator(".command-palette-result").filter({
+      hasText: "architecture/runtime",
+    });
+    await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
+    expect(
+      (await page.getByRole("heading", { name: "Filters", exact: true }).count()) === 0 &&
+        (await page.locator(".command-palette-result").count()) >= 1 &&
+        (await page.locator(".command-palette-result-kind").count()) === 0,
+      "A complete metadata filter should immediately show documents without a second Run step or generic Metadata labels.",
+    );
+    await conceptSearch.fill("tags:r");
     await page.getByRole("option", { name: "runtime", exact: true }).click();
     expect(
       await conceptSearch.inputValue() === "tags:runtime ",
       "Selecting an inferred tag should commit the filter and preserve editable query text.",
     );
     await conceptSearch.fill("dispatches work");
-    const runtimeSearchResult = page.locator(".command-palette-result").filter({
-      hasText: "architecture/runtime",
-    });
     await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
     expect(
       await runtimeSearchResult.isVisible() &&

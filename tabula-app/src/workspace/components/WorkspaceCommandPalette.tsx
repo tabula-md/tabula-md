@@ -399,7 +399,7 @@ export function WorkspaceCommandPalette({
                 {entry.kind === "command" && entry.command.shortcut && (
                   <kbd>{entry.command.shortcut}</kbd>
                 )}
-                {entry.kind === "document" && entry.match && (
+                {entry.kind === "document" && entry.match && highlightQuery && (
                   <span className="command-palette-result-kind">
                     {entry.match.metadataKey ?? searchCopy.matchLabels[entry.match.field]}
                   </span>
@@ -506,7 +506,13 @@ const getFilterCompletion = (
     };
   }
 
-  const valueFragment = normalizeFilterToken(token.slice(colonIndex + 1).replace(/^"/u, ""));
+  const valueFragment = normalizeFilterToken(
+    token.slice(colonIndex + 1).replace(/^"/u, "").replace(/"$/u, ""),
+  );
+  const exactValue = exactField.values.some(
+    ({ value }) => normalizeFilterToken(value) === valueFragment,
+  );
+  if (exactValue) return undefined;
   return {
     exclusive: true,
     entries: exactField.values
