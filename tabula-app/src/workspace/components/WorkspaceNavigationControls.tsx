@@ -1,8 +1,7 @@
 import {
   ChevronDown,
   MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Search,
 } from "lucide-react";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
@@ -43,7 +42,7 @@ export function WorkspaceNavigationControls({
         aria-pressed={leftPanelOpen}
         onClick={onToggleLeftPanel}
       >
-        {leftPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+        <PanelLeft size={16} />
       </button>
       <button
         className={`workspace-name-trigger workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}

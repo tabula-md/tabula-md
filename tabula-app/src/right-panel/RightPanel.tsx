@@ -10,7 +10,7 @@ import {
   Link2,
   ListTree,
   MessageSquare,
-  PanelRightClose,
+  PanelRight,
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
@@ -231,7 +231,7 @@ export function RightPanel({
           aria-pressed="true"
           onClick={onClose}
         >
-          <PanelRightClose size={16} />
+          <PanelRight size={16} />
         </button>
       </header>
 
