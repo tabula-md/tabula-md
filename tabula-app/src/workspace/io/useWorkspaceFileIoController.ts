@@ -42,6 +42,7 @@ import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
 import {
   createArtifactSnapshotFromWorkspace,
+  getLiveFolderAutoSaveBlockReason,
   getLiveFolderWorkspaceWritePlan,
   isLiveFolderSupported,
   pickLiveFolderSourceAdapter,
@@ -201,6 +202,7 @@ export function useWorkspaceFileIoController({
   const liveFolderWriteQueueRef = useRef(Promise.resolve());
   const [workspaceSourceKind, setWorkspaceSourceKind] =
     useState<WorkspaceSourceKind>("browser-copy");
+  const [liveFolderAutoSave, setLiveFolderAutoSave] = useState(false);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -341,6 +343,7 @@ export function useWorkspaceFileIoController({
   const disconnectLiveWorkspaceFolder = () => {
     pendingLiveFolderRef.current = null;
     activeLiveFolderRef.current = null;
+    setLiveFolderAutoSave(false);
     setWorkspaceSourceKind("browser-copy");
   };
 
@@ -432,7 +435,7 @@ export function useWorkspaceFileIoController({
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };
 
-  const saveLiveWorkspaceFolder = () => {
+  const queueLiveWorkspaceFolderSave = ({ automatic = false } = {}) => {
     if (isRoomSession || !activeLiveFolderRef.current) return;
     const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
       activeFile,
@@ -451,9 +454,34 @@ export function useWorkspaceFileIoController({
           workspaceSnapshot.files,
           workspaceSnapshot.folders,
         );
+        const external = await active.adapter.checkExternalChanges?.(
+          active.baseline,
+        );
         const plan = getLiveFolderWorkspaceWritePlan(active.baseline, local);
+        const autoSaveBlockReason = automatic
+          ? getLiveFolderAutoSaveBlockReason({
+              externalChangeCount: external?.changes.length ?? 0,
+              deleteCount: plan.deletes.length,
+            })
+          : external && external.changes.length > 0
+            ? "external-change"
+            : null;
+        if (autoSaveBlockReason === "external-change") {
+          if (automatic) {
+            setLiveFolderAutoSave(false);
+            showToast(copy.liveFolderAutoSavePausedExternal, "error");
+          } else {
+            showToast(copy.liveFolderWriteConflict, "error");
+          }
+          return;
+        }
         if (plan.changes.length === 0 && plan.deletes.length === 0) {
-          showToast(copy.liveFolderNoChanges);
+          if (!automatic) showToast(copy.liveFolderNoChanges);
+          return;
+        }
+        if (autoSaveBlockReason === "delete") {
+          setLiveFolderAutoSave(false);
+          showToast(copy.liveFolderAutoSavePausedDelete);
           return;
         }
         if (
@@ -476,7 +504,7 @@ export function useWorkspaceFileIoController({
           return;
         }
         active.baseline = result.snapshot ?? local;
-        showToast(copy.liveFolderSaved);
+        if (!automatic) showToast(copy.liveFolderSaved);
       })
       .catch((error: unknown) => {
         clientErrorReporter.report({
@@ -487,6 +515,24 @@ export function useWorkspaceFileIoController({
         showToast(copy.liveFolderWriteFailed, "error");
       });
   };
+
+  const saveLiveWorkspaceFolder = () => queueLiveWorkspaceFolderSave();
+  const toggleLiveFolderAutoSave = () => {
+    if (!activeLiveFolderRef.current) return;
+    setLiveFolderAutoSave((current) => !current);
+  };
+
+  useEffect(() => {
+    if (
+      isRoomSession ||
+      workspaceSourceKind !== "live-folder" ||
+      !liveFolderAutoSave
+    ) return;
+    const timer = window.setTimeout(() => {
+      queueLiveWorkspaceFolderSave({ automatic: true });
+    }, 1_000);
+    return () => window.clearTimeout(timer);
+  }, [files, folders, isRoomSession, liveFolderAutoSave, workspaceSourceKind]);
 
   useEffect(() => {
     if (isRoomSession) disconnectLiveWorkspaceFolder();
@@ -533,6 +579,7 @@ export function useWorkspaceFileIoController({
     isLiveFolderSupported: isLiveFolderSupported(),
     workspaceFolderImport,
     workspaceSourceKind,
+    liveFolderAutoSave,
     workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
@@ -544,6 +591,7 @@ export function useWorkspaceFileIoController({
     handleWorkspaceImportInputChange,
     openLiveWorkspaceFolder,
     saveLiveWorkspaceFolder,
+    toggleLiveFolderAutoSave,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
