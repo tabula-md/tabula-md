@@ -432,52 +432,61 @@ export function useWorkspaceFileIoController({
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };
 
-  useEffect(() => {
+  const saveLiveWorkspaceFolder = () => {
     if (isRoomSession || !activeLiveFolderRef.current) return;
-    const timer = window.setTimeout(() => {
-      const filesSnapshot = files;
-      const foldersSnapshot = folders;
-      liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
-        .then(async () => {
-          const active = activeLiveFolderRef.current;
-          if (!active) return;
-          const local = await createArtifactSnapshotFromWorkspace(
-            filesSnapshot,
-            foldersSnapshot,
+    const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
+      files,
+      folders,
+      getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
+      openFileIds,
+    });
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        const active = activeLiveFolderRef.current;
+        if (!active) return;
+        const local = await createArtifactSnapshotFromWorkspace(
+          workspaceSnapshot.files,
+          workspaceSnapshot.folders,
+        );
+        const plan = getLiveFolderWorkspaceWritePlan(active.baseline, local);
+        if (plan.changes.length === 0 && plan.deletes.length === 0) {
+          showToast(copy.liveFolderNoChanges);
+          return;
+        }
+        if (
+          plan.deletes.length > 0 &&
+          !window.confirm(copy.confirmLiveFolderDelete)
+        ) {
+          return;
+        }
+        const result = await active.adapter.writeChanges?.([
+          ...plan.changes,
+          ...plan.deletes,
+        ]);
+        if (!result?.ok) {
+          showToast(
+            result?.reason === "permission"
+              ? copy.liveFolderPermissionLost
+              : copy.liveFolderWriteConflict,
+            "error",
           );
-          const plan = getLiveFolderWorkspaceWritePlan(
-            active.baseline,
-            local,
-          );
-          const deletes = plan.deletes.length > 0 &&
-              window.confirm(copy.confirmLiveFolderDelete)
-            ? plan.deletes
-            : [];
-          const changes = [...plan.changes, ...deletes];
-          if (changes.length === 0) return;
-          const result = await active.adapter.writeChanges?.(changes);
-          if (!result?.ok) {
-            showToast(
-              result?.reason === "permission"
-                ? copy.liveFolderPermissionLost
-                : copy.liveFolderWriteConflict,
-              "error",
-            );
-            return;
-          }
-          active.baseline = local;
-        })
-        .catch((error: unknown) => {
-          clientErrorReporter.report({
-            feature: "workspace",
-            operation: "write-live-folder",
-            error,
-          });
-          showToast(copy.liveFolderWriteFailed, "error");
+          return;
+        }
+        active.baseline = result.snapshot ?? local;
+        showToast(copy.liveFolderSaved);
+      })
+      .catch((error: unknown) => {
+        clientErrorReporter.report({
+          feature: "workspace",
+          operation: "write-live-folder",
+          error,
         });
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [copy, files, folders, isRoomSession, showToast]);
+        showToast(copy.liveFolderWriteFailed, "error");
+      });
+  };
 
   useEffect(() => {
     if (isRoomSession) disconnectLiveWorkspaceFolder();
@@ -534,6 +543,7 @@ export function useWorkspaceFileIoController({
     handleImportInputChange,
     handleWorkspaceImportInputChange,
     openLiveWorkspaceFolder,
+    saveLiveWorkspaceFolder,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
