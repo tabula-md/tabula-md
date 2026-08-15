@@ -1,10 +1,8 @@
 import { lazy, Suspense } from "react";
 import { AppToast } from "../../ui/AppToast";
-import { JsonShareImportDialog } from "../../share/JsonShareImportDialog";
 import { TooltipLayer } from "../../ui/TooltipLayer";
 import type { AppToastState } from "../../ui/useAppToast";
 import type { WorkspaceState } from "../workspaceStorage";
-import { getWorkspaceArchiveEntries } from "../io/workspaceArchive";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 import {
@@ -14,7 +12,6 @@ import {
 import type { ShortcutPlatform } from "../keyboardShortcuts";
 import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
-import { LiveFolderConflictDialog } from "./LiveFolderConflictDialog";
 import type { LiveFolderConflictReview } from "../io/useWorkspaceFileIoController";
 
 const WorkspaceFolderImportDialog = lazy(() =>
@@ -22,9 +19,19 @@ const WorkspaceFolderImportDialog = lazy(() =>
     default: module.WorkspaceFolderImportDialog,
   }))
 );
+const JsonShareImportOverlay = lazy(() =>
+  import("./JsonShareImportOverlay").then((module) => ({
+    default: module.JsonShareImportOverlay,
+  }))
+);
 const WorkspaceExportReviewDialog = lazy(() =>
   import("./WorkspaceExportReviewDialog").then((module) => ({
     default: module.WorkspaceExportReviewDialog,
+  }))
+);
+const LiveFolderConflictDialog = lazy(() =>
+  import("./LiveFolderConflictDialog").then((module) => ({
+    default: module.LiveFolderConflictDialog,
   }))
 );
 
@@ -117,13 +124,15 @@ export function WorkspaceOverlaySurface({
         </Suspense>
       )}
       {liveFolderConflict && (
-        <LiveFolderConflictDialog
-          language={language}
-          review={liveFolderConflict}
-          onKeepTabula={onKeepTabulaLiveFolderVersion}
-          onMergeManually={onMergeLiveFolderConflictManually}
-          onUseExternal={onUseExternalLiveFolderVersion}
-        />
+        <Suspense fallback={null}>
+          <LiveFolderConflictDialog
+            language={language}
+            review={liveFolderConflict}
+            onKeepTabula={onKeepTabulaLiveFolderVersion}
+            onMergeManually={onMergeLiveFolderConflictManually}
+            onUseExternal={onUseExternalLiveFolderVersion}
+          />
+        </Suspense>
       )}
       {toast && (
         <AppToast
@@ -139,34 +148,12 @@ export function WorkspaceOverlaySurface({
         />
       )}
       {jsonShareImport && (
-        <JsonShareImportDialog
-          status={jsonShareImport.status}
+        <Suspense fallback={null}><JsonShareImportOverlay
+          state={jsonShareImport}
           language={language}
-          fileCount={
-            jsonShareImport.status === "ready"
-              ? jsonShareImport.workspace.files.length
-              : undefined
-          }
-          filePaths={
-            jsonShareImport.status === "ready"
-              ? getWorkspaceArchiveEntries(
-                  jsonShareImport.workspace.files,
-                  jsonShareImport.workspace.folders,
-                ).filter((entry) => !entry.path.endsWith("/")).map((entry) => entry.path)
-              : undefined
-          }
-          errorMessage={
-            jsonShareImport.status === "error"
-              ? jsonShareImport.errorMessage
-              : undefined
-          }
           onCancel={onCloseJsonShareImport}
-          onReplace={() => {
-            if (jsonShareImport.status === "ready") {
-              onReplaceWorkspaceWithJsonShare(jsonShareImport.workspace);
-            }
-          }}
-        />
+          onReplace={onReplaceWorkspaceWithJsonShare}
+        /></Suspense>
       )}
     </>
   );
