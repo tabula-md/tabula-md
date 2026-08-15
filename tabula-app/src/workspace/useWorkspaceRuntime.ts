@@ -810,9 +810,11 @@ export function useWorkspaceRuntime() {
     handleImportInputChange,
     handleWorkspaceImportInputChange,
     isLiveFolderSupported,
+    liveFolderAutoSave,
     jsonShareImport,
     openLiveWorkspaceFolder,
     saveLiveWorkspaceFolder,
+    toggleLiveFolderAutoSave,
     workspaceExportReview,
     workspaceFolderImport,
     workspaceSourceKind,
@@ -1039,6 +1041,10 @@ export function useWorkspaceRuntime() {
       : undefined,
     onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
       ? disconnectLiveWorkspaceFolder
+      : undefined,
+    liveFolderAutoSave,
+    onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder"
+      ? toggleLiveFolderAutoSave
       : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,

@@ -42,6 +42,8 @@ type WorkspaceMenuProps = {
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
   onDisconnectLiveWorkspace?: () => void;
+  liveFolderAutoSave?: boolean;
+  onToggleLiveFolderAutoSave?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -58,6 +60,7 @@ type MenuRowProps = {
   className?: string;
   disabled?: boolean;
   trailing?: ReactNode;
+  pressed?: boolean;
 };
 
 function MenuRow({
@@ -67,6 +70,7 @@ function MenuRow({
   className = "",
   disabled = false,
   trailing,
+  pressed,
 }: MenuRowProps) {
   return (
     <button
@@ -74,6 +78,7 @@ function MenuRow({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      aria-pressed={pressed}
     >
       {icon}
       <span>{children}</span>
@@ -133,6 +138,8 @@ export function WorkspaceMenu({
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
   onDisconnectLiveWorkspace,
+  liveFolderAutoSave = false,
+  onToggleLiveFolderAutoSave,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -195,6 +202,16 @@ export function WorkspaceMenu({
         {onSaveLiveWorkspace && (
           <MenuRow icon={<Save size={16} />} onClick={onSaveLiveWorkspace}>
             {copy.actions.saveLiveWorkspace}
+          </MenuRow>
+        )}
+        {onToggleLiveFolderAutoSave && (
+          <MenuRow
+            icon={<FolderSync size={16} />}
+            onClick={onToggleLiveFolderAutoSave}
+            trailing={liveFolderAutoSave ? "On" : "Off"}
+            pressed={liveFolderAutoSave}
+          >
+            {copy.actions.autoSaveLiveWorkspace}
           </MenuRow>
         )}
         {onDisconnectLiveWorkspace && (
