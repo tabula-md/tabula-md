@@ -14,6 +14,8 @@ import {
 import type { ShortcutPlatform } from "../keyboardShortcuts";
 import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
+import { LiveFolderConflictDialog } from "./LiveFolderConflictDialog";
+import type { LiveFolderConflictReview } from "../io/useWorkspaceFileIoController";
 
 const WorkspaceFolderImportDialog = lazy(() =>
   import("./WorkspaceFolderImportDialog").then((module) => ({
@@ -36,6 +38,7 @@ export type WorkspaceOverlaySurfaceProps = {
   workspaceFolderImport: WorkspaceFolderImportDraft | null;
   workspaceExportReview: WorkspaceExportReview | null;
   jsonShareImport: JsonShareImportState | null;
+  liveFolderConflict: LiveFolderConflictReview | null;
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
@@ -48,6 +51,9 @@ export type WorkspaceOverlaySurfaceProps = {
   onCloseJsonShareImport: () => void;
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
   onReplaceWorkspaceWithFolder: () => void;
+  onKeepTabulaLiveFolderVersion: () => void;
+  onMergeLiveFolderConflictManually: () => void;
+  onUseExternalLiveFolderVersion: () => void;
   onConfirmWorkspaceExport: () => void;
   onReviewWorkspaceExportIssues: () => void;
 };
@@ -57,6 +63,7 @@ export function WorkspaceOverlaySurface({
   workspaceFolderImport,
   workspaceExportReview,
   jsonShareImport,
+  liveFolderConflict,
   language,
   shortcutPlatform,
   toast,
@@ -69,6 +76,9 @@ export function WorkspaceOverlaySurface({
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
   onReplaceWorkspaceWithFolder,
+  onKeepTabulaLiveFolderVersion,
+  onMergeLiveFolderConflictManually,
+  onUseExternalLiveFolderVersion,
   onConfirmWorkspaceExport,
   onReviewWorkspaceExportIssues,
 }: WorkspaceOverlaySurfaceProps) {
@@ -105,6 +115,15 @@ export function WorkspaceOverlaySurface({
             onReviewIssues={onReviewWorkspaceExportIssues}
           />
         </Suspense>
+      )}
+      {liveFolderConflict && (
+        <LiveFolderConflictDialog
+          language={language}
+          review={liveFolderConflict}
+          onKeepTabula={onKeepTabulaLiveFolderVersion}
+          onMergeManually={onMergeLiveFolderConflictManually}
+          onUseExternal={onUseExternalLiveFolderVersion}
+        />
       )}
       {toast && (
         <AppToast

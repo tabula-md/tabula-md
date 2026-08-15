@@ -13,8 +13,14 @@ import { getWorkspaceFilePaths } from "../workspaceDisplayTitles";
 import type {
   WorkspaceFile,
   WorkspaceFolder,
+  WorkspaceState,
 } from "../workspaceStorage";
 import { decodeBinaryWorkspaceSupportFile } from "./workspaceSupportFile";
+import {
+  parseWorkspaceFolderImport,
+  type WorkspaceFolderImportDefaults,
+  type WorkspaceFolderImportDraft,
+} from "./workspaceFolderImport";
 
 type PermissionStateValue = "denied" | "granted" | "prompt";
 
@@ -405,4 +411,70 @@ export const getLiveFolderWorkspaceWritePlan = (
     });
   }
   return { changes, deletes };
+};
+
+const snapshotArtifactFiles = (
+  snapshot: WorkspaceSnapshot,
+  rootLabel: string,
+) => snapshot.artifacts.map((artifact) => {
+  const bytes = Uint8Array.from(getWorkspaceArtifactBytes(artifact.content));
+  const name = artifact.path.split("/").at(-1) ?? artifact.path;
+  const file = new File([bytes], name, { type: artifact.mediaType });
+  Object.defineProperty(file, "webkitRelativePath", {
+    configurable: true,
+    value: `${rootLabel}/${artifact.path}`,
+  });
+  return file;
+});
+
+export const createWorkspaceDraftFromArtifactSnapshot = async (
+  snapshot: WorkspaceSnapshot,
+  rootLabel: string,
+  defaults: WorkspaceFolderImportDefaults,
+  previous?: Pick<
+    WorkspaceState,
+    "activeFileId" | "files" | "folders" | "openFileIds"
+  >,
+): Promise<WorkspaceFolderImportDraft> => {
+  const draft = await parseWorkspaceFolderImport(
+    snapshotArtifactFiles(snapshot, rootLabel),
+    defaults,
+  );
+  if (!previous) return draft;
+  const previousPaths = getWorkspaceFilePaths(previous.files, previous.folders);
+  const previousByPath = new Map(previous.files.map((file) => [
+    previousPaths.get(file.id) ?? file.title,
+    file,
+  ]));
+  const unmatchedPrevious = new Set(previous.files);
+  const draftPaths = getWorkspaceFilePaths(draft.workspace.files, draft.workspace.folders);
+  const remappedFiles = draft.workspace.files.map((file) => {
+    const path = draftPaths.get(file.id) ?? file.title;
+    const samePath = previousByPath.get(path);
+    const sameHash = !samePath && file.artifact?.sourceHash
+      ? [...unmatchedPrevious].find((candidate) =>
+          candidate.artifact?.sourceHash === file.artifact?.sourceHash)
+      : undefined;
+    const previousFile = samePath ?? sameHash;
+    if (previousFile) unmatchedPrevious.delete(previousFile);
+    return previousFile ? {
+      ...previousFile,
+      title: file.title,
+      text: file.text,
+      parentId: file.parentId,
+      artifact: file.artifact,
+    } : file;
+  });
+  const fileIds = new Set(remappedFiles.map((file) => file.id));
+  return {
+    ...draft,
+    workspace: {
+      ...draft.workspace,
+      files: remappedFiles,
+      activeFileId: fileIds.has(previous.activeFileId)
+        ? previous.activeFileId
+        : (remappedFiles[0]?.id ?? ""),
+      openFileIds: previous.openFileIds.filter((id) => fileIds.has(id)),
+    },
+  };
 };
