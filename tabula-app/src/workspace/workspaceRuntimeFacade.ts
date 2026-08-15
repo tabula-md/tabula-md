@@ -1,4 +1,7 @@
-import type { DocumentSurfaceModel } from "@tabula-md/tabula";
+import type {
+  DocumentSurfaceModel,
+  WorkspaceSourceKind,
+} from "@tabula-md/tabula";
 import type { DocumentWorkbenchProps } from "../document/DocumentWorkbench";
 import type { LiveRoomOpenState } from "../collaboration/liveRoomOpenState";
 import type { WorkspaceRightPanelProps } from "../right-panel/WorkspaceRightPanel";
@@ -24,6 +27,7 @@ export type WorkspaceRuntimeFacade = {
   workspaceSession: {
     emptySurface: WorkspaceEmptySurfaceProps;
     localOpening: boolean;
+    sourceKind: WorkspaceSourceKind;
   };
   chrome: {
     mainPanelClassName: string;
