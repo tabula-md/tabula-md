@@ -11,6 +11,9 @@ import type {
 export type WorkspaceFileSearchEntry = {
   fileId: string;
   displayPath: string;
+  contentKind?: "markdown" | "text";
+  browseByDefault?: boolean;
+  format?: string;
   title?: string;
   description?: string;
   type?: string;
@@ -22,7 +25,15 @@ export type WorkspaceFileSearchEntry = {
   status?: OkfLifecycleStatus;
   trustTier?: OkfTrustTier;
   freshness?: OkfFreshness;
-  markdown?: string;
+  content?: string;
+};
+
+export type WorkspaceFileSearchMatch = {
+  kind: "document" | "heading" | "passage" | "metadata";
+  label: string;
+  preview?: string;
+  from?: number;
+  to?: number;
 };
 
 export type WorkspaceFileSearchFilters = {
@@ -36,6 +47,7 @@ export type WorkspaceFileSearchFilters = {
 export type WorkspaceFileSearchResult = {
   error: string | null;
   files: WorkspaceFileSearchEntry[];
+  matchesByFileId: ReadonlyMap<string, readonly WorkspaceFileSearchMatch[]>;
 };
 
 export type MetadataFacet<TValue extends string = string> = {
@@ -76,9 +88,12 @@ export const searchWorkspaceFiles = (
     filters.trustTiers?.size ||
     filters.freshness?.size
   ));
-  if (!hasQuery && !hasFilters) return { error: null, files: [] };
+  if (!hasQuery && !hasFilters) {
+    return { error: null, files: [], matchesByFileId: new Map() };
+  }
 
   const files: WorkspaceFileSearchEntry[] = [];
+  const matchesByFileId = new Map<string, WorkspaceFileSearchMatch[]>();
   for (const entry of entries) {
     if (
       filters?.types.size &&
@@ -115,9 +130,26 @@ export const searchWorkspaceFiles = (
       continue;
     }
 
-    const searchableValues = [
-      entry.displayPath,
-      entry.title,
+    const matches: WorkspaceFileSearchMatch[] = [];
+    const addValueMatch = (
+      value: string | undefined,
+      kind: WorkspaceFileSearchMatch["kind"],
+      label: string,
+    ) => {
+      if (!value) return null;
+      const valueResult = getEditorSearchResultWithLimit(value, query, options, 1);
+      if (valueResult.error) return valueResult.error;
+      if (valueResult.matches.length > 0) {
+        matches.push({ kind, label, preview: value });
+      }
+      return null;
+    };
+
+    let error = addValueMatch(entry.displayPath, "document", entry.displayPath);
+    if (!error && matches.length === 0) {
+      error = addValueMatch(entry.title, "document", entry.title ?? entry.displayPath);
+    }
+    const metadataValues = [
       entry.description,
       entry.type,
       ...(entry.tags ?? []),
@@ -128,19 +160,61 @@ export const searchWorkspaceFiles = (
       entry.status,
       entry.trustTier,
       entry.freshness,
-      entry.markdown,
     ].filter((value): value is string => Boolean(value));
-    let matched = false;
-    for (const value of searchableValues) {
-      const result = getEditorSearchResultWithLimit(value, query, options, 1);
-      if (result.error) return { error: result.error, files: [] };
-      if (result.matches.length > 0) {
-        matched = true;
-        break;
+    for (const value of metadataValues) {
+      if (error) break;
+      const before = matches.length;
+      error = addValueMatch(value, "metadata", value);
+      if (matches.length > before) break;
+    }
+    if (error) {
+      return { error, files: [], matchesByFileId: new Map() };
+    }
+
+    if (entry.content) {
+      const contentResult = getEditorSearchResultWithLimit(
+        entry.content,
+        query,
+        options,
+        3,
+      );
+      if (contentResult.error) {
+        return {
+          error: contentResult.error,
+          files: [],
+          matchesByFileId: new Map(),
+        };
+      }
+      for (const match of contentResult.matches) {
+        const lineStart = entry.content.lastIndexOf("\n", match.start - 1) + 1;
+        const nextBreak = entry.content.indexOf("\n", match.end);
+        const lineEnd = nextBreak === -1 ? entry.content.length : nextBreak;
+        const line = entry.content.slice(lineStart, lineEnd);
+        const heading = entry.contentKind === "markdown"
+          ? line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/)
+          : null;
+        matches.push(heading
+          ? {
+              kind: "heading",
+              label: heading[1] ?? line.trim(),
+              preview: line.trim(),
+              from: lineStart,
+              to: lineEnd,
+            }
+          : {
+              kind: "passage",
+              label: match.preview,
+              preview: match.preview,
+              from: match.start,
+              to: match.end,
+            });
       }
     }
-    if (matched) files.push(entry);
+    if (matches.length > 0) {
+      files.push(entry);
+      matchesByFileId.set(entry.fileId, matches);
+    }
   }
 
-  return { error: null, files };
+  return { error: null, files, matchesByFileId };
 };

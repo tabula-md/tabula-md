@@ -21,7 +21,8 @@ describe("searchWorkspaceFiles", () => {
       status: "stable" as const,
       trustTier: "human-reviewed" as const,
       freshness: "current" as const,
-      markdown: "# Operations\n\nRestart the settlement worker.",
+      contentKind: "markdown" as const,
+      content: "# Operations\n\nRestart the settlement worker.",
     },
     {
       fileId: "beta",
@@ -33,7 +34,8 @@ describe("searchWorkspaceFiles", () => {
       status: "draft" as const,
       trustTier: "unverified" as const,
       freshness: "stale" as const,
-      markdown: "# Decision\n\nUse exponential backoff.",
+      contentKind: "markdown" as const,
+      content: "# Decision\n\nUse exponential backoff.",
     },
     { fileId: "other", displayPath: "Other" },
   ];
@@ -54,6 +56,60 @@ describe("searchWorkspaceFiles", () => {
       .toEqual([files[0]]);
     expect(searchWorkspaceFiles(files, "exponential backoff", DEFAULT_SEARCH_OPTIONS).files)
       .toEqual([files[1]]);
+  });
+
+  it("returns heading and passage destinations with source offsets", () => {
+    const headingResult = searchWorkspaceFiles(
+      files,
+      "Operations",
+      DEFAULT_SEARCH_OPTIONS,
+    );
+    expect(headingResult.matchesByFileId.get("alpha")).toContainEqual({
+      kind: "heading",
+      label: "Operations",
+      preview: "# Operations",
+      from: 0,
+      to: 12,
+    });
+
+    const passageResult = searchWorkspaceFiles(
+      files,
+      "settlement worker",
+      DEFAULT_SEARCH_OPTIONS,
+    );
+    expect(passageResult.matchesByFileId.get("alpha")).toContainEqual({
+      kind: "passage",
+      label: "# Operations Restart the settlement worker.",
+      preview: "# Operations Restart the settlement worker.",
+      from: 26,
+      to: 43,
+    });
+  });
+
+  it("searches text support files while binary files remain path-only", () => {
+    const supportFiles = [
+      ...files,
+      {
+        fileId: "config",
+        displayPath: "data/runtime-config.json",
+        contentKind: "text" as const,
+        content: '{"retryPolicy":"exponential"}',
+      },
+      {
+        fileId: "diagram",
+        displayPath: "assets/system-overview.png",
+      },
+    ];
+    expect(searchWorkspaceFiles(
+      supportFiles,
+      "retryPolicy",
+      DEFAULT_SEARCH_OPTIONS,
+    ).files.map((file) => file.fileId)).toEqual(["config"]);
+    expect(searchWorkspaceFiles(
+      supportFiles,
+      "system-overview",
+      DEFAULT_SEARCH_OPTIONS,
+    ).files.map((file) => file.fileId)).toEqual(["diagram"]);
   });
 
   it("searches normalized knowledge metadata", () => {
