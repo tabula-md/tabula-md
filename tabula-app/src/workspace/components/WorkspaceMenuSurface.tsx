@@ -27,6 +27,8 @@ export type WorkspaceMenuSurfaceProps = {
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
   onDisconnectLiveWorkspace?: () => void;
+  liveFolderAutoSave?: boolean;
+  onToggleLiveFolderAutoSave?: () => void;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -54,6 +56,8 @@ export function WorkspaceMenuSurface({
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
   onDisconnectLiveWorkspace,
+  liveFolderAutoSave,
+  onToggleLiveFolderAutoSave,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -113,6 +117,10 @@ export function WorkspaceMenuSurface({
           : undefined}
         onDisconnectLiveWorkspace={canClearWorkspace
           ? onDisconnectLiveWorkspace
+          : undefined}
+        liveFolderAutoSave={liveFolderAutoSave}
+        onToggleLiveFolderAutoSave={canClearWorkspace
+          ? onToggleLiveFolderAutoSave
           : undefined}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
