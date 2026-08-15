@@ -32,9 +32,7 @@ import { getWorkspaceIoCopy } from "./workspaceIoLocale";
 import { productAnalytics } from "../../observability/productAnalytics";
 import {
   captureWorkspaceKnowledgeBaseline,
-  createWorkspaceArtifact,
   getWorkspaceArtifactBytes,
-  planExternalChangeResolution,
   type ExternalChangeResolution,
   type WorkspaceKnowledgeBaseline,
   type WorkspaceSnapshot,
@@ -57,19 +55,6 @@ export type LiveFolderConflictReview = {
   externalSnapshot: WorkspaceSnapshot;
   localSnapshot: WorkspaceSnapshot;
 };
-
-const replaceSnapshotArtifact = (
-  snapshot: WorkspaceSnapshot,
-  artifactId: string,
-  replacement: WorkspaceSnapshot["artifacts"][number] | null,
-): WorkspaceSnapshot => ({
-  capturedAt: new Date().toISOString(),
-  artifacts: replacement
-    ? snapshot.artifacts.map((artifact) => artifact.id === artifactId
-        ? { ...replacement, id: artifactId }
-        : artifact)
-    : snapshot.artifacts.filter((artifact) => artifact.id !== artifactId),
-});
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -493,6 +478,7 @@ export function useWorkspaceFileIoController({
             ? "external-change"
             : null;
         if (autoSaveBlockReason === "external-change") {
+          const { planExternalChangeResolution } = await import("@tabula-md/tabula");
           const resolutions = planExternalChangeResolution(
             active.baseline,
             local,
@@ -594,10 +580,11 @@ export function useWorkspaceFileIoController({
     ));
   };
 
-  const useExternalLiveFolderVersion = () => {
+  const useExternalLiveFolderVersion = async () => {
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active) return;
+    const { replaceSnapshotArtifact } = await import("./workspaceLiveFolderConflict");
     const { local, external } = review.resolution;
     const resolved = replaceSnapshotArtifact(
       review.localSnapshot,
@@ -613,28 +600,12 @@ export function useWorkspaceFileIoController({
     void applyArtifactSnapshotToWorkspace(resolved);
   };
 
-  const keepTabulaLiveFolderVersion = () => {
+  const keepTabulaLiveFolderVersion = async () => {
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active?.adapter.writeChanges) return;
-    const { change, local, external } = review.resolution;
-    const changes = change.type === "deleted"
-      ? [{ type: "create" as const, artifact: local }]
-      : change.type === "moved" && external
-        ? [
-            {
-              type: "move" as const,
-              artifactId: local.id,
-              fromPath: external.path,
-              toPath: local.path,
-            },
-            { type: "update" as const, artifact: local },
-          ]
-        : [{
-            type: "update" as const,
-            artifact: local,
-            expectedSourceHash: external?.sourceHash,
-          }];
+    const { getKeepTabulaChanges } = await import("./workspaceLiveFolderConflict");
+    const changes = getKeepTabulaChanges(review.resolution);
     liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
       .then(async () => {
         const result = await active.adapter.writeChanges?.(changes);
@@ -647,26 +618,15 @@ export function useWorkspaceFileIoController({
       });
   };
 
-  const mergeLiveFolderConflictManually = () => {
+  const mergeLiveFolderConflictManually = async () => {
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active) return;
+    const { createManualMergeArtifact, replaceSnapshotArtifact } =
+      await import("./workspaceLiveFolderConflict");
     const { local, external } = review.resolution;
-    if (local.content.kind !== "text" || (external && external.content.kind !== "text")) return;
-    void createWorkspaceArtifact({
-      ...local,
-      content: {
-        kind: "text",
-        encoding: "utf-8",
-        text: [
-          "<<<<<<< Tabula",
-          local.content.text,
-          "=======",
-          external?.content.kind === "text" ? external.content.text : "",
-          ">>>>>>> External",
-        ].join("\n"),
-      },
-    }).then((merged) => {
+    const merged = await createManualMergeArtifact(review.resolution);
+    if (merged) {
       active.baseline = replaceSnapshotArtifact(
         active.baseline,
         local.id,
@@ -678,7 +638,7 @@ export function useWorkspaceFileIoController({
         local.id,
         merged,
       ));
-    });
+    }
   };
 
   useEffect(() => {
