@@ -24,6 +24,9 @@ export type WorkspaceMenuSurfaceProps = {
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
+  onOpenLiveWorkspace?: () => void;
+  onSaveLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -48,6 +51,9 @@ export function WorkspaceMenuSurface({
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
+  onOpenLiveWorkspace,
+  onSaveLiveWorkspace,
+  onDisconnectLiveWorkspace,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -99,6 +105,15 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         } : undefined}
+        onOpenLiveWorkspace={canClearWorkspace
+          ? onOpenLiveWorkspace
+          : undefined}
+        onSaveLiveWorkspace={canClearWorkspace
+          ? onSaveLiveWorkspace
+          : undefined}
+        onDisconnectLiveWorkspace={canClearWorkspace
+          ? onDisconnectLiveWorkspace
+          : undefined}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
         onExportFile={() => {

@@ -802,15 +802,20 @@ export function useWorkspaceRuntime() {
     confirmWorkspaceArchiveExport,
     downloadCurrentFile,
     downloadWorkspaceArchive,
+    disconnectLiveWorkspaceFolder,
     emptyDropActive,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
     handleImportInputChange,
     handleWorkspaceImportInputChange,
+    isLiveFolderSupported,
     jsonShareImport,
+    openLiveWorkspaceFolder,
+    saveLiveWorkspaceFolder,
     workspaceExportReview,
     workspaceFolderImport,
+    workspaceSourceKind,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoController({
@@ -994,6 +999,7 @@ export function useWorkspaceRuntime() {
   } = workspaceCommentActions;
   const clearLocalWorkspace = useEventCallback(() => {
     if (activeRoom) return;
+    disconnectLiveWorkspaceFolder();
     handleUserWorkspaceBoundary();
     const starterWorkspace = createStarterWorkspaceState();
     replaceWorkspace(starterWorkspace);
@@ -1025,6 +1031,15 @@ export function useWorkspaceRuntime() {
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
     onImportWorkspaceChange: handleWorkspaceImportInputChange,
+    onOpenLiveWorkspace: isLiveFolderSupported && workspaceSourceKind !== "live-folder"
+      ? openLiveWorkspaceFolder
+      : undefined,
+    onSaveLiveWorkspace: workspaceSourceKind === "live-folder"
+      ? saveLiveWorkspaceFolder
+      : undefined,
+    onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
+      ? disconnectLiveWorkspaceFolder
+      : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -1334,7 +1349,10 @@ export function useWorkspaceRuntime() {
       workbench: workbenchProps,
     },
     workspaceSession: {
-      sourceKind: workspaceSession.source.kind,
+      sourceKind:
+        workspaceSession.mode === "room"
+          ? workspaceSession.source.kind
+          : workspaceSourceKind,
       emptySurface: {
         dropActive: emptyDropActive,
         language: workspacePreferences.language,
