@@ -348,6 +348,18 @@ export type LiveFolderWorkspaceWritePlan = {
   deletes: Extract<ArtifactChange, { type: "delete" }>[];
 };
 
+export const getLiveFolderAutoSaveBlockReason = ({
+  externalChangeCount,
+  deleteCount,
+}: {
+  externalChangeCount: number;
+  deleteCount: number;
+}) => externalChangeCount > 0
+  ? "external-change" as const
+  : deleteCount > 0
+    ? "delete" as const
+    : null;
+
 export const getLiveFolderWorkspaceWritePlan = (
   baseline: WorkspaceSnapshot,
   local: WorkspaceSnapshot,

@@ -31,6 +31,8 @@ type UseWorkspaceMenuControllerOptions = {
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
   onDisconnectLiveWorkspace?: () => void;
+  liveFolderAutoSave?: boolean;
+  onToggleLiveFolderAutoSave?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -57,6 +59,8 @@ export function useWorkspaceMenuController({
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
   onDisconnectLiveWorkspace,
+  liveFolderAutoSave,
+  onToggleLiveFolderAutoSave,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -100,6 +104,8 @@ export function useWorkspaceMenuController({
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
       onDisconnectLiveWorkspace,
+      liveFolderAutoSave,
+      onToggleLiveFolderAutoSave,
       onClearWorkspace,
       onExportFile,
       onExportWorkspace,
@@ -128,6 +134,8 @@ export function useWorkspaceMenuController({
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
       onDisconnectLiveWorkspace,
+      liveFolderAutoSave,
+      onToggleLiveFolderAutoSave,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

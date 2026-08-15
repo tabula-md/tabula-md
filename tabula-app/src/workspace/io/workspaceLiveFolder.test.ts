@@ -6,6 +6,7 @@ import {
 import {
   createArtifactSnapshotFromWorkspace,
   createLiveFolderSourceAdapter,
+  getLiveFolderAutoSaveBlockReason,
   getLiveFolderWorkspaceWritePlan,
   type LiveFolderDirectoryHandle,
   type LiveFolderFileHandle,
@@ -226,5 +227,20 @@ describe("live folder source", () => {
       content: { kind: "text", text: "# Readme" },
     });
     expect(snapshot.artifacts[0]).not.toHaveProperty("viewMode");
+  });
+
+  it("blocks auto-save for external changes before local deletions", () => {
+    expect(getLiveFolderAutoSaveBlockReason({
+      externalChangeCount: 1,
+      deleteCount: 1,
+    })).toBe("external-change");
+    expect(getLiveFolderAutoSaveBlockReason({
+      externalChangeCount: 0,
+      deleteCount: 1,
+    })).toBe("delete");
+    expect(getLiveFolderAutoSaveBlockReason({
+      externalChangeCount: 0,
+      deleteCount: 0,
+    })).toBeNull();
   });
 });
