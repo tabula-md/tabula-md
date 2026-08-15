@@ -6,6 +6,7 @@ import {
 import {
   createArtifactSnapshotFromWorkspace,
   createLiveFolderSourceAdapter,
+  createWorkspaceDraftFromArtifactSnapshot,
   getLiveFolderAutoSaveBlockReason,
   getLiveFolderWorkspaceWritePlan,
   type LiveFolderDirectoryHandle,
@@ -242,5 +243,39 @@ describe("live folder source", () => {
       externalChangeCount: 0,
       deleteCount: 0,
     })).toBeNull();
+  });
+
+  it("preserves editor identity and preferences across an external move", async () => {
+    const moved = await textArtifact("disk-path", "archive/README.md", "# Readme");
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      { artifacts: [moved], capturedAt: "external" },
+      "Project",
+      { viewMode: "edit", readingWidth: "standard", lineWrapping: false, lineNumbers: false },
+      {
+        activeFileId: "stable-id",
+        openFileIds: ["stable-id"],
+        folders: [{ id: "workspace-root", title: "Project", parentId: null }],
+        files: [{
+          id: "stable-id",
+          title: "README.md",
+          text: "# Readme",
+          parentId: "workspace-root",
+          viewMode: "visual",
+          editingMode: "visual",
+          readingWidth: "wide",
+          lineWrapping: true,
+          lineNumbers: true,
+          artifact: { kind: "document", mediaType: "text/markdown", contentKind: "text", sourceHash: moved.sourceHash, editable: true },
+        }],
+      },
+    );
+    expect(draft.workspace.files[0]).toMatchObject({
+      id: "stable-id",
+      title: "README.md",
+      viewMode: "visual",
+      readingWidth: "wide",
+    });
+    expect(draft.workspace.activeFileId).toBe("stable-id");
+    expect(draft.workspace.openFileIds).toEqual(["stable-id"]);
   });
 });
