@@ -6,6 +6,8 @@ type WorkspaceMenuCopy = {
     importFile: string;
     importWorkspace: string;
     openLiveWorkspace: string;
+    saveLiveWorkspace: string;
+    disconnectLiveWorkspace: string;
     exportFile: string;
     exportWorkspace: string;
     clearWorkspace: string;
@@ -119,6 +121,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Import document (.md)…",
       importWorkspace: "Open folder…",
       openLiveWorkspace: "Connect local folder…",
+      saveLiveWorkspace: "Save to folder",
+      disconnectLiveWorkspace: "Disconnect folder",
       exportFile: "Export document (.md)",
       exportWorkspace: "Export workspace (.zip)",
       clearWorkspace: "Clear local workspace…",
@@ -224,6 +228,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "문서 가져오기 (.md)…",
       importWorkspace: "폴더 열기…",
       openLiveWorkspace: "로컬 폴더 연결…",
+      saveLiveWorkspace: "폴더에 저장",
+      disconnectLiveWorkspace: "폴더 연결 해제",
       exportFile: "문서 내보내기 (.md)",
       exportWorkspace: "워크스페이스 내보내기 (.zip)",
       clearWorkspace: "로컬 워크스페이스 비우기…",
@@ -329,6 +335,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "ドキュメントを読み込む (.md)…",
       importWorkspace: "フォルダーを開く…",
       openLiveWorkspace: "ローカルフォルダーを接続…",
+      saveLiveWorkspace: "フォルダーに保存",
+      disconnectLiveWorkspace: "フォルダーの接続を解除",
       exportFile: "ドキュメントを書き出す (.md)",
       exportWorkspace: "ワークスペースを書き出す (.zip)",
       clearWorkspace: "ローカルワークスペースを消去…",
@@ -436,6 +444,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "导入文档 (.md)…",
       importWorkspace: "打开文件夹…",
       openLiveWorkspace: "连接本地文件夹…",
+      saveLiveWorkspace: "保存到文件夹",
+      disconnectLiveWorkspace: "断开文件夹连接",
       exportFile: "导出文档 (.md)",
       exportWorkspace: "导出工作区 (.zip)",
       clearWorkspace: "清空本地工作区…",
@@ -540,6 +550,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Importar documento (.md)…",
       importWorkspace: "Abrir carpeta…",
       openLiveWorkspace: "Conectar carpeta local…",
+      saveLiveWorkspace: "Guardar en la carpeta",
+      disconnectLiveWorkspace: "Desconectar carpeta",
       exportFile: "Exportar documento (.md)",
       exportWorkspace: "Exportar espacio de trabajo (.zip)",
       clearWorkspace: "Vaciar espacio local…",
@@ -647,6 +659,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Importer un document (.md)…",
       importWorkspace: "Ouvrir un dossier…",
       openLiveWorkspace: "Connecter un dossier local…",
+      saveLiveWorkspace: "Enregistrer dans le dossier",
+      disconnectLiveWorkspace: "Déconnecter le dossier",
       exportFile: "Exporter le document (.md)",
       exportWorkspace: "Exporter l’espace de travail (.zip)",
       clearWorkspace: "Effacer l’espace local…",
@@ -754,6 +768,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Dokument importieren (.md)…",
       importWorkspace: "Ordner öffnen…",
       openLiveWorkspace: "Lokalen Ordner verbinden…",
+      saveLiveWorkspace: "Im Ordner speichern",
+      disconnectLiveWorkspace: "Ordner trennen",
       exportFile: "Dokument exportieren (.md)",
       exportWorkspace: "Workspace exportieren (.zip)",
       clearWorkspace: "Lokalen Workspace leeren…",

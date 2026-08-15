@@ -812,6 +812,7 @@ export function useWorkspaceRuntime() {
     isLiveFolderSupported,
     jsonShareImport,
     openLiveWorkspaceFolder,
+    saveLiveWorkspaceFolder,
     workspaceExportReview,
     workspaceFolderImport,
     workspaceSourceKind,
@@ -1030,8 +1031,14 @@ export function useWorkspaceRuntime() {
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
     onImportWorkspaceChange: handleWorkspaceImportInputChange,
-    onOpenLiveWorkspace: isLiveFolderSupported
+    onOpenLiveWorkspace: isLiveFolderSupported && workspaceSourceKind !== "live-folder"
       ? openLiveWorkspaceFolder
+      : undefined,
+    onSaveLiveWorkspace: workspaceSourceKind === "live-folder"
+      ? saveLiveWorkspaceFolder
+      : undefined,
+    onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
+      ? disconnectLiveWorkspaceFolder
       : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,

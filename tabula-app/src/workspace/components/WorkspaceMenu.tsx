@@ -14,8 +14,10 @@ import {
   Monitor,
   Moon,
   SlidersHorizontal,
+  Save,
   Sun,
   Trash2,
+  Unplug,
 } from "lucide-react";
 import type {
   WorkspaceLanguage,
@@ -38,6 +40,8 @@ type WorkspaceMenuProps = {
   onImportFile: () => void;
   onImportWorkspace?: () => void;
   onOpenLiveWorkspace?: () => void;
+  onSaveLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -127,6 +131,8 @@ export function WorkspaceMenu({
   onImportFile,
   onImportWorkspace,
   onOpenLiveWorkspace,
+  onSaveLiveWorkspace,
+  onDisconnectLiveWorkspace,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -184,6 +190,16 @@ export function WorkspaceMenu({
         {onOpenLiveWorkspace && (
           <MenuRow icon={<FolderSync size={16} />} onClick={onOpenLiveWorkspace}>
             {copy.actions.openLiveWorkspace}
+          </MenuRow>
+        )}
+        {onSaveLiveWorkspace && (
+          <MenuRow icon={<Save size={16} />} onClick={onSaveLiveWorkspace}>
+            {copy.actions.saveLiveWorkspace}
+          </MenuRow>
+        )}
+        {onDisconnectLiveWorkspace && (
+          <MenuRow icon={<Unplug size={16} />} onClick={onDisconnectLiveWorkspace}>
+            {copy.actions.disconnectLiveWorkspace}
           </MenuRow>
         )}
         <div className="workspace-menu-divider" role="separator" />
