@@ -1,18 +1,8 @@
 const BINARY_SUPPORT_FILE_PREFIX = "tabula.md:binary-support-file;base64,";
 const BASE64_CHUNK_BYTES = 0x8000;
 
-export const isMarkdownWorkspacePath = (path: string) => /\.md$/i.test(path);
-
-export const isPreservedWorkspaceSupportPath = (
-  segments: readonly string[],
-) => {
-  const basename = segments.at(-1)?.toLocaleLowerCase() ?? "";
-  return basename === ".last-update.json"
-    || (
-      !isMarkdownWorkspacePath(basename)
-      && segments.slice(0, -1).some((segment) => segment.toLocaleLowerCase() === "references")
-    );
-};
+export const isMarkdownWorkspacePath = (path: string) =>
+  /\.(?:md|markdown)$/i.test(path);
 
 export const encodeBinaryWorkspaceSupportFile = (bytes: Uint8Array) => {
   let binary = "";

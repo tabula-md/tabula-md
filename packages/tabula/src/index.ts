@@ -777,3 +777,18 @@ export {
   planWorkspaceOkfConformance,
   TABULA_GENERATED_OKF_INDEX_MARKER,
 } from "./workspaceOkfConformance";
+export type {
+  WorkspaceArtifact,
+  WorkspaceArtifactContent,
+  WorkspaceArtifactDraft,
+  WorkspaceArtifactKind,
+} from "./workspaceArtifact";
+export {
+  cloneWorkspaceArtifact,
+  createWorkspaceArtifact,
+  getWorkspaceArtifactBytes,
+  getWorkspaceArtifactKind,
+  getWorkspaceArtifactMediaType,
+  hashWorkspaceArtifactContent,
+  isWorkspaceArtifactEditable,
+} from "./workspaceArtifact";
