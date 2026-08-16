@@ -20,11 +20,9 @@ import {
   type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
-import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../ui/uiTypes";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
-import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
@@ -61,7 +59,6 @@ type RightPanelProps = {
   knowledgeCompatibilityOpenRequest: number;
   activeFileId: string;
   activeFileTitle: string;
-  isLiveWorkspace: boolean;
   language: WorkspaceLanguage;
   activeOutlineHeadingIndex?: number;
   outlineHeadings: MarkdownHeading[];
@@ -77,9 +74,6 @@ type RightPanelProps = {
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
   onClose: () => void;
-  onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
-  onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
-  onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
   onSelectKnowledgeHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
@@ -94,15 +88,6 @@ type RightPanelProps = {
   onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
   onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
   onStartKnowledgeTracking: () => boolean;
-  onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
-  onDuplicateFile: (fileId: string) => void;
-  onDeleteFile: (fileId: string) => void;
-  onDeleteFolder: (folderId: string) => void;
-  onCopyFile: (fileId: string) => void;
-  onMoveFileToFolder: (fileId: string, folderId: string) => Promise<void>;
-  onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
-  onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
-  onRenameWorkspace: (nextTitle: string) => boolean;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
@@ -135,7 +120,6 @@ export function RightPanel({
   knowledgeCompatibilityOpenRequest,
   activeFileId,
   activeFileTitle,
-  isLiveWorkspace: _isLiveWorkspace,
   language,
   activeOutlineHeadingIndex,
   outlineHeadings,
@@ -151,9 +135,6 @@ export function RightPanel({
   replyDraftByCommentId,
   onSetView,
   onClose,
-  onNewFile,
-  onNewFolder,
-  onImportFile,
   onSelectFile,
   onSelectKnowledgeHealthIssue,
   onFocusLinkSource,
@@ -165,15 +146,6 @@ export function RightPanel({
   onMaterializeOkfIndex,
   onMaterializeOkfLog,
   onStartKnowledgeTracking,
-  onRenameFile,
-  onDuplicateFile,
-  onDeleteFile,
-  onDeleteFolder,
-  onCopyFile,
-  onMoveFileToFolder,
-  onMoveFolder,
-  onRenameFolder,
-  onRenameWorkspace,
   onGoToOutlineHeading,
   onCommentDraftChange,
   onIdentityNameChange,
@@ -199,15 +171,11 @@ export function RightPanel({
     showResolved,
     collapsedReplyIds,
     collapsedCommentFileIds,
-    collapsedFileTreeFolderIds,
     collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection,
     toggleRepliesCollapsed,
     toggleCommentFileCollapsed,
-    toggleFileTreeFolderCollapsed,
-    collapseAllFileTreeFolders,
-    expandAllFileTreeFolders,
     toggleLinkSectionCollapsed,
     toggleOutlineHeadingCollapsed,
     collapseAllOutlineHeadings,
@@ -294,31 +262,6 @@ export function RightPanel({
       </div>
 
       <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">
-        {effectiveView === "files" && (
-          <RightPanelFiles
-            files={files}
-            folders={folders}
-            activeFileId={activeFileId}
-            copy={copy.files}
-            collapsedFolderIds={collapsedFileTreeFolderIds}
-            onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
-            onNewFolder={onNewFolder}
-            onImportFile={onImportFile}
-            onToggleFolder={toggleFileTreeFolderCollapsed}
-            onCollapseAllFolders={collapseAllFileTreeFolders}
-            onExpandAllFolders={expandAllFileTreeFolders}
-            onSelectFile={onSelectFile}
-            onRenameFile={onRenameFile}
-            onDuplicateFile={onDuplicateFile}
-            onDeleteFile={onDeleteFile}
-            onDeleteFolder={onDeleteFolder}
-            onCopyFile={onCopyFile}
-            onMoveFileToFolder={onMoveFileToFolder}
-            onMoveFolder={onMoveFolder}
-            onRenameFolder={onRenameFolder}
-            onRenameWorkspace={onRenameWorkspace}
-          />
-        )}
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||

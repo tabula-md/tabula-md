@@ -21,7 +21,6 @@ const isRightPanelView = (value: unknown): value is RightPanelView =>
   value === "links" ||
   value === "comments" ||
   value === "properties" ||
-  value === "search" ||
   value === "knowledge";
 
 const getStorageKey = (roomId: string) => `${ROOM_VIEW_STATE_KEY_PREFIX}:${roomId}`;
