@@ -282,8 +282,6 @@ export function useWorkspaceRightPanelController({
     language,
     files: visibleFiles,
     folders,
-    knowledgeIndex,
-    knowledgeIndexPending,
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     onClose: closeLeftPanel,

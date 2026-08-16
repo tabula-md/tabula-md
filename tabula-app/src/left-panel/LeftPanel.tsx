@@ -1,6 +1,5 @@
-import { lazy, Suspense, type RefObject } from "react";
+import { type RefObject } from "react";
 import { Files, Library, Menu, PanelLeft } from "lucide-react";
-import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -8,24 +7,15 @@ import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStora
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelFiles } from "../right-panel/RightPanelFiles";
-import { PanelEmptyState } from "../right-panel/PanelEmptyState";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
 import { LibraryPanel } from "../libraries/LibraryPanel";
 import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
-
-const RightPanelSearch = lazy(() => import("../right-panel/RightPanelSearch").then((module) => ({
-  default: module.RightPanelSearch,
-})));
-
-const panelFallback = <section className="right-panel-content" aria-busy="true" />;
 
 export type LeftPanelProps = {
   isOpen: boolean;
   view: LeftPanelView;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
-  knowledgeIndex?: WorkspaceKnowledgeIndex;
-  knowledgeIndexPending: boolean;
   knowledgeIndexSource: "none" | "worker" | "fallback";
   activeFileId: string;
   isLiveWorkspace: boolean;
@@ -56,8 +46,6 @@ export function LeftPanel({
   view,
   files,
   folders,
-  knowledgeIndex,
-  knowledgeIndexPending,
   knowledgeIndexSource,
   activeFileId,
   isLiveWorkspace,
@@ -100,7 +88,6 @@ export function LeftPanel({
   if (!isOpen) return null;
 
   const title = view === "libraries" ? libraryCopy.libraries : copy.tabs[view];
-  const hasDocuments = files.length > 0;
 
   return (
     <aside
@@ -124,8 +111,7 @@ export function LeftPanel({
         >
           <Menu size={16} />
         </button>
-        {view === "search" ? <strong>{title}</strong> : (
-          <nav className="left-panel-tabs" aria-label={libraryCopy.sections}>
+        <nav className="left-panel-tabs" aria-label={libraryCopy.sections}>
             <button
               type="button"
               className={view === "files" ? "active" : ""}
@@ -146,8 +132,7 @@ export function LeftPanel({
             >
               <Library size={16} />
             </button>
-          </nav>
-        )}
+        </nav>
         <button
           className="left-panel-close"
           type="button"
@@ -187,28 +172,6 @@ export function LeftPanel({
         )}
 
         {view === "libraries" && <LibraryPanel language={language} />}
-
-        {!hasDocuments && view === "search" && (
-          <section className="right-panel-content">
-            <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
-          </section>
-        )}
-
-        {hasDocuments && view === "search" && knowledgeIndexPending && !knowledgeIndex &&
-          panelFallback}
-
-        {hasDocuments && view === "search" && (!knowledgeIndexPending || knowledgeIndex) && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelSearch
-              copy={copy.search}
-              files={files}
-              folders={folders}
-              index={knowledgeIndex}
-              language={language}
-              onSelectFile={onSelectFile}
-            />
-          </Suspense>
-        )}
       </div>
     </aside>
   );

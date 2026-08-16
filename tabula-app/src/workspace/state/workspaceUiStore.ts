@@ -29,7 +29,6 @@ type WorkspaceUiStoreActions = {
   closeFloatingChrome: () => void;
   closePreferences: () => void;
   openFilesPanel: () => void;
-  openSearchPanel: () => void;
   openSharePanel: () => void;
   setCenterPopover: (popover: UiValueUpdater<CenterPopover>) => void;
   setLeftPanelOpen: (isOpen: UiValueUpdater<boolean>) => void;
@@ -90,17 +89,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       workspaceMenuOpen: false,
       leftPanelOpen: true,
       leftPanelView: "files",
-    });
-  },
-
-  openSearchPanel: () => {
-    set({
-      topPopover: null,
-      centerPopover: null,
-      preferencesOpen: false,
-      workspaceMenuOpen: false,
-      leftPanelOpen: true,
-      leftPanelView: "search",
     });
   },
 
