@@ -5,6 +5,7 @@ export type RightPanelView =
   | "outline"
   | "links"
   | "comments"
+  | "properties"
   | "files"
   | "search"
   | "knowledge";

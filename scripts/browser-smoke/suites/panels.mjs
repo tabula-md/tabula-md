@@ -476,10 +476,15 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Knowledge",
+      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Properties|Knowledge",
       `The right panel should contain document context only. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
+    await page.getByRole("navigation", { name: "Side panel sections" })
+      .getByRole("button", { name: "Properties", exact: true }).click();
+    await page.locator('.right-properties[aria-label="Metadata"]').waitFor();
+    await page.getByRole("navigation", { name: "Side panel sections" })
+      .getByRole("button", { name: "Outline", exact: true }).click();
     expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
     expect(rightPanelState.syntheticRootRowCount === 0, "Root files should not be wrapped in a synthetic Project folder.");
     await page.getByRole("button", { name: "Rename Project in Files", exact: true }).click();

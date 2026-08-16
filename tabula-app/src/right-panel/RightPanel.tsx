@@ -5,6 +5,7 @@ import {
   Link2,
   ListTree,
   MessageSquare,
+  Braces,
   PanelRightClose,
   Search,
 } from "lucide-react";
@@ -32,6 +33,8 @@ import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
+import { RightPanelProperties } from "./RightPanelProperties";
+import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
@@ -196,6 +199,7 @@ export function RightPanel({
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
+  const knowledgeCopy = getKnowledgePanelCopy(language);
   const {
     showResolved,
     collapsedReplyIds,
@@ -236,7 +240,9 @@ export function RightPanel({
   );
   const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
-  const panelTitle = copy.tabs[effectiveView];
+  const panelTitle = effectiveView === "properties"
+    ? knowledgeCopy.properties
+    : copy.tabs[effectiveView];
   const renderTab = (
     tabView: RightPanelView,
     label: string,
@@ -273,6 +279,7 @@ export function RightPanel({
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
+          {renderTab("properties", knowledgeCopy.properties, <Braces size={14} />)}
           {renderTab(
             "knowledge",
             copy.tabs.knowledge,
@@ -404,6 +411,15 @@ export function RightPanel({
               formatCommentDate={formatCommentDate}
             />
           </Suspense>
+        )}
+
+        {effectiveView === "properties" && (
+          <RightPanelProperties
+            activeFileId={activeFileId}
+            index={knowledgeIndex}
+            noDocumentCopy={copy.noDocumentOpen}
+            emptyCopy={knowledgeCopy.notSet}
+          />
         )}
 
 
