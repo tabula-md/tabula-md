@@ -5,7 +5,7 @@ import {
   Link2,
   ListTree,
   MessageSquare,
-  PanelRightClose,
+  PanelRight,
   Search,
 } from "lucide-react";
 import {
@@ -291,7 +291,7 @@ export function RightPanel({
           aria-pressed="true"
           onClick={onClose}
         >
-          <PanelRightClose size={16} />
+          <PanelRight size={16} />
         </button>
       </div>
 

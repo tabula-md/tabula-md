@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Menu, PanelRightOpen, Users } from "lucide-react";
+import { Menu, PanelRight, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
@@ -139,7 +139,7 @@ export function TopChrome({
               aria-pressed="false"
               onClick={onToggleRightPanel}
             >
-              <PanelRightOpen size={16} />
+              <PanelRight size={16} />
             </button>
           )}
         </div>
