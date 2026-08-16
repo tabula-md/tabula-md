@@ -102,6 +102,15 @@ export function LeftPanel({
     >
       <header className="left-panel-header">
         <button
+          className="left-panel-close"
+          type="button"
+          aria-label={closeLabel}
+          data-tooltip={closeLabel}
+          onClick={onClose}
+        >
+          <PanelLeft size={16} />
+        </button>
+        <button
           className={`left-panel-menu ${workspaceMenuOpen ? "active" : ""}`}
           type="button"
           aria-label={workspaceMenuLabel}
@@ -133,15 +142,6 @@ export function LeftPanel({
               <Library size={16} />
             </button>
         </nav>
-        <button
-          className="left-panel-close"
-          type="button"
-          aria-label={closeLabel}
-          data-tooltip={closeLabel}
-          onClick={onClose}
-        >
-          <PanelLeft size={16} />
-        </button>
       </header>
 
       <div className={`right-panel-body ${view}`}>

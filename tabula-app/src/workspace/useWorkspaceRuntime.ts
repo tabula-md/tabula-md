@@ -202,10 +202,7 @@ export function useWorkspaceRuntime() {
   const [knowledgeBaseline, setKnowledgeBaseline] = useState<
     WorkspaceKnowledgeBaseline | undefined
   >(initialWorkspace.knowledgeBaseline);
-  const [
-    knowledgeCompatibilityOpenRequest,
-    setKnowledgeCompatibilityOpenRequest,
-  ] = useState(0);
+  const knowledgeCompatibilityOpenRequest = 0;
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
@@ -1024,12 +1021,6 @@ export function useWorkspaceRuntime() {
     syncUrlForLocalWorkspace("replace");
     showToast(workspaceMenuCopy.clearWorkspace.cleared);
   });
-  const reviewWorkspaceExportIssues = useEventCallback(() => {
-    closeWorkspaceExportReview();
-    setRightPanelOpen(true);
-    setRightPanelView("knowledge");
-    setKnowledgeCompatibilityOpenRequest((current) => current + 1);
-  });
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
@@ -1254,7 +1245,6 @@ export function useWorkspaceRuntime() {
     lastClosedFile,
     room: activeRoom,
     leftPanelOpen,
-    leftPanelView,
     rightPanelOpen,
     topPopover,
     workspaceMenuOpen,
@@ -1446,7 +1436,6 @@ export function useWorkspaceRuntime() {
         onMergeLiveFolderConflictManually: mergeLiveFolderConflictManually,
         onUseExternalLiveFolderVersion: useExternalLiveFolderVersion,
         onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
-        onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
       },
     },
     collaboration: {

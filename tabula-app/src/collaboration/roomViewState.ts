@@ -20,8 +20,7 @@ const isRightPanelView = (value: unknown): value is RightPanelView =>
   value === "outline" ||
   value === "links" ||
   value === "comments" ||
-  value === "properties" ||
-  value === "knowledge";
+  value === "properties";
 
 const getStorageKey = (roomId: string) => `${ROOM_VIEW_STATE_KEY_PREFIX}:${roomId}`;
 
@@ -32,6 +31,8 @@ export const parseRoomViewState = (value: unknown): RoomViewState | null => {
   const migratedLeftPanelView = storedRightPanelView === "files" || storedRightPanelView === "search";
   const rightPanelView = storedRightPanelView === "graph"
     ? "links"
+    : storedRightPanelView === "knowledge"
+      ? "properties"
     : migratedLeftPanelView
       ? "outline"
       : storedRightPanelView;

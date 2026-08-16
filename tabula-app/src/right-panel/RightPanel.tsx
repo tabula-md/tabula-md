@@ -1,11 +1,10 @@
 import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
-  LibraryBig,
   Link2,
   ListTree,
   MessageSquare,
   Braces,
-  PanelRightClose,
+  PanelRight,
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
@@ -38,10 +37,6 @@ const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => 
 const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
   default: module.RightPanelComments,
 })));
-const RightPanelKnowledge = lazy(() => import("./RightPanelKnowledge").then((module) => ({
-  default: module.RightPanelKnowledge,
-})));
-
 const panelFallback = (
   <section className="right-panel-content" aria-busy="true" />
 );
@@ -113,11 +108,8 @@ export function RightPanel({
   files,
   folders,
   knowledgeIndex,
-  knowledgeCompatibilityReport,
   knowledgeIndexPending,
   knowledgeIndexSource,
-  knowledgeBaseline,
-  knowledgeCompatibilityOpenRequest,
   activeFileId,
   activeFileTitle,
   language,
@@ -136,16 +128,8 @@ export function RightPanel({
   onSetView,
   onClose,
   onSelectFile,
-  onSelectKnowledgeHealthIssue,
   onFocusLinkSource,
   onResolveAmbiguousLink,
-  onSetActiveFileOkfType,
-  onApplyOkfConceptRepairs,
-  onApplyOkfWikilinkRepairs,
-  onVerifyKnowledgeDocument,
-  onMaterializeOkfIndex,
-  onMaterializeOkfLog,
-  onStartKnowledgeTracking,
   onGoToOutlineHeading,
   onCommentDraftChange,
   onIdentityNameChange,
@@ -241,13 +225,6 @@ export function RightPanel({
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("properties", knowledgeCopy.properties, <Braces size={14} />)}
-          {renderTab(
-            "knowledge",
-            copy.tabs.knowledge,
-            <LibraryBig size={14} />,
-            undefined,
-            copy.knowledgeDescription,
-          )}
         </nav>
         <button
           className="right-panel-overlay-toggle"
@@ -257,7 +234,7 @@ export function RightPanel({
           aria-pressed="true"
           onClick={onClose}
         >
-          <PanelRightClose size={16} />
+          <PanelRight size={16} />
         </button>
       </div>
 
@@ -356,32 +333,6 @@ export function RightPanel({
             noDocumentCopy={copy.noDocumentOpen}
             emptyCopy={knowledgeCopy.notSet}
           />
-        )}
-
-
-        {effectiveView === "knowledge" && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelKnowledge
-              activeFileId={activeFileId}
-              activeFileTitle={activeFileTitle}
-              noDocumentCopy={`${copy.tabs.knowledge}: ${copy.noDocumentOpen}`}
-              compatibilityReport={knowledgeCompatibilityReport}
-              knowledgeBaseline={knowledgeBaseline}
-              knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
-              index={knowledgeIndex}
-              language={language}
-              onApplyConceptRepairs={onApplyOkfConceptRepairs}
-              onApplyWikilinkRepairs={onApplyOkfWikilinkRepairs}
-              onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}
-              identityName={identityName}
-              onMaterializeIndex={onMaterializeOkfIndex}
-              onMaterializeLog={onMaterializeOkfLog}
-              onSelectFile={onSelectFile}
-              onSelectHealthIssue={onSelectKnowledgeHealthIssue}
-              onSetActiveFileOkfType={onSetActiveFileOkfType}
-              onStartKnowledgeTracking={onStartKnowledgeTracking}
-            />
-          </Suspense>
         )}
       </div>
     </aside>

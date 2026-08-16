@@ -41,7 +41,6 @@ export type WorkspaceTopChromeProps = {
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   workspaceMenuOpen: boolean;
@@ -90,7 +89,6 @@ export function WorkspaceTopChrome({
   openFiles,
   room,
   leftPanelOpen,
-  leftPanelView,
   rightPanelOpen,
   shareOpen,
   workspaceMenuOpen,
@@ -200,7 +198,6 @@ export function WorkspaceTopChrome({
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}
       leftPanelOpen={leftPanelOpen}
-      leftPanelView={leftPanelView}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
       language={language}

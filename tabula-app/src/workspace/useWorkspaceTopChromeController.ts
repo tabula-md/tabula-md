@@ -37,7 +37,6 @@ type UseWorkspaceTopChromeControllerOptions = {
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
@@ -90,7 +89,6 @@ export function useWorkspaceTopChromeController({
   openFiles,
   room,
   leftPanelOpen,
-  leftPanelView,
   rightPanelOpen,
   topPopover,
   workspaceMenuOpen,
@@ -181,7 +179,6 @@ export function useWorkspaceTopChromeController({
     openFiles,
     room,
     leftPanelOpen,
-    leftPanelView,
     rightPanelOpen,
     shareOpen,
     workspaceMenuOpen,
