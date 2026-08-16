@@ -5,8 +5,7 @@ export type RightPanelView =
   | "outline"
   | "links"
   | "comments"
-  | "properties"
-  | "knowledge";
+  | "properties";
 
 export type KeyboardShortcut = {
   keys: string;

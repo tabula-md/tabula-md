@@ -46,7 +46,7 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
-  it("keeps retired left-panel views closed and restores knowledge", () => {
+  it("migrates retired panel views to their current destinations", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
@@ -63,7 +63,7 @@ describe("room view state", () => {
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "knowledge",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "knowledge" });
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "properties" });
   });
 
   it("migrates the retired graph panel to links", () => {

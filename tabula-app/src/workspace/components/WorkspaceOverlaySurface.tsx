@@ -80,7 +80,6 @@ export type WorkspaceOverlaySurfaceProps = {
   onMergeLiveFolderConflictManually: () => void;
   onUseExternalLiveFolderVersion: () => void;
   onConfirmWorkspaceExport: () => void;
-  onReviewWorkspaceExportIssues: () => void;
 };
 
 export function WorkspaceOverlaySurface({
@@ -106,7 +105,6 @@ export function WorkspaceOverlaySurface({
   onMergeLiveFolderConflictManually,
   onUseExternalLiveFolderVersion,
   onConfirmWorkspaceExport,
-  onReviewWorkspaceExportIssues,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -141,7 +139,6 @@ export function WorkspaceOverlaySurface({
             review={workspaceExportReview}
             onCancel={onCloseWorkspaceExportReview}
             onExport={onConfirmWorkspaceExport}
-            onReviewIssues={onReviewWorkspaceExportIssues}
           />
         </Suspense>
       )}

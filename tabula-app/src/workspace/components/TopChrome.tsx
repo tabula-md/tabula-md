@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PanelLeft, PanelRightOpen, Search, Users } from "lucide-react";
+import { PanelLeft, PanelRight, Search, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
@@ -11,7 +11,6 @@ import type { LeftPanelView } from "../../ui/uiTypes";
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
   language: WorkspaceLanguage;
@@ -31,7 +30,6 @@ type TopChromeProps = {
 
 export function TopChrome({
   leftPanelOpen,
-  leftPanelView,
   rightPanelOpen,
   isLiveConnected,
   language,
@@ -80,18 +78,18 @@ export function TopChrome({
   return (
     <header className="top-chrome">
       <div className="top-left-zone">
-        <button
-          className={`panel-toggle top-panel-toggle left-panel-trigger ${
-            leftPanelOpen && leftPanelView === "files" ? "active" : ""
-          }`}
-          type="button"
-          aria-label={panelCopy.tabs.files}
-          data-tooltip={panelCopy.tabs.files}
-          aria-pressed={leftPanelOpen && leftPanelView === "files"}
-          onClick={() => onToggleLeftPanel("files")}
-        >
-          <PanelLeft size={16} />
-        </button>
+        {!leftPanelOpen && (
+          <button
+            className="panel-toggle top-panel-toggle left-panel-trigger"
+            type="button"
+            aria-label={panelCopy.tabs.files}
+            data-tooltip={panelCopy.tabs.files}
+            aria-pressed="false"
+            onClick={() => onToggleLeftPanel("files")}
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
         <button
           className="panel-toggle top-panel-toggle"
           type="button"
@@ -156,7 +154,7 @@ export function TopChrome({
               aria-pressed="false"
               onClick={onToggleRightPanel}
             >
-              <PanelRightOpen size={16} />
+              <PanelRight size={16} />
             </button>
           )}
         </div>

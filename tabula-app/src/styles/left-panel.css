@@ -36,7 +36,6 @@
   align-items: center;
   min-height: var(--control-size-row);
   margin-bottom: var(--right-section-gap);
-  padding-left: var(--right-row-x);
 }
 
 .left-panel-menu {
@@ -138,7 +137,7 @@
   place-items: center;
   width: var(--right-control-size);
   height: var(--right-control-size);
-  margin-left: auto;
+  margin-right: 6px;
   border-radius: var(--right-row-radius);
   color: var(--text-soft);
   background: transparent;
