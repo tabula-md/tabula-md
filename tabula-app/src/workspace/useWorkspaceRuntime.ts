@@ -1290,13 +1290,8 @@ export function useWorkspaceRuntime() {
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
-    onToggleLeftPanel: (view) => {
-      if (view === "search") {
-        setLauncherOpen(true);
-        return;
-      }
-      toggleLeftPanel(view);
-    },
+    onToggleLeftPanel: toggleLeftPanel,
+    onOpenWorkspaceLauncher: () => setLauncherOpen(true),
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,

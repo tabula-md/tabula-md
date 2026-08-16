@@ -64,6 +64,7 @@ export type WorkspaceTopChromeProps = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleLeftPanel: (view: LeftPanelView) => void;
+  onOpenWorkspaceLauncher: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
@@ -112,6 +113,7 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onOpenWorkspaceLauncher,
   onToggleRightPanel,
   onToggleFollowing,
   onToggleShare,
@@ -211,6 +213,7 @@ export function WorkspaceTopChrome({
       shareControls={shareControls}
       onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleLeftPanel={onToggleLeftPanel}
+      onOpenWorkspaceLauncher={onOpenWorkspaceLauncher}
       onToggleRightPanel={onToggleRightPanel}
       onToggleFollowing={onToggleFollowing}
     />

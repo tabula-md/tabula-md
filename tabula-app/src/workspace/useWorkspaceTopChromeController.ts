@@ -60,6 +60,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleLeftPanel: (view: LeftPanelView) => void;
+  onOpenWorkspaceLauncher: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleWorkspaceMenu: () => void;
@@ -112,6 +113,7 @@ export function useWorkspaceTopChromeController({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onOpenWorkspaceLauncher,
   onToggleRightPanel,
   onToggleFollowing,
   onToggleWorkspaceMenu,
@@ -202,6 +204,7 @@ export function useWorkspaceTopChromeController({
     onStopSession,
     onRetrySession,
     onToggleLeftPanel,
+    onOpenWorkspaceLauncher,
     onToggleRightPanel,
     onToggleFollowing,
     onToggleShare: toggleShare,

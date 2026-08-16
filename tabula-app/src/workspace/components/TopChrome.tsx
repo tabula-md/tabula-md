@@ -23,6 +23,7 @@ type TopChromeProps = {
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleWorkspaceMenu: () => void;
+  onOpenWorkspaceLauncher: () => void;
   onToggleLeftPanel: (view: LeftPanelView) => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
@@ -42,6 +43,7 @@ export function TopChrome({
   fileTabs,
   shareControls,
   onToggleLeftPanel,
+  onOpenWorkspaceLauncher,
   onToggleRightPanel,
   onToggleFollowing,
 }: TopChromeProps) {
@@ -91,14 +93,11 @@ export function TopChrome({
           <PanelLeft size={16} />
         </button>
         <button
-          className={`panel-toggle top-panel-toggle left-panel-trigger ${
-            leftPanelOpen && leftPanelView === "search" ? "active" : ""
-          }`}
+          className="panel-toggle top-panel-toggle"
           type="button"
           aria-label={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
           data-tooltip={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
-          aria-pressed={leftPanelOpen && leftPanelView === "search"}
-          onClick={() => onToggleLeftPanel("search")}
+          onClick={onOpenWorkspaceLauncher}
         >
           <Search size={16} />
         </button>
