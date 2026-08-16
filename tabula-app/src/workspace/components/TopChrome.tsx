@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Menu, PanelLeft, PanelRightOpen, Search, Users } from "lucide-react";
+import { PanelLeft, PanelRightOpen, Search, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
@@ -29,7 +29,6 @@ type TopChromeProps = {
 };
 
 export function TopChrome({
-  workspaceMenuOpen,
   leftPanelOpen,
   leftPanelView,
   rightPanelOpen,
@@ -42,16 +41,12 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
-  onToggleWorkspaceMenu,
   onToggleLeftPanel,
   onToggleRightPanel,
   onToggleFollowing,
 }: TopChromeProps) {
   const copy = getWorkspaceChromeCopy(language).topChrome;
   const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
-  const workspaceMenuLabel = workspaceMenuOpen
-    ? copy.closeWorkspaceMenu
-    : copy.openWorkspaceMenu;
   const sidePanelLabel = copy.toggleSidePanel;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
@@ -83,16 +78,6 @@ export function TopChrome({
   return (
     <header className="top-chrome">
       <div className="top-left-zone">
-        <button
-          className={`panel-toggle top-panel-toggle workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
-          type="button"
-          aria-label={workspaceMenuLabel}
-          data-tooltip={workspaceMenuLabel}
-          aria-expanded={workspaceMenuOpen}
-          onClick={onToggleWorkspaceMenu}
-        >
-          <Menu size={16} />
-        </button>
         <button
           className={`panel-toggle top-panel-toggle left-panel-trigger ${
             leftPanelOpen && leftPanelView === "files" ? "active" : ""

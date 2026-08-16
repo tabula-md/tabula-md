@@ -55,7 +55,7 @@ export async function run(ctx) {
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
-      menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
+      menuButtonCount: document.querySelectorAll(".left-panel-menu").length,
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
       leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
@@ -125,10 +125,10 @@ export async function run(ctx) {
       })(),
     }));
     // P7: workspace menu product contract.
-    expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu button.");
-    expect(workbenchPanels.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(workbenchPanels.menuButtonCount === 1, "The workspace panel should expose one workspace menu button.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace panel.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 0, "The workspace menu should not expose New/Templates/Agent tabs.");
+    expect(workbenchPanels.leftTabCount === 2, "The workspace panel should expose Files and Libraries only.");
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
@@ -191,8 +191,8 @@ export async function run(ctx) {
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
     expect(
-      workbenchPanels.panelToggleCount === 5,
-      `Top chrome should expose workspace, Files, Search, and document-context controls. Found: ${workbenchPanels.panelToggleCount}`,
+      workbenchPanels.panelToggleCount === 4,
+      `Top chrome should expose Files, Search, and document-context controls. Found: ${workbenchPanels.panelToggleCount}`,
     );
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
@@ -390,7 +390,9 @@ export async function run(ctx) {
       "The right panel toggle should expose the shared tooltip copy.",
     );
 
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    }
     await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Libraries", exact: true }).click();

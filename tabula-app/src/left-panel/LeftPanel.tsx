@@ -1,5 +1,5 @@
 import { lazy, Suspense, type RefObject } from "react";
-import { Files, Library, PanelLeft } from "lucide-react";
+import { Files, Library, Menu, PanelLeft } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -32,6 +32,8 @@ export type LeftPanelProps = {
   language: WorkspaceLanguage;
   onClose: () => void;
   onViewChange: (view: LeftPanelView) => void;
+  workspaceMenuOpen?: boolean;
+  onToggleWorkspaceMenu?: () => void;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -62,6 +64,8 @@ export function LeftPanel({
   language,
   onClose,
   onViewChange,
+  workspaceMenuOpen,
+  onToggleWorkspaceMenu,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -80,6 +84,9 @@ export function LeftPanel({
 }: LeftPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closeLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
+  const workspaceMenuLabel = workspaceMenuOpen
+    ? getWorkspaceChromeCopy(language).topChrome.closeWorkspaceMenu
+    : getWorkspaceChromeCopy(language).topChrome.openWorkspaceMenu;
   const libraryCopy = getLibraryPanelCopy(language);
   const {
     collapsedFileTreeFolderIds,
@@ -107,6 +114,16 @@ export function LeftPanel({
       data-live-workspace={isLiveWorkspace || undefined}
     >
       <header className="left-panel-header">
+        <button
+          className={`left-panel-menu ${workspaceMenuOpen ? "active" : ""}`}
+          type="button"
+          aria-label={workspaceMenuLabel}
+          data-tooltip={workspaceMenuLabel}
+          aria-expanded={workspaceMenuOpen}
+          onClick={onToggleWorkspaceMenu}
+        >
+          <Menu size={16} />
+        </button>
         {view === "search" ? <strong>{title}</strong> : (
           <nav className="left-panel-tabs" aria-label={libraryCopy.sections}>
             <button

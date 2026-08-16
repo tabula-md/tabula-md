@@ -1395,7 +1395,11 @@ export function useWorkspaceRuntime() {
       top: topChromeProps,
     },
     panels: {
-      left: leftPanelProps,
+      left: {
+        ...leftPanelProps,
+        workspaceMenuOpen,
+        onToggleWorkspaceMenu: toggleWorkspaceMenu,
+      },
       right: rightPanelProps,
     },
     overlays: {
