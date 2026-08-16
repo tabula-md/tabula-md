@@ -394,6 +394,7 @@ export function RightPanelSearch({
                 role="searchbox"
                 inputMode="search"
                 value={query}
+                autoFocus
                 autoComplete="off"
                 spellCheck={false}
                 aria-label={copy.placeholder}

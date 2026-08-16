@@ -32,16 +32,14 @@ const readRightPanelWidth = () => {
 
 export type WorkspaceRightPanelProps = Omit<
   RightPanelProps,
-  "activeFileId" | "isLiveWorkspace" | "onClose" | "overlayMode" | "panelRef"
+  "activeFileId" | "onClose" | "overlayMode" | "panelRef"
 > & {
   activeFileId?: string;
-  isLive: boolean;
   onClose: () => void;
 };
 
 export function WorkspaceRightPanel({
   activeFileId,
-  isLive,
   onClose,
   ...rightPanelProps
 }: WorkspaceRightPanelProps) {
@@ -157,7 +155,6 @@ export function WorkspaceRightPanel({
       <RightPanel
         {...rightPanelProps}
         activeFileId={activeFileId ?? ""}
-        isLiveWorkspace={isLive}
         overlayMode={overlayMode}
         panelRef={panelRef}
         onClose={onClose}

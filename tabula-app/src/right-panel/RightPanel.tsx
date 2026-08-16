@@ -270,11 +270,9 @@ export function RightPanel({
     >
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label={copy.sections}>
-          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
-          {renderTab("search", copy.tabs.search, <Search size={14} />)}
           {renderTab(
             "knowledge",
             copy.tabs.knowledge,
@@ -321,7 +319,6 @@ export function RightPanel({
             onRenameWorkspace={onRenameWorkspace}
           />
         )}
-
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||
@@ -329,12 +326,6 @@ export function RightPanel({
         ) && (
           <section className="right-panel-content">
             <PanelEmptyState>{copy.noDocumentOpen}</PanelEmptyState>
-          </section>
-        )}
-
-        {!hasDocuments && effectiveView === "search" && (
-          <section className="right-panel-content">
-            <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
           </section>
         )}
 
@@ -415,21 +406,6 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {hasDocuments && effectiveView === "search" && knowledgeIndexPending && !knowledgeIndex &&
-          panelFallback}
-
-        {hasDocuments && effectiveView === "search" && (!knowledgeIndexPending || knowledgeIndex) && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelSearch
-              copy={copy.search}
-              files={files}
-              folders={folders}
-              index={knowledgeIndex}
-              language={language}
-              onSelectFile={onSelectFile}
-            />
-          </Suspense>
-        )}
 
         {effectiveView === "knowledge" && (
           <Suspense fallback={panelFallback}>

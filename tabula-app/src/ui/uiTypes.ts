@@ -1,6 +1,6 @@
 export type CenterPopover = "view" | null;
 export type TopPopover = "plus" | "share" | null;
-export type LeftPanelView = "new" | "templates" | "agent";
+export type LeftPanelView = "files" | "search";
 export type RightPanelView =
   | "outline"
   | "links"

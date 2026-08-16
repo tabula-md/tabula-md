@@ -46,12 +46,18 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
-  it("restores search and knowledge as separate panel views", () => {
+  it("keeps retired left-panel views closed and restores knowledge", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "search",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "search" });
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "outline" });
+
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "files",
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "outline" });
 
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],

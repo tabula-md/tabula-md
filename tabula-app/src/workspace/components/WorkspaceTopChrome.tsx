@@ -9,6 +9,7 @@ import type {
   ConnectionStatus,
 } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
+import type { LeftPanelView } from "../../ui/uiTypes";
 import type { JsonShareController } from "../../share/useJsonShareController";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../../collaboration/collabCollaborators";
@@ -39,6 +40,8 @@ export type WorkspaceTopChromeProps = {
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
+  leftPanelOpen: boolean;
+  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   workspaceMenuOpen: boolean;
@@ -60,6 +63,7 @@ export type WorkspaceTopChromeProps = {
   onStartSession: () => void;
   onStopSession: () => void;
   onRetrySession: () => void;
+  onToggleLeftPanel: (view: LeftPanelView) => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
@@ -84,6 +88,8 @@ export function WorkspaceTopChrome({
   lastClosedFile,
   openFiles,
   room,
+  leftPanelOpen,
+  leftPanelView,
   rightPanelOpen,
   shareOpen,
   workspaceMenuOpen,
@@ -105,6 +111,7 @@ export function WorkspaceTopChrome({
   onStartSession,
   onStopSession,
   onRetrySession,
+  onToggleLeftPanel,
   onToggleRightPanel,
   onToggleFollowing,
   onToggleShare,
@@ -190,6 +197,8 @@ export function WorkspaceTopChrome({
   return (
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}
+      leftPanelOpen={leftPanelOpen}
+      leftPanelView={leftPanelView}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
       language={language}
@@ -201,6 +210,7 @@ export function WorkspaceTopChrome({
       fileTabs={fileTabs}
       shareControls={shareControls}
       onToggleWorkspaceMenu={onToggleWorkspaceMenu}
+      onToggleLeftPanel={onToggleLeftPanel}
       onToggleRightPanel={onToggleRightPanel}
       onToggleFollowing={onToggleFollowing}
     />
