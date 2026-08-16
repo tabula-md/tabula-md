@@ -84,14 +84,14 @@ describe("room view state", () => {
       activeDocumentId: "notes",
       openDocumentIds: ["notes", "deleted"],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "outline",
     })).toMatchObject({ activeFileId: "notes", openFileIds: ["notes"] });
 
     expect(restoreRoomWorkspaceView(workspace, {
       activeDocumentId: "deleted",
       openDocumentIds: ["deleted"],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "outline",
     })).toMatchObject({ activeFileId: "readme", openFileIds: ["readme"] });
   });
 
@@ -105,7 +105,7 @@ describe("room view state", () => {
     expect(restoreRoomWorkspaceView(workspace, {
       openDocumentIds: [],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "outline",
     })).toMatchObject({ activeFileId: "", openFileIds: [] });
   });
 });
