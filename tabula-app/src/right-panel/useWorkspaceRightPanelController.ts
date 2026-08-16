@@ -5,6 +5,7 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
+import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
 import type {
   MarkdownHeading,
   WorkspaceKnowledgeBaseline,
@@ -14,7 +15,7 @@ import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
 } from "../editor/outlineNavigationModel";
-import type { RightPanelView } from "../ui/uiTypes";
+import type { LeftPanelView, RightPanelView } from "../ui/uiTypes";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type {
   FileComment,
@@ -36,20 +37,9 @@ type RightPanelHandlers = Pick<
   | "onCancelCommentReply"
   | "onCommentDraftChange"
   | "onDeleteComment"
-  | "onDeleteFile"
-  | "onDeleteFolder"
-  | "onCopyFile"
-  | "onDuplicateFile"
   | "onIdentityNameChange"
   | "onIdentityNameCommit"
-  | "onNewFile"
-  | "onNewFolder"
   | "onReplyDraftChange"
-  | "onRenameFile"
-  | "onRenameFolder"
-  | "onRenameWorkspace"
-  | "onMoveFileToFolder"
-  | "onMoveFolder"
   | "onResolveAmbiguousLink"
   | "onSelectFile"
   | "onSelectKnowledgeHealthIssue"
@@ -65,7 +55,22 @@ type RightPanelHandlers = Pick<
   | "onGoToComment"
 >;
 
-type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
+type LeftPanelHandlers = Pick<
+  WorkspaceLeftPanelProps,
+  | "onNewFile"
+  | "onNewFolder"
+  | "onDeleteFile"
+  | "onDeleteFolder"
+  | "onCopyFile"
+  | "onDuplicateFile"
+  | "onRenameFile"
+  | "onRenameFolder"
+  | "onRenameWorkspace"
+  | "onMoveFileToFolder"
+  | "onMoveFolder"
+>;
+
+type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHandlers & {
   activeCommentId: string | null;
   activeFile?: WorkspaceFile;
   activeFileTitle: string;
@@ -83,6 +88,8 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
   identityName: string;
   isLive: boolean;
   language: WorkspaceLanguage;
+  leftPanelOpen: boolean;
+  leftPanelView: LeftPanelView;
   onImportFile: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
@@ -97,6 +104,8 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
   onCancelSelectionComment: () => void;
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
+  setLeftPanelOpen: (isOpen: boolean) => void;
+  setLeftPanelView: (view: LeftPanelView) => void;
   text: string;
 };
 
@@ -119,6 +128,8 @@ export function useWorkspaceRightPanelController({
   identityName,
   isLive,
   language,
+  leftPanelOpen,
+  leftPanelView,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
@@ -165,6 +176,8 @@ export function useWorkspaceRightPanelController({
   onCancelSelectionComment,
   setRightPanelOpen,
   setRightPanelView,
+  setLeftPanelOpen,
+  setLeftPanelView,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
@@ -248,12 +261,53 @@ export function useWorkspaceRightPanelController({
     () => setRightPanelOpen(false),
     [setRightPanelOpen],
   );
+  const closeLeftPanel = useCallback(
+    () => setLeftPanelOpen(false),
+    [setLeftPanelOpen],
+  );
+  const setLeftPanelViewOnly = useCallback(
+    (view: LeftPanelView) => setLeftPanelView(view),
+    [setLeftPanelView],
+  );
+  const selectFromLeftPanel = useCallback((fileId: string) => {
+    onSelectFile(fileId);
+    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+      setLeftPanelOpen(false);
+    }
+  }, [onSelectFile, setLeftPanelOpen]);
+  const leftPanelProps: WorkspaceLeftPanelProps = {
+    isOpen: leftPanelOpen,
+    view: leftPanelView,
+    isLive,
+    language,
+    files: visibleFiles,
+    folders,
+    knowledgeIndex,
+    knowledgeIndexPending,
+    knowledgeIndexSource,
+    activeFileId: visibleActiveFileId,
+    onClose: closeLeftPanel,
+    onViewChange: setLeftPanelViewOnly,
+    onNewFile,
+    onNewFolder,
+    onImportFile,
+    onSelectFile: selectFromLeftPanel,
+    onRenameFile,
+    onDuplicateFile,
+    onDeleteFile,
+    onDeleteFolder,
+    onCopyFile,
+    onMoveFileToFolder,
+    onMoveFolder,
+    onRenameFolder,
+    onRenameWorkspace,
+  };
 
   const rightPanelProps: WorkspaceRightPanelProps = {
     isOpen: rightPanelOpen,
     view: rightPanelView,
-    isLive,
     language,
+    isLiveWorkspace: isLive,
     files: visibleFiles,
     folders,
     knowledgeIndex,
@@ -320,6 +374,7 @@ export function useWorkspaceRightPanelController({
 
   return {
     knowledgeIndex,
+    leftPanelProps,
     rightPanelProps,
   };
 }

@@ -14,6 +14,7 @@ export async function run(ctx) {
     waitForActiveTab,
     waitForEditorReady,
     waitForFileCount,
+    waitForLeftPanel,
     withPage,
   } = ctx;
 
@@ -243,7 +244,7 @@ export async function run(ctx) {
         bottomPanelCount: document.querySelectorAll(".bottom-panel").length,
         floatingStatusCount: document.querySelectorAll(".floating-status-layer")
           .length,
-        topLeftMenuCount: document.querySelectorAll(".workspace-menu-button")
+        topLeftMenuCount: document.querySelectorAll(".left-panel-menu")
           .length,
       };
     });
@@ -280,8 +281,8 @@ export async function run(ctx) {
       "Document status bar should be visible.",
     );
     expect(
-      chrome.topLeftMenuCount === 1,
-      "The top-left workspace menu button should render.",
+      chrome.topLeftMenuCount === 0,
+      "The document chrome should not own the workspace menu button.",
     );
     expect(
       !chrome.workspaceMenu,
@@ -391,8 +392,13 @@ export async function run(ctx) {
     };
 
     const closedLayout = await page.evaluate(readStableDocumentLayout);
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await waitForLeftPanel(page, "Files");
+    const workspacePanelLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".left-panel").waitFor({ state: "detached" });
     await ensureSidePanelOpen(page);
     const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
 
@@ -447,12 +453,12 @@ export async function run(ctx) {
     }
 
     expect(
-      Math.abs(menuLayout.documentSurface.x - closedLayout.documentSurface.x) <=
+      Math.abs(menuLayout.documentSurface.x - workspacePanelLayout.documentSurface.x) <=
         1 &&
         Math.abs(
-          menuLayout.documentSurface.width - closedLayout.documentSurface.width,
+          menuLayout.documentSurface.width - workspacePanelLayout.documentSurface.width,
         ) <= 1,
-      "Opening the workspace menu should not shift or resize the document frame.",
+      "Opening the workspace menu inside an open workspace panel should not shift or resize the document frame.",
     );
     expect(
       rightPanelLayout.documentSurface.x +
@@ -466,8 +472,8 @@ export async function run(ctx) {
       "Opening Project Context should keep top chrome controls clear of the right panel.",
     );
     expect(
-      Math.abs(menuLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
-        Math.abs(menuLayout.workspace.width - closedLayout.workspace.width) <=
+      Math.abs(menuLayout.workspace.x - workspacePanelLayout.workspace.x) <= 1 &&
+        Math.abs(menuLayout.workspace.width - workspacePanelLayout.workspace.width) <=
           1,
       "Opening the workspace menu should keep the document workspace viewport stable.",
     );

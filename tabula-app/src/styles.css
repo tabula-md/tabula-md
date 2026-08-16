@@ -4,6 +4,7 @@
 @import "./styles/top-chrome.css";
 @import "./styles/tabs.css";
 @import "./styles/workspace-menu.css";
+@import "./styles/workspace-launcher.css";
 @import "./styles/file-surface.css";
 @import "./styles/empty-workspace.css";
 @import "./styles/editor-controls.css";

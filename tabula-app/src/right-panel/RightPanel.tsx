@@ -1,12 +1,11 @@
 import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
-  Folder,
   LibraryBig,
   Link2,
   ListTree,
   MessageSquare,
+  Braces,
   PanelRightClose,
-  Search,
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
@@ -32,15 +31,14 @@ import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
+import { RightPanelProperties } from "./RightPanelProperties";
+import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
 })));
 const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
   default: module.RightPanelComments,
-})));
-const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
-  default: module.RightPanelSearch,
 })));
 const RightPanelKnowledge = lazy(() => import("./RightPanelKnowledge").then((module) => ({
   default: module.RightPanelKnowledge,
@@ -137,7 +135,7 @@ export function RightPanel({
   knowledgeCompatibilityOpenRequest,
   activeFileId,
   activeFileTitle,
-  isLiveWorkspace,
+  isLiveWorkspace: _isLiveWorkspace,
   language,
   activeOutlineHeadingIndex,
   outlineHeadings,
@@ -196,6 +194,7 @@ export function RightPanel({
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
+  const knowledgeCopy = getKnowledgePanelCopy(language);
   const {
     showResolved,
     collapsedReplyIds,
@@ -228,15 +227,15 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
-  const hasDocuments = files.length > 0;
   const effectiveView = view;
   const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
     files,
     commentsByFileId,
   );
-  const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
-  const panelTitle = copy.tabs[effectiveView];
+  const panelTitle = effectiveView === "properties"
+    ? knowledgeCopy.properties
+    : copy.tabs[effectiveView];
   const renderTab = (
     tabView: RightPanelView,
     label: string,
@@ -270,11 +269,10 @@ export function RightPanel({
     >
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label={copy.sections}>
-          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
-          {renderTab("search", copy.tabs.search, <Search size={14} />)}
+          {renderTab("properties", knowledgeCopy.properties, <Braces size={14} />)}
           {renderTab(
             "knowledge",
             copy.tabs.knowledge,
@@ -321,7 +319,6 @@ export function RightPanel({
             onRenameWorkspace={onRenameWorkspace}
           />
         )}
-
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||
@@ -329,12 +326,6 @@ export function RightPanel({
         ) && (
           <section className="right-panel-content">
             <PanelEmptyState>{copy.noDocumentOpen}</PanelEmptyState>
-          </section>
-        )}
-
-        {!hasDocuments && effectiveView === "search" && (
-          <section className="right-panel-content">
-            <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
           </section>
         )}
 
@@ -415,21 +406,15 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {hasDocuments && effectiveView === "search" && knowledgeIndexPending && !knowledgeIndex &&
-          panelFallback}
-
-        {hasDocuments && effectiveView === "search" && (!knowledgeIndexPending || knowledgeIndex) && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelSearch
-              copy={copy.search}
-              files={files}
-              folders={folders}
-              index={knowledgeIndex}
-              language={language}
-              onSelectFile={onSelectFile}
-            />
-          </Suspense>
+        {effectiveView === "properties" && (
+          <RightPanelProperties
+            activeFileId={activeFileId}
+            index={knowledgeIndex}
+            noDocumentCopy={copy.noDocumentOpen}
+            emptyCopy={knowledgeCopy.notSet}
+          />
         )}
+
 
         {effectiveView === "knowledge" && (
           <Suspense fallback={panelFallback}>

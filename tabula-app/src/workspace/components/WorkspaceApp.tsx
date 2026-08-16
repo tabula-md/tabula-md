@@ -14,6 +14,9 @@ const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
 const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightPanel").then(
   ({ WorkspaceRightPanel: Component }) => ({ default: memo(Component) }),
 ));
+const WorkspaceLeftPanel = lazy(() => import("../../left-panel/WorkspaceLeftPanel").then(
+  ({ WorkspaceLeftPanel: Component }) => ({ default: memo(Component) }),
+));
 
 export function WorkspaceApp() {
   const {
@@ -40,6 +43,10 @@ export function WorkspaceApp() {
       <WorkspaceOverlaySurface {...overlays.workspace} />
       <section className={chrome.mainPanelClassName}>
         <MemoWorkspaceMenuSurface {...chrome.menu} />
+
+        <Suspense fallback={null}>
+          <WorkspaceLeftPanel {...panels.left} />
+        </Suspense>
 
         <section className={documentRuntime.surface.centerWorkbenchClassName}>
           <MemoWorkspaceTopChrome {...chrome.top} />

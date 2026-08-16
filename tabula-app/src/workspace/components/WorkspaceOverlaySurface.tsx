@@ -2,13 +2,10 @@ import { lazy, Suspense } from "react";
 import { AppToast } from "../../ui/AppToast";
 import { TooltipLayer } from "../../ui/TooltipLayer";
 import type { AppToastState } from "../../ui/useAppToast";
-import type { WorkspaceState } from "../workspaceStorage";
+import type { WorkspaceFile, WorkspaceFolder, WorkspaceState } from "../workspaceStorage";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
-import {
-  WorkspaceInfoDialog,
-  type WorkspaceInfoDialogKind,
-} from "./WorkspaceInfoDialog";
+import type { WorkspaceInfoDialogKind } from "./WorkspaceInfoDialog";
 import type { ShortcutPlatform } from "../keyboardShortcuts";
 import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
@@ -17,6 +14,11 @@ import type { LiveFolderConflictReview } from "../io/useWorkspaceFileIoControlle
 const WorkspaceFolderImportDialog = lazy(() =>
   import("./WorkspaceFolderImportDialog").then((module) => ({
     default: module.WorkspaceFolderImportDialog,
+  }))
+);
+const WorkspaceInfoDialog = lazy(() =>
+  import("./WorkspaceInfoDialog").then((module) => ({
+    default: module.WorkspaceInfoDialog,
   }))
 );
 const JsonShareImportOverlay = lazy(() =>
@@ -34,6 +36,9 @@ const LiveFolderConflictDialog = lazy(() =>
     default: module.LiveFolderConflictDialog,
   }))
 );
+const WorkspaceLauncher = lazy(() =>
+  import("./WorkspaceLauncher").then((module) => ({ default: module.WorkspaceLauncher }))
+);
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -49,6 +54,19 @@ export type WorkspaceOverlaySurfaceProps = {
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
+  launcher?: {
+    files: WorkspaceFile[];
+    folders: WorkspaceFolder[];
+    openFileIds: readonly string[];
+    activeFileId?: string;
+    onClose: () => void;
+    onSelectFile: (fileId: string) => void;
+    onNewFile: () => void;
+    onNewFolder: () => void;
+    onImportFile: () => void;
+    onImportWorkspace: () => void;
+    onOpenPreferences: () => void;
+  };
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
@@ -74,6 +92,7 @@ export function WorkspaceOverlaySurface({
   language,
   shortcutPlatform,
   toast,
+  launcher,
   onDismissToast,
   onCloseInfoDialog,
   onCloseWorkspaceFolderImport,
@@ -93,13 +112,16 @@ export function WorkspaceOverlaySurface({
   return (
     <>
       <TooltipLayer />
+      {launcher && <Suspense fallback={null}><WorkspaceLauncher {...launcher} /></Suspense>}
       {infoDialog && (
-        <WorkspaceInfoDialog
-          kind={infoDialog}
-          language={language}
-          shortcutPlatform={shortcutPlatform}
-          onClose={onCloseInfoDialog}
-        />
+        <Suspense fallback={null}>
+          <WorkspaceInfoDialog
+            kind={infoDialog}
+            language={language}
+            shortcutPlatform={shortcutPlatform}
+            onClose={onCloseInfoDialog}
+          />
+        </Suspense>
       )}
       {workspaceFolderImport && (
         <Suspense fallback={null}>

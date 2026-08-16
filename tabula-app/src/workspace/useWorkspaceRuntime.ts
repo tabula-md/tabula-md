@@ -426,13 +426,20 @@ export function useWorkspaceRuntime() {
     setWorkspaceMenuOpen,
     preferencesOpen,
     setPreferencesOpen,
+    leftPanelOpen,
+    setLeftPanelOpen,
+    leftPanelView,
+    setLeftPanelView,
     rightPanelOpen,
     setRightPanelOpen,
     rightPanelView,
     setRightPanelView,
+    launcherOpen,
+    setLauncherOpen,
     closeFloatingChrome,
     openFilesPanel,
     toggleWorkspaceMenu,
+    toggleLeftPanel,
     toggleRightPanel,
   } = workspaceChrome;
   const openInfoDialog = useEventCallback((kind: WorkspaceInfoDialogKind) => {
@@ -1058,7 +1065,7 @@ export function useWorkspaceRuntime() {
     setPreferencesOpen,
     setTopPopover,
   });
-  const { knowledgeIndex, rightPanelProps } =
+  const { knowledgeIndex, leftPanelProps, rightPanelProps } =
     useWorkspaceRightPanelController({
       activeCommentId: focusedCommentId,
       activeFile,
@@ -1078,6 +1085,8 @@ export function useWorkspaceRuntime() {
       identityName: identity.name,
       isLive: isLiveChromeVisible,
       language: workspacePreferences.language,
+      leftPanelOpen,
+      leftPanelView,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
       onCancelSelectionComment: cancelSelectionComment,
@@ -1124,6 +1133,8 @@ export function useWorkspaceRuntime() {
       onSelectionCommentRequestHandled: consumeSelectionCommentRequest,
       setRightPanelOpen,
       setRightPanelView,
+      setLeftPanelOpen,
+      setLeftPanelView,
       text,
     });
   const resolveWorkspaceLink = useMemo(
@@ -1242,6 +1253,8 @@ export function useWorkspaceRuntime() {
     openFiles,
     lastClosedFile,
     room: activeRoom,
+    leftPanelOpen,
+    leftPanelView,
     rightPanelOpen,
     topPopover,
     workspaceMenuOpen,
@@ -1277,6 +1290,13 @@ export function useWorkspaceRuntime() {
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
+    onToggleLeftPanel: (view) => {
+      if (view === "search") {
+        setLauncherOpen(true);
+        return;
+      }
+      toggleLeftPanel(view);
+    },
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
@@ -1348,6 +1368,7 @@ export function useWorkspaceRuntime() {
     openFilesPanel,
     openHelp,
     openDocumentSearch: openSearchFromCurrentSelection,
+    openWorkspaceLauncher: () => setLauncherOpen(true),
     selectAdjacentFile,
     setActiveFileViewMode: setViewModeWithPendingCommit,
     setCenterPopover,
@@ -1383,6 +1404,11 @@ export function useWorkspaceRuntime() {
       top: topChromeProps,
     },
     panels: {
+      left: {
+        ...leftPanelProps,
+        workspaceMenuOpen,
+        onToggleWorkspaceMenu: toggleWorkspaceMenu,
+      },
       right: rightPanelProps,
     },
     overlays: {
@@ -1395,6 +1421,23 @@ export function useWorkspaceRuntime() {
         language: workspacePreferences.language,
         shortcutPlatform,
         toast,
+        launcher: launcherOpen ? {
+          files,
+          folders,
+          openFileIds,
+          activeFileId: activeFile?.id,
+          onClose: () => setLauncherOpen(false),
+          onSelectFile: selectFile,
+          onNewFile: addRootFile,
+          onNewFolder: () => { addWorkspaceFolder(); },
+          onImportFile: () => importInputRef.current?.click(),
+          onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onOpenPreferences: () => {
+            setLeftPanelOpen(true);
+            setWorkspaceMenuOpen(true);
+            setPreferencesOpen(true);
+          },
+        } : undefined,
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
         onCloseWorkspaceExportReview: closeWorkspaceExportReview,

@@ -236,6 +236,15 @@ button {
   grid-template-columns: minmax(0, 1fr) var(--right-panel-width);
 }
 
+.main-panel.left-panel-open {
+  grid-template-columns: var(--left-panel-width) minmax(0, 1fr);
+}
+
+.main-panel.left-panel-open.right-panel-open {
+  grid-template-columns:
+    var(--left-panel-width) minmax(0, 1fr) var(--right-panel-width);
+}
+
 .center-workbench {
   grid-column: 1;
   display: grid;
@@ -245,6 +254,14 @@ button {
   height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.main-panel.left-panel-open .center-workbench {
+  grid-column: 2;
+}
+
+.main-panel.left-panel-open.right-panel-open .right-panel {
+  grid-column: 3;
 }
 
 .top-left-zone,

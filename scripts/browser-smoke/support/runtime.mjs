@@ -210,6 +210,16 @@ const waitForPanelTab = async (page, label) => {
   );
 };
 
+const waitForLeftPanel = async (page, label) => {
+  await page.locator(".left-panel").waitFor({ state: "visible" });
+  await page.waitForFunction(
+    ({ label }) =>
+      document.querySelector(".left-panel")?.getAttribute("aria-label") === label &&
+      !document.querySelector('.left-panel [aria-busy="true"]'),
+    { label },
+  );
+};
+
 const waitForWorkspaceMenuState = async (page, open = true) => {
   await page.locator(".workspace-menu-popover").waitFor({ state: open ? "visible" : "detached" });
 };
@@ -267,6 +277,10 @@ const focusMarkdownEditor = async (page) => {
 
 const openProjectMenu = async (page) => {
   if ((await page.locator(".workspace-menu-popover").count()) === 0) {
+    if ((await page.getByRole("button", { name: "Open Workspace menu", exact: true }).count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await waitForLeftPanel(page, "Files");
+    }
     await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
     await waitForWorkspaceMenuState(page, true);
   }
@@ -356,6 +370,7 @@ export const createSmokeContext = (browser, controls = {}) => ({
   waitForActiveTab,
   waitForEditorReady,
   waitForFileCount,
+  waitForLeftPanel,
   waitForPanelTab,
   waitForProjectContextState,
   waitForRenderFrame,

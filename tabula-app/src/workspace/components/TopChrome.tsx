@@ -1,13 +1,17 @@
 import type { ReactNode } from "react";
-import { Menu, PanelRightOpen, Users } from "lucide-react";
+import { PanelLeft, PanelRightOpen, Search, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { LeftPanelView } from "../../ui/uiTypes";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
+  leftPanelOpen: boolean;
+  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
   language: WorkspaceLanguage;
@@ -19,12 +23,14 @@ type TopChromeProps = {
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleWorkspaceMenu: () => void;
+  onToggleLeftPanel: (view: LeftPanelView) => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
 };
 
 export function TopChrome({
-  workspaceMenuOpen,
+  leftPanelOpen,
+  leftPanelView,
   rightPanelOpen,
   isLiveConnected,
   language,
@@ -35,14 +41,12 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
-  onToggleWorkspaceMenu,
+  onToggleLeftPanel,
   onToggleRightPanel,
   onToggleFollowing,
 }: TopChromeProps) {
   const copy = getWorkspaceChromeCopy(language).topChrome;
-  const workspaceMenuLabel = workspaceMenuOpen
-    ? copy.closeWorkspaceMenu
-    : copy.openWorkspaceMenu;
+  const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
   const sidePanelLabel = copy.toggleSidePanel;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
@@ -75,14 +79,28 @@ export function TopChrome({
     <header className="top-chrome">
       <div className="top-left-zone">
         <button
-          className={`panel-toggle top-panel-toggle workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
+          className={`panel-toggle top-panel-toggle left-panel-trigger ${
+            leftPanelOpen && leftPanelView === "files" ? "active" : ""
+          }`}
           type="button"
-          aria-label={workspaceMenuLabel}
-          data-tooltip={workspaceMenuLabel}
-          aria-expanded={workspaceMenuOpen}
-          onClick={onToggleWorkspaceMenu}
+          aria-label={panelCopy.tabs.files}
+          data-tooltip={panelCopy.tabs.files}
+          aria-pressed={leftPanelOpen && leftPanelView === "files"}
+          onClick={() => onToggleLeftPanel("files")}
         >
-          <Menu size={16} />
+          <PanelLeft size={16} />
+        </button>
+        <button
+          className={`panel-toggle top-panel-toggle left-panel-trigger ${
+            leftPanelOpen && leftPanelView === "search" ? "active" : ""
+          }`}
+          type="button"
+          aria-label={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
+          data-tooltip={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
+          aria-pressed={leftPanelOpen && leftPanelView === "search"}
+          onClick={() => onToggleLeftPanel("search")}
+        >
+          <Search size={16} />
         </button>
       </div>
 

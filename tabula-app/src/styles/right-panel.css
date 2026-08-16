@@ -6,3 +6,51 @@
 @import "./right-panel.compatibility.css";
 @import "./right-panel.comments.css";
 @import "./right-panel.search.css";
+@import "./left-panel.css";
+
+.right-properties {
+  height: 100%;
+  overflow: auto;
+  padding: 8px 12px 24px;
+}
+
+.right-properties-list,
+.right-properties-nested {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.right-properties-row,
+.right-properties-nested > div {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.4fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.right-properties-list dt,
+.right-properties-list dd,
+.right-properties-nested dt,
+.right-properties-nested dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.right-properties-list dt,
+.right-properties-nested dt {
+  color: var(--text-soft);
+  font-size: var(--font-ui-small);
+}
+
+.right-properties-list dd {
+  color: var(--text-primary);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}
+
+.right-properties-nested {
+  margin-top: -9px;
+}

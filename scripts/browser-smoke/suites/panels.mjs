@@ -39,6 +39,7 @@ export async function run(ctx) {
     waitForActiveTab,
     waitForEditorReady,
     waitForFileCount,
+    waitForLeftPanel,
     waitForPanelTab,
     waitForRenderFrame,
     withPage,
@@ -54,7 +55,7 @@ export async function run(ctx) {
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
-      menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
+      menuButtonCount: document.querySelectorAll(".left-panel-menu").length,
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
       leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
@@ -124,10 +125,10 @@ export async function run(ctx) {
       })(),
     }));
     // P7: workspace menu product contract.
-    expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu button.");
-    expect(workbenchPanels.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(workbenchPanels.menuButtonCount === 1, "The workspace panel should expose one workspace menu button.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace panel.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 0, "The workspace menu should not expose New/Templates/Agent tabs.");
+    expect(workbenchPanels.leftTabCount === 2, "The workspace panel should expose Files and Libraries only.");
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
@@ -190,8 +191,8 @@ export async function run(ctx) {
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
     expect(
-      workbenchPanels.panelToggleCount === 3,
-      "Top chrome should keep workspace, tab, and side-panel controls visible.",
+      workbenchPanels.panelToggleCount === 4,
+      `Top chrome should expose Files, Search, and document-context controls. Found: ${workbenchPanels.panelToggleCount}`,
     );
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
@@ -323,7 +324,7 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await openProjectMenu(page);
     await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForRenderFrame(page);
+    await page.getByRole("dialog", { name: "About Tabula.md", exact: true }).waitFor({ state: "visible" });
     const aboutState = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       dialogOpen: Boolean(document.querySelector(".workspace-info-modal")),
@@ -389,18 +390,30 @@ export async function run(ctx) {
       "The right panel toggle should expose the shared tooltip copy.",
     );
 
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    }
+    await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
-    await waitForPanelTab(page, "Files");
+    await page.getByRole("button", { name: "Libraries", exact: true }).click();
+    await page.getByRole("heading", { name: "No libraries yet", exact: true }).waitFor();
+    expect(
+      await page.getByRole("link", { name: "Browse libraries", exact: true }).getAttribute("href") ===
+        "https://libraries.tabula.md/",
+      "Libraries should expose the future catalog entry point without inventing a local import flow.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Files", exact: true }).click();
+    await waitForLeftPanel(page, "Files");
     const rightPanelState = await page.evaluate(() => ({
-      open: Boolean(document.querySelector(".right-panel")),
-      ariaLabel: document.querySelector(".right-panel")?.getAttribute("aria-label") ?? "",
-      labelledBy: document.querySelector(".right-panel")?.getAttribute("aria-labelledby") ?? "",
+      open: Boolean(document.querySelector(".left-panel")),
+      ariaLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
+      labelledBy: document.querySelector(".left-panel")?.getAttribute("aria-labelledby") ?? "",
       sectionsLabel: document.querySelector(".right-panel-tabs")?.getAttribute("aria-label") ?? "",
       tabs: Array.from(document.querySelectorAll(".right-panel-tab")).map((button) => button.getAttribute("aria-label")),
       visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
-      headingCount: document.querySelectorAll(".right-panel > .right-panel-title").length,
-      documentCardCount: document.querySelectorAll(".right-panel .panel-document-card").length,
-      countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
+      headingCount: document.querySelectorAll(".left-panel > .right-panel-title").length,
+      documentCardCount: document.querySelectorAll(".left-panel .panel-document-card").length,
+      countPillCount: document.querySelectorAll(".left-panel .panel-count-pill").length,
       fileToolbar: (() => {
         const row = document.querySelector(".right-file-toolbar");
         const importButton = document.querySelector('.right-file-toolbar-button[aria-label="Open Markdown file"]');
@@ -443,6 +456,7 @@ export async function run(ctx) {
             : null;
         };
         return {
+          leftPanel: rectOf(".left-panel"),
           rightPanel: rectOf(".right-panel"),
           toolbar: rectOf(".document-toolbar-row"),
           preview: rectOf(".preview-surface") ?? rectOf(".editor-surface"),
@@ -454,20 +468,25 @@ export async function run(ctx) {
         .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
         .length,
     }));
-    expect(rightPanelState.open, "The right panel should open from the top-right panel toggle.");
+    expect(rightPanelState.open, "Files should open as workspace navigation from the top-left trigger.");
     expect(
       rightPanelState.ariaLabel === "Files" && rightPanelState.labelledBy === "",
-      "The side panel should expose the active section as its accessible name without repeating a visible heading.",
+      "Workspace navigation should expose its active section as its accessible name.",
     );
     expect(
       rightPanelState.sectionsLabel === "Side panel sections",
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search|Knowledge",
-      `The side panel should separate workspace search from active-document knowledge. Found: ${rightPanelState.tabs.join("|")}`,
+      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Properties|Knowledge",
+      `The right panel should contain document context only. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
+    await page.getByRole("navigation", { name: "Side panel sections" })
+      .getByRole("button", { name: "Properties", exact: true }).click();
+    await page.locator('.right-properties[aria-label="Metadata"]').waitFor();
+    await page.getByRole("navigation", { name: "Side panel sections" })
+      .getByRole("button", { name: "Outline", exact: true }).click();
     expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
     expect(rightPanelState.syntheticRootRowCount === 0, "Root files should not be wrapped in a synthetic Project folder.");
     await page.getByRole("button", { name: "Rename Project in Files", exact: true }).click();
@@ -489,20 +508,23 @@ export async function run(ctx) {
     );
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
-    const rightPanelDivider = page.getByRole("separator", {
-      name: "Resize side panel",
+    await page.locator(".right-panel").getByRole("button", {
+      name: "Close side panel",
       exact: true,
-    });
+    }).click();
+    const rightPanelDivider = page.locator(
+      '.left-panel-divider[role="separator"][aria-label="Resize side panel"]',
+    );
     expect(
       (await rightPanelDivider.getAttribute("aria-valuemax")) === "920",
-      "The side panel maximum should follow the viewport while preserving 360px for the workbench.",
+      "Workspace navigation should preserve room for the workbench while resizing.",
     );
     await rightPanelDivider.focus();
     for (let step = 0; step < 45; step += 1) {
-      await rightPanelDivider.press("ArrowLeft");
+      await rightPanelDivider.press("ArrowRight");
     }
     await page.waitForFunction(
-      () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 920,
+      () => Math.round(document.querySelector(".left-panel")?.getBoundingClientRect().width ?? 0) === 920,
     );
     expect(
       (await rightPanelDivider.getAttribute("aria-valuenow")) === "920",
@@ -510,7 +532,7 @@ export async function run(ctx) {
     );
     await rightPanelDivider.dblclick();
     await page.waitForFunction(
-      () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
+      () => Math.round(document.querySelector(".left-panel")?.getBoundingClientRect().width ?? 0) === 288,
     );
     expect(
       rightPanelState.fileToolbar?.importButtonWidth === 28 &&
@@ -519,28 +541,32 @@ export async function run(ctx) {
         rightPanelState.fileToolbar?.createButtonHeight === 28,
       "Files toolbar controls should use 28px icon buttons.",
     );
-    expect(rightPanelState.fileRows.length > 0, "Right Files should render file rows.");
+    expect(rightPanelState.fileRows.length > 0, "Left Files should render file rows.");
     expect(
       rightPanelState.fileRows.every((row) => row.height === 34 && row.fontWeight === "400"),
-      "Right Files rows should use the shared 34px row height and regular weight.",
+      "Left Files rows should use the shared 34px row height and regular weight.",
     );
     expect(
       !rightPanelState.fileRows.some((row) => /\b(Preview|Edit|Split|Local|Live|Offline|Connecting)\b/.test(row.text)),
-      "Right Files rows should not repeat mode/status labels.",
+      "Left Files rows should not repeat mode/status labels.",
     );
     expect(
-      rightPanelState.laneGeometry.preview.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
-      "The side panel should not clip the preview document lane.",
+      rightPanelState.laneGeometry.preview.left >= rightPanelState.laneGeometry.leftPanel.right + 20 &&
+        rightPanelState.laneGeometry.preview.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "Workspace navigation and document context should leave the preview lane readable.",
     );
     expect(
-      rightPanelState.laneGeometry.toolbar.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
-      "The side panel should not clip the editor toolbar lane.",
+      rightPanelState.laneGeometry.toolbar.left >= rightPanelState.laneGeometry.leftPanel.right &&
+        rightPanelState.laneGeometry.toolbar.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "The two panels should not clip the editor toolbar lane.",
     );
     expect(
-      rightPanelState.laneGeometry.status.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
-      "The side panel should not clip the status bar lane.",
+      rightPanelState.laneGeometry.status.left >= rightPanelState.laneGeometry.leftPanel.right &&
+        rightPanelState.laneGeometry.status.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "The two panels should not clip the status bar lane.",
     );
 
+    await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
     await page.locator(".right-panel-knowledge").waitFor({
       state: "visible",
@@ -557,23 +583,28 @@ export async function run(ctx) {
       (await page.locator(".right-compatibility-scroll").count()) === 0,
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
-
-    await page.getByRole("navigation", {
-      name: "Side panel sections",
-    }).getByRole("button", { name: "Search", exact: true }).click();
-    await page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+    await page.getByRole("button", { name: "Workspace search", exact: true }).click();
+    const launcher = page.getByRole("dialog", { name: "Search documents and commands", exact: true });
+    await launcher.waitFor({ state: "visible" });
+    const launcherSearch = launcher.getByRole("combobox", {
+      name: "Search documents and commands",
       exact: true,
-    }).waitFor({ state: "visible" });
+    });
     expect(
-      await page.getByRole("searchbox", {
-        name: "Search documents and metadata",
-        exact: true,
-      }).isVisible() &&
-        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
-        (await page.locator(".right-knowledge-context").count()) === 0,
-      "Search should be an independent workspace retrieval surface.",
+      await launcherSearch.isVisible() &&
+        await launcher.getByRole("heading", { name: "Suggestions", exact: true }).isVisible() &&
+        await launcher.getByRole("heading", { name: "Commands", exact: true }).isVisible() &&
+        await launcher.getByRole("heading", { name: "Settings", exact: true }).isVisible() &&
+        await page.locator(".right-panel-knowledge").isVisible(),
+      "The workspace launcher should unify document search, commands, and settings without replacing document context.",
     );
+    await launcherSearch.press("ArrowDown");
+    expect(
+      (await launcher.locator('[role="option"][aria-selected="true"]').count()) === 1,
+      "The workspace launcher should accept keyboard navigation.",
+    );
+    await launcher.getByRole("button", { name: "Close search", exact: true }).click();
+    await launcher.waitFor({ state: "hidden" });
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
@@ -599,8 +630,10 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Open map", exact: true }).count()) === 0,
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    if ((await page.locator('.left-panel[aria-label="Files"]').count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    }
+    await waitForLeftPanel(page, "Files");
 
     await openProjectMenu(page);
     const dualPanelGeometry = await page.evaluate(() => {
@@ -616,6 +649,7 @@ export async function run(ctx) {
       };
       return {
         menu: rectOf(".workspace-menu-popover"),
+        leftPanel: rectOf(".left-panel"),
         rightPanel: rectOf(".right-panel"),
         toolbar: rectOf(".document-toolbar-row"),
         preview: rectOf(".preview-surface") ?? rectOf(".editor-surface"),
@@ -624,7 +658,8 @@ export async function run(ctx) {
     });
     expect(dualPanelGeometry.menu, "The workspace menu should be measurable while Project Context is open.");
     expect(
-      dualPanelGeometry.preview.right <= dualPanelGeometry.rightPanel.left - 20 &&
+      dualPanelGeometry.preview.left >= dualPanelGeometry.leftPanel.right + 20 &&
+        dualPanelGeometry.preview.right <= dualPanelGeometry.rightPanel.left - 20 &&
         dualPanelGeometry.preview.width >= 240,
       "The preview document lane should remain readable when Project Context is open.",
     );
@@ -652,7 +687,7 @@ export async function run(ctx) {
          (await page.locator(".right-graph-panel").count()) === 0,
        "Knowledge should remain a stable active-document context instead of a catalog or dashboard.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -1366,7 +1401,7 @@ export async function run(ctx) {
         () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
       );
     }
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
     const switcher = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1378,7 +1413,7 @@ export async function run(ctx) {
           "",
         current: item.classList.contains("active"),
       }));
-      const panel = document.querySelector(".right-panel");
+      const panel = document.querySelector(".left-panel");
       const toolbarButton = panel?.querySelector(".right-file-toolbar-button");
       const inputRect = toolbarButton?.getBoundingClientRect();
       const target =
@@ -1387,7 +1422,7 @@ export async function run(ctx) {
 
       return {
         open: Boolean(panel),
-        visibleAtToolbar: Boolean(target?.closest(".right-panel")),
+        visibleAtToolbar: Boolean(target?.closest(".left-panel")),
         itemCount: items.length,
         titles: items.map((item) => item.title),
         hasReadme: items.some((item) => item.text.includes("README")),
@@ -1438,8 +1473,8 @@ export async function run(ctx) {
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await waitForLeftPanel(page, "Files");
     const openRightFileMenu = async (fileTitle) => {
       await page.getByRole("button", { name: `Open ${fileTitle}` }).hover();
       await page.getByRole("button", { name: `More actions for ${fileTitle}` }).click();
@@ -1516,7 +1551,7 @@ export async function run(ctx) {
       inputValue: document.querySelector(".right-file-rename-input")?.value ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
       toastError: Boolean(document.querySelector(".app-toast.error")),
-      panelOpen: Boolean(document.querySelector(".right-panel")),
+      panelOpen: Boolean(document.querySelector(".left-panel")),
     }));
     expect(duplicateRename.inputValue === "Untitled", "Right Files duplicate rename should keep the typed value open.");
     expect(duplicateRename.toastText === "File name already exists.", "Right Files duplicate rename should use the app toast.");
@@ -1529,7 +1564,7 @@ export async function run(ctx) {
       (await page.locator(".right-file-rename-input").count()) === 0,
       "Escape in Right Files rename should cancel rename without closing the panel.",
     );
-    expect((await page.locator(".right-panel").count()) === 1, "Right Files panel should remain open after canceling rename.");
+    expect((await page.locator(".left-panel").count()) === 1, "Files panel should remain open after canceling rename.");
 
     await openRightFileMenu(rightFilesActiveTitle);
     await page.getByRole("menuitem", { name: "Rename" }).click();
@@ -1602,8 +1637,13 @@ export async function run(ctx) {
       hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
-      tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
-        ?.getBoundingClientRect().left ?? 0,
+      tabTitleOffset: (() => {
+        const tab = document.querySelector('.tab-item[data-file-name="Panel Import.md"]');
+        const title = tab?.querySelector(".tab-title");
+        return tab && title
+          ? title.getBoundingClientRect().left - tab.getBoundingClientRect().left
+          : 0;
+      })(),
     }));
     expect(filesAfterImport.hasImportedRow, "Right Files import should add the imported Markdown to project files.");
     expect(filesAfterImport.activeTabTitle === "Panel Import.md", "Right Files import should open the imported file as a tab.");
@@ -1694,8 +1734,13 @@ export async function run(ctx) {
           .some((item) => item.textContent?.includes("Archive")),
         tabLocation: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-location')
           ?.textContent?.trim() ?? "",
-        tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
-          ?.getBoundingClientRect().left ?? 0,
+        tabTitleOffset: (() => {
+          const tab = document.querySelector('.tab-item[data-file-name="Panel Import.md"]');
+          const title = tab?.querySelector(".tab-title");
+          return tab && title
+            ? title.getBoundingClientRect().left - tab.getBoundingClientRect().left
+            : 0;
+        })(),
       };
     });
     expect(draggedFileState.folderVisible, "Right Files should keep the drag destination visible.");
@@ -1705,7 +1750,7 @@ export async function run(ctx) {
       "Moving an open document into a folder should update its tab location immediately.",
     );
     expect(
-      Math.abs(draggedFileState.tabTitleLeft - filesAfterImport.tabTitleLeft) < 1,
+      Math.abs(draggedFileState.tabTitleOffset - filesAfterImport.tabTitleOffset) < 1,
       "Adding a folder location should not shift the document title within its tab.",
     );
   });
@@ -2179,12 +2224,14 @@ export async function run(ctx) {
       "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
     );
 
-    await mobilePage.getByRole("button", { name: "Search", exact: true }).click();
+    await mobilePage.getByRole("navigation", { name: "Document controls" })
+      .getByRole("button", { name: "Search", exact: true }).click();
     await mobilePage.locator(".document-search-row").waitFor({ state: "visible" });
-    await ensureSidePanelOpen(mobilePage);
+    await mobilePage.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForLeftPanel(mobilePage, "Files");
     const mobilePanel = await mobilePage.evaluate(() => {
-      const panel = document.querySelector(".right-panel");
-      const backdrop = document.querySelector(".right-panel-backdrop");
+      const panel = document.querySelector(".left-panel");
+      const backdrop = document.querySelector(".left-panel-backdrop");
       const documentSearch = document.querySelector(".document-search-row");
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
