@@ -1419,6 +1419,10 @@ export function useWorkspaceRuntime() {
           onImportWorkspace: () => workspaceImportInputRef.current?.click(),
           onOpenPreferences: () => {
             setLeftPanelOpen(true);
+            setLeftPanelView("files");
+            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+              setRightPanelOpen(false);
+            }
             setWorkspaceMenuOpen(true);
             setPreferencesOpen(true);
           },
