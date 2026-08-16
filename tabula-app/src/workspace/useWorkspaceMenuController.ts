@@ -28,6 +28,11 @@ type UseWorkspaceMenuControllerOptions = {
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
+  onOpenLiveWorkspace?: () => void;
+  onSaveLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
+  liveFolderAutoSave?: boolean;
+  onToggleLiveFolderAutoSave?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -51,6 +56,11 @@ export function useWorkspaceMenuController({
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
+  onOpenLiveWorkspace,
+  onSaveLiveWorkspace,
+  onDisconnectLiveWorkspace,
+  liveFolderAutoSave,
+  onToggleLiveFolderAutoSave,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -91,6 +101,11 @@ export function useWorkspaceMenuController({
       canExportWorkspace,
       onImportFileChange,
       onImportWorkspaceChange,
+      onOpenLiveWorkspace,
+      onSaveLiveWorkspace,
+      onDisconnectLiveWorkspace,
+      liveFolderAutoSave,
+      onToggleLiveFolderAutoSave,
       onClearWorkspace,
       onExportFile,
       onExportWorkspace,
@@ -116,6 +131,11 @@ export function useWorkspaceMenuController({
       onCloseChrome,
       onImportFileChange,
       onImportWorkspaceChange,
+      onOpenLiveWorkspace,
+      onSaveLiveWorkspace,
+      onDisconnectLiveWorkspace,
+      liveFolderAutoSave,
+      onToggleLiveFolderAutoSave,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

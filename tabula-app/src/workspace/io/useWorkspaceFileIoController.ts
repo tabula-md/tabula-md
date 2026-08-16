@@ -1,4 +1,11 @@
-import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type RefObject,
+} from "react";
 import { clientErrorReporter } from "../../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../../document/markdownEditorTypes";
 import { createWorkspaceArchive } from "./workspaceArchive";
@@ -25,10 +32,29 @@ import { getWorkspaceIoCopy } from "./workspaceIoLocale";
 import { productAnalytics } from "../../observability/productAnalytics";
 import {
   captureWorkspaceKnowledgeBaseline,
+  getWorkspaceArtifactBytes,
+  type ExternalChangeResolution,
   type WorkspaceKnowledgeBaseline,
+  type WorkspaceSnapshot,
+  type WorkspaceSourceAdapter,
+  type WorkspaceSourceKind,
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
+import {
+  createArtifactSnapshotFromWorkspace,
+  createWorkspaceDraftFromArtifactSnapshot,
+  getLiveFolderAutoSaveBlockReason,
+  getLiveFolderWorkspaceWritePlan,
+  isLiveFolderSupported,
+  pickLiveFolderSourceAdapter,
+} from "./workspaceLiveFolder";
+
+export type LiveFolderConflictReview = {
+  resolution: Extract<ExternalChangeResolution, { type: "conflict-review" }>;
+  externalSnapshot: WorkspaceSnapshot;
+  localSnapshot: WorkspaceSnapshot;
+};
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -174,6 +200,19 @@ export function useWorkspaceFileIoController({
     review: WorkspaceExportReview;
     snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
   } | null>(null);
+  const pendingLiveFolderRef = useRef<{
+    adapter: WorkspaceSourceAdapter;
+  } | null>(null);
+  const activeLiveFolderRef = useRef<{
+    adapter: WorkspaceSourceAdapter;
+    baseline: WorkspaceSnapshot;
+  } | null>(null);
+  const liveFolderWriteQueueRef = useRef(Promise.resolve());
+  const [workspaceSourceKind, setWorkspaceSourceKind] =
+    useState<WorkspaceSourceKind>("browser-copy");
+  const [liveFolderAutoSave, setLiveFolderAutoSave] = useState(false);
+  const [liveFolderConflict, setLiveFolderConflict] =
+    useState<LiveFolderConflictReview | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -290,6 +329,7 @@ export function useWorkspaceFileIoController({
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
     if (selectedFiles.length === 0) return;
+    pendingLiveFolderRef.current = null;
 
     void parseWorkspaceFolderImport(selectedFiles, {
       viewMode: preferences.newFileViewMode,
@@ -305,7 +345,58 @@ export function useWorkspaceFileIoController({
     });
   };
 
-  const closeWorkspaceFolderImport = () => setWorkspaceFolderImport(null);
+  const closeWorkspaceFolderImport = () => {
+    pendingLiveFolderRef.current = null;
+    setWorkspaceFolderImport(null);
+  };
+
+  const disconnectLiveWorkspaceFolder = () => {
+    pendingLiveFolderRef.current = null;
+    activeLiveFolderRef.current = null;
+    setLiveFolderAutoSave(false);
+    setLiveFolderConflict(null);
+    setWorkspaceSourceKind("browser-copy");
+  };
+
+  const openLiveWorkspaceFolder = () => {
+    if (isRoomSession || !isLiveFolderSupported()) return;
+    void pickLiveFolderSourceAdapter().then(async (adapter) => {
+      if (!adapter) return;
+      const sourceSnapshot = await adapter.readSnapshot();
+      const selectedRoot = adapter.source.label ?? "Workspace";
+      const selectedFiles = sourceSnapshot.artifacts.map((artifact) => {
+        const bytes = Uint8Array.from(
+          getWorkspaceArtifactBytes(artifact.content),
+        );
+        const name = artifact.path.split("/").at(-1) ?? artifact.path;
+        const file = new File([bytes], name, {
+          type: artifact.mediaType,
+        });
+        Object.defineProperty(file, "webkitRelativePath", {
+          configurable: true,
+          value: `${selectedRoot}/${artifact.path}`,
+        });
+        return file;
+      });
+      const draft = await parseWorkspaceFolderImport(selectedFiles, {
+        viewMode: preferences.newFileViewMode,
+        readingWidth: preferences.readingWidth,
+        lineWrapping: preferences.lineWrapping,
+        lineNumbers: preferences.lineNumbers,
+      });
+      pendingLiveFolderRef.current = { adapter };
+      onCloseChrome();
+      setWorkspaceFolderImport(draft);
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      clientErrorReporter.report({
+        feature: "workspace",
+        operation: "open-live-folder",
+        error,
+      });
+      showToast(copy.openFailed, "error");
+    });
+  };
 
   const replaceWorkspaceWithFolder = () => {
     if (!workspaceFolderImport || isRoomSession) return;
@@ -320,6 +411,7 @@ export function useWorkspaceFileIoController({
       commentsByFileId: {},
       knowledgeBaseline,
     };
+    const pendingLiveFolder = pendingLiveFolderRef.current;
     onBeforeWorkspaceBoundary?.();
     replaceWorkspace(nextWorkspace);
     replaceKnowledgeBaseline(knowledgeBaseline);
@@ -332,11 +424,238 @@ export function useWorkspaceFileIoController({
       clientErrorReporter.report({ feature: "workspace", operation: "persist-open-folder", error });
       showToast(copy.saveOpenedWorkspaceFailed, "error");
     });
+    if (pendingLiveFolder) {
+      void createArtifactSnapshotFromWorkspace(
+        nextWorkspace.files,
+        nextWorkspace.folders,
+      ).then((baseline) => {
+        activeLiveFolderRef.current = {
+          adapter: pendingLiveFolder.adapter,
+          baseline,
+        };
+        setWorkspaceSourceKind("live-folder");
+      });
+    } else {
+      activeLiveFolderRef.current = null;
+      setWorkspaceSourceKind("browser-copy");
+    }
+    pendingLiveFolderRef.current = null;
     setWorkspaceFolderImport(null);
     onCloseChrome();
     syncUrlForLocalWorkspace("replace");
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };
+
+  const queueLiveWorkspaceFolderSave = ({ automatic = false } = {}) => {
+    if (isRoomSession || !activeLiveFolderRef.current) return;
+    const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
+      files,
+      folders,
+      getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
+      openFileIds,
+    });
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        const active = activeLiveFolderRef.current;
+        if (!active) return;
+        const local = await createArtifactSnapshotFromWorkspace(
+          workspaceSnapshot.files,
+          workspaceSnapshot.folders,
+        );
+        const external = await active.adapter.checkExternalChanges?.(
+          active.baseline,
+        );
+        const plan = getLiveFolderWorkspaceWritePlan(active.baseline, local);
+        const autoSaveBlockReason = automatic
+          ? getLiveFolderAutoSaveBlockReason({
+              externalChangeCount: external?.changes.length ?? 0,
+              deleteCount: plan.deletes.length,
+            })
+          : external && external.changes.length > 0
+            ? "external-change"
+            : null;
+        if (autoSaveBlockReason === "external-change") {
+          const { planExternalChangeResolution } = await import("@tabula-md/tabula");
+          const resolutions = planExternalChangeResolution(
+            active.baseline,
+            local,
+            external!.snapshot,
+          );
+          const conflict = resolutions.find(
+            (resolution): resolution is Extract<
+              ExternalChangeResolution,
+              { type: "conflict-review" }
+            > => resolution.type === "conflict-review",
+          );
+          if (conflict) {
+            setLiveFolderConflict({
+              resolution: conflict,
+              externalSnapshot: external!.snapshot,
+              localSnapshot: local,
+            });
+          }
+          if (automatic) {
+            setLiveFolderAutoSave(false);
+            showToast(copy.liveFolderAutoSavePausedExternal, "error");
+          } else {
+            showToast(copy.liveFolderWriteConflict, "error");
+          }
+          return;
+        }
+        if (plan.changes.length === 0 && plan.deletes.length === 0) {
+          if (!automatic) showToast(copy.liveFolderNoChanges);
+          return;
+        }
+        if (autoSaveBlockReason === "delete") {
+          setLiveFolderAutoSave(false);
+          showToast(copy.liveFolderAutoSavePausedDelete);
+          return;
+        }
+        if (
+          plan.deletes.length > 0 &&
+          !window.confirm(copy.confirmLiveFolderDelete)
+        ) {
+          return;
+        }
+        const result = await active.adapter.writeChanges?.([
+          ...plan.changes,
+          ...plan.deletes,
+        ]);
+        if (!result?.ok) {
+          showToast(
+            result?.reason === "permission"
+              ? copy.liveFolderPermissionLost
+              : copy.liveFolderWriteConflict,
+            "error",
+          );
+          return;
+        }
+        active.baseline = result.snapshot ?? local;
+        if (!automatic) showToast(copy.liveFolderSaved);
+      })
+      .catch((error: unknown) => {
+        clientErrorReporter.report({
+          feature: "workspace",
+          operation: "write-live-folder",
+          error,
+        });
+        showToast(copy.liveFolderWriteFailed, "error");
+      });
+  };
+
+  const saveLiveWorkspaceFolder = () => queueLiveWorkspaceFolderSave();
+  const toggleLiveFolderAutoSave = () => {
+    if (!activeLiveFolderRef.current) return;
+    setLiveFolderAutoSave((current) => !current);
+  };
+
+  const applyArtifactSnapshotToWorkspace = async (
+    snapshot: WorkspaceSnapshot,
+  ) => {
+    const active = activeLiveFolderRef.current;
+    if (!active) return;
+    const previous = getWorkspaceSnapshot?.() ?? {
+      files,
+      folders,
+      openFileIds,
+      activeFileId,
+    };
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      snapshot,
+      active.adapter.source.label ?? "Workspace",
+      {
+        viewMode: preferences.newFileViewMode,
+        readingWidth: preferences.readingWidth,
+        lineWrapping: preferences.lineWrapping,
+        lineNumbers: preferences.lineNumbers,
+      },
+      previous,
+    );
+    replaceWorkspace(draft.workspace);
+    replaceKnowledgeBaseline(captureWorkspaceKnowledgeBaseline(
+      getWorkspaceKnowledgeDocuments(draft.workspace.files, draft.workspace.folders),
+    ));
+  };
+
+  const useExternalLiveFolderVersion = async () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active) return;
+    const { replaceSnapshotArtifact } = await import("./workspaceLiveFolderConflict");
+    const { local, external } = review.resolution;
+    const resolved = replaceSnapshotArtifact(
+      review.localSnapshot,
+      local.id,
+      external,
+    );
+    active.baseline = replaceSnapshotArtifact(
+      active.baseline,
+      local.id,
+      external,
+    );
+    setLiveFolderConflict(null);
+    void applyArtifactSnapshotToWorkspace(resolved);
+  };
+
+  const keepTabulaLiveFolderVersion = async () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active?.adapter.writeChanges) return;
+    const { getKeepTabulaChanges } = await import("./workspaceLiveFolderConflict");
+    const changes = getKeepTabulaChanges(review.resolution);
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        const result = await active.adapter.writeChanges?.(changes);
+        if (!result?.ok) {
+          showToast(copy.liveFolderWriteFailed, "error");
+          return;
+        }
+        active.baseline = result.snapshot ?? review.localSnapshot;
+        setLiveFolderConflict(null);
+      });
+  };
+
+  const mergeLiveFolderConflictManually = async () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active) return;
+    const { createManualMergeArtifact, replaceSnapshotArtifact } =
+      await import("./workspaceLiveFolderConflict");
+    const { local, external } = review.resolution;
+    const merged = await createManualMergeArtifact(review.resolution);
+    if (merged) {
+      active.baseline = replaceSnapshotArtifact(
+        active.baseline,
+        local.id,
+        external,
+      );
+      setLiveFolderConflict(null);
+      void applyArtifactSnapshotToWorkspace(replaceSnapshotArtifact(
+        review.localSnapshot,
+        local.id,
+        merged,
+      ));
+    }
+  };
+
+  useEffect(() => {
+    if (
+      isRoomSession ||
+      workspaceSourceKind !== "live-folder" ||
+      !liveFolderAutoSave
+    ) return;
+    const timer = window.setTimeout(() => {
+      queueLiveWorkspaceFolderSave({ automatic: true });
+    }, 1_000);
+    return () => window.clearTimeout(timer);
+  }, [files, folders, isRoomSession, liveFolderAutoSave, workspaceSourceKind]);
+
+  useEffect(() => {
+    if (isRoomSession) disconnectLiveWorkspaceFolder();
+  }, [isRoomSession]);
 
   const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
     return Array.from(event.dataTransfer.files).find(isSupportedImportFileDescriptor);
@@ -376,15 +695,26 @@ export function useWorkspaceFileIoController({
 
   return {
     emptyDropActive,
+    isLiveFolderSupported: isLiveFolderSupported(),
     workspaceFolderImport,
+    workspaceSourceKind,
+    liveFolderAutoSave,
+    liveFolderConflict,
     workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
+    disconnectLiveWorkspaceFolder,
     closeWorkspaceExportReview,
     confirmWorkspaceArchiveExport,
     handleImportInputChange,
     handleWorkspaceImportInputChange,
+    openLiveWorkspaceFolder,
+    saveLiveWorkspaceFolder,
+    toggleLiveFolderAutoSave,
+    keepTabulaLiveFolderVersion,
+    mergeLiveFolderConflictManually,
+    useExternalLiveFolderVersion,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,

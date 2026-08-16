@@ -6,6 +6,7 @@ import {
   FileOutput,
   FilePlus2,
   FolderArchive,
+  FolderSync,
   FolderInput,
   HelpCircle,
   Github,
@@ -13,8 +14,10 @@ import {
   Monitor,
   Moon,
   SlidersHorizontal,
+  Save,
   Sun,
   Trash2,
+  Unplug,
 } from "lucide-react";
 import type {
   WorkspaceLanguage,
@@ -36,6 +39,11 @@ type WorkspaceMenuProps = {
   onAddFile: () => void;
   onImportFile: () => void;
   onImportWorkspace?: () => void;
+  onOpenLiveWorkspace?: () => void;
+  onSaveLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
+  liveFolderAutoSave?: boolean;
+  onToggleLiveFolderAutoSave?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -52,6 +60,7 @@ type MenuRowProps = {
   className?: string;
   disabled?: boolean;
   trailing?: ReactNode;
+  pressed?: boolean;
 };
 
 function MenuRow({
@@ -61,6 +70,7 @@ function MenuRow({
   className = "",
   disabled = false,
   trailing,
+  pressed,
 }: MenuRowProps) {
   return (
     <button
@@ -68,6 +78,7 @@ function MenuRow({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      aria-pressed={pressed}
     >
       {icon}
       <span>{children}</span>
@@ -124,6 +135,11 @@ export function WorkspaceMenu({
   onAddFile,
   onImportFile,
   onImportWorkspace,
+  onOpenLiveWorkspace,
+  onSaveLiveWorkspace,
+  onDisconnectLiveWorkspace,
+  liveFolderAutoSave = false,
+  onToggleLiveFolderAutoSave,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -176,6 +192,31 @@ export function WorkspaceMenu({
         {onImportWorkspace && (
           <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
             {copy.actions.importWorkspace}
+          </MenuRow>
+        )}
+        {onOpenLiveWorkspace && (
+          <MenuRow icon={<FolderSync size={16} />} onClick={onOpenLiveWorkspace}>
+            {copy.actions.openLiveWorkspace}
+          </MenuRow>
+        )}
+        {onSaveLiveWorkspace && (
+          <MenuRow icon={<Save size={16} />} onClick={onSaveLiveWorkspace}>
+            {copy.actions.saveLiveWorkspace}
+          </MenuRow>
+        )}
+        {onToggleLiveFolderAutoSave && (
+          <MenuRow
+            icon={<FolderSync size={16} />}
+            onClick={onToggleLiveFolderAutoSave}
+            trailing={liveFolderAutoSave ? "On" : "Off"}
+            pressed={liveFolderAutoSave}
+          >
+            {copy.actions.autoSaveLiveWorkspace}
+          </MenuRow>
+        )}
+        {onDisconnectLiveWorkspace && (
+          <MenuRow icon={<Unplug size={16} />} onClick={onDisconnectLiveWorkspace}>
+            {copy.actions.disconnectLiveWorkspace}
           </MenuRow>
         )}
         <div className="workspace-menu-divider" role="separator" />

@@ -235,6 +235,19 @@
   font-weight: var(--weight-ui-regular);
 }
 
+.workspace-export-review-row pre {
+  max-block-size: 10rem;
+  margin: 0.5rem 0 0;
+  overflow: auto;
+  padding: 0.625rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  font: 0.75rem/1.45 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .workspace-export-review-row strong {
   color: var(--text-primary);
   font-size: var(--font-ui-body);
