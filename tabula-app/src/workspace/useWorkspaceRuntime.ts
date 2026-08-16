@@ -1379,7 +1379,10 @@ export function useWorkspaceRuntime() {
         onDrop: handleEmptyWorkspaceDrop,
         onNewFile: addRootFile,
         onOpenFile: () => importInputRef.current?.click(),
-        onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
+        onOpenWorkspace: isLiveFolderSupported
+          ? openLiveWorkspaceFolder
+          : () => workspaceImportInputRef.current?.click(),
+        workspaceMode: isLiveFolderSupported ? "connected" : "copy",
       },
       localOpening:
         localPersistenceEnabled && localWorkspacePersistence.pending,

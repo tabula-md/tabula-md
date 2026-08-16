@@ -90,7 +90,7 @@ export function WorkspaceMenuSurface({
         multiple
         {...{ webkitdirectory: "" }}
         onChange={onImportWorkspaceChange}
-        aria-label={copy.emptyState.openWorkspace}
+        aria-label={copy.actions.importWorkspace}
       />
       <WorkspaceMenu
         isOpen={isOpen}

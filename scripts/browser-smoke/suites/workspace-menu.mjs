@@ -282,7 +282,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.locator('input[aria-label="Open folder"]').evaluate((input) => {
+    await page.locator('input[aria-label="Import folder copy…"]').evaluate((input) => {
       const dataTransfer = new DataTransfer();
       const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
       const questions = new File(["# Questions"], "Questions.md", { type: "text/markdown" });
@@ -296,7 +296,7 @@ export async function run(ctx) {
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
+    await page.getByRole("dialog", { name: "Import folder copy" }).waitFor();
     const detectedWorkspace = page.getByRole("region", {
       name: "Detected workspace",
     });
@@ -314,7 +314,7 @@ export async function run(ctx) {
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
       "Opening a workspace should preview its logical document paths before replacing local state.",
     );
-    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    await page.getByRole("button", { name: "Import copy", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".tab-item").count()) === 0,
@@ -504,7 +504,7 @@ export async function run(ctx) {
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
         emptyChromeState.workspaceText.includes("New document") &&
         emptyChromeState.workspaceText.includes("Open Markdown file") &&
-        emptyChromeState.workspaceText.includes("Open folder") &&
+        emptyChromeState.workspaceText.includes("Connect folder") &&
         !emptyChromeState.workspaceText.includes("Browse project files") &&
         !emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import document") &&
