@@ -48,6 +48,46 @@
   line-height: 1.5;
 }
 
+.right-properties-list a {
+  color: inherit;
+  text-decoration-color: var(--text-soft);
+  text-underline-offset: 2px;
+}
+
+.right-properties-list time {
+  font-variant-numeric: tabular-nums;
+}
+
+.right-properties-array {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.right-properties-array > li {
+  max-width: 100%;
+  padding: 1px 7px;
+  overflow-wrap: anywhere;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+}
+
+.right-properties-object summary {
+  width: max-content;
+  color: var(--text-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.right-properties-object[open] summary {
+  margin-bottom: 8px;
+}
+
 .right-properties-nested {
-  margin-top: -9px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-subtle);
 }
