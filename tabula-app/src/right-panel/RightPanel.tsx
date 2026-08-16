@@ -1,13 +1,11 @@
 import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
-  Folder,
   LibraryBig,
   Link2,
   ListTree,
   MessageSquare,
   Braces,
   PanelRightClose,
-  Search,
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
@@ -41,9 +39,6 @@ const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => 
 })));
 const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
   default: module.RightPanelComments,
-})));
-const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
-  default: module.RightPanelSearch,
 })));
 const RightPanelKnowledge = lazy(() => import("./RightPanelKnowledge").then((module) => ({
   default: module.RightPanelKnowledge,
@@ -140,7 +135,7 @@ export function RightPanel({
   knowledgeCompatibilityOpenRequest,
   activeFileId,
   activeFileTitle,
-  isLiveWorkspace,
+  isLiveWorkspace: _isLiveWorkspace,
   language,
   activeOutlineHeadingIndex,
   outlineHeadings,
@@ -232,13 +227,11 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
-  const hasDocuments = files.length > 0;
   const effectiveView = view;
   const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
     files,
     commentsByFileId,
   );
-  const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
   const panelTitle = effectiveView === "properties"
     ? knowledgeCopy.properties

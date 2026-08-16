@@ -324,7 +324,7 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await openProjectMenu(page);
     await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForRenderFrame(page);
+    await page.getByRole("dialog", { name: "About Tabula.md", exact: true }).waitFor({ state: "visible" });
     const aboutState = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       dialogOpen: Boolean(document.querySelector(".workspace-info-modal")),
@@ -584,20 +584,27 @@ export async function run(ctx) {
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
     await page.getByRole("button", { name: "Workspace search", exact: true }).click();
-    await waitForLeftPanel(page, "Search");
-    await page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+    const launcher = page.getByRole("dialog", { name: "Search documents and commands", exact: true });
+    await launcher.waitFor({ state: "visible" });
+    const launcherSearch = launcher.getByRole("combobox", {
+      name: "Search documents and commands",
       exact: true,
-    }).waitFor({ state: "visible" });
+    });
     expect(
-      await page.getByRole("searchbox", {
-        name: "Search documents and metadata",
-        exact: true,
-      }).isVisible() &&
-        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
+      await launcherSearch.isVisible() &&
+        await launcher.getByRole("heading", { name: "Suggestions", exact: true }).isVisible() &&
+        await launcher.getByRole("heading", { name: "Commands", exact: true }).isVisible() &&
+        await launcher.getByRole("heading", { name: "Settings", exact: true }).isVisible() &&
         await page.locator(".right-panel-knowledge").isVisible(),
-      "Workspace search should coexist with active-document context on wide screens.",
+      "The workspace launcher should unify document search, commands, and settings without replacing document context.",
     );
+    await launcherSearch.press("ArrowDown");
+    expect(
+      (await launcher.locator('[role="option"][aria-selected="true"]').count()) === 1,
+      "The workspace launcher should accept keyboard navigation.",
+    );
+    await launcher.getByRole("button", { name: "Close search", exact: true }).click();
+    await launcher.waitFor({ state: "hidden" });
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
@@ -623,7 +630,9 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Open map", exact: true }).count()) === 0,
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    if ((await page.locator('.left-panel[aria-label="Files"]').count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    }
     await waitForLeftPanel(page, "Files");
 
     await openProjectMenu(page);

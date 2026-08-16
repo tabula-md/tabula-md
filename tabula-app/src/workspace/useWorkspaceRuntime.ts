@@ -434,6 +434,8 @@ export function useWorkspaceRuntime() {
     setRightPanelOpen,
     rightPanelView,
     setRightPanelView,
+    launcherOpen,
+    setLauncherOpen,
     closeFloatingChrome,
     openFilesPanel,
     toggleWorkspaceMenu,
@@ -1288,7 +1290,13 @@ export function useWorkspaceRuntime() {
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
-    onToggleLeftPanel: toggleLeftPanel,
+    onToggleLeftPanel: (view) => {
+      if (view === "search") {
+        setLauncherOpen(true);
+        return;
+      }
+      toggleLeftPanel(view);
+    },
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
@@ -1360,6 +1368,7 @@ export function useWorkspaceRuntime() {
     openFilesPanel,
     openHelp,
     openDocumentSearch: openSearchFromCurrentSelection,
+    openWorkspaceLauncher: () => setLauncherOpen(true),
     selectAdjacentFile,
     setActiveFileViewMode: setViewModeWithPendingCommit,
     setCenterPopover,
@@ -1412,6 +1421,23 @@ export function useWorkspaceRuntime() {
         language: workspacePreferences.language,
         shortcutPlatform,
         toast,
+        launcher: launcherOpen ? {
+          files,
+          folders,
+          openFileIds,
+          activeFileId: activeFile?.id,
+          onClose: () => setLauncherOpen(false),
+          onSelectFile: selectFile,
+          onNewFile: addRootFile,
+          onNewFolder: () => { addWorkspaceFolder(); },
+          onImportFile: () => importInputRef.current?.click(),
+          onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onOpenPreferences: () => {
+            setLeftPanelOpen(true);
+            setWorkspaceMenuOpen(true);
+            setPreferencesOpen(true);
+          },
+        } : undefined,
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
         onCloseWorkspaceExportReview: closeWorkspaceExportReview,

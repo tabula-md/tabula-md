@@ -76,12 +76,14 @@ export async function run(ctx) {
         window.__tabulaClipboard.push(text);
       };
     });
-    await ensureSidePanelOpen(page);
-    expect((await page.locator(".right-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
+    await ensureFilesPanelOpen(page);
+    expect((await page.locator(".left-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
     expect(
-      (await page.locator(".right-panel-body").getByText("No documents yet", { exact: true }).count()) === 1,
+      (await page.locator(".left-panel").getByText("No documents yet", { exact: true }).count()) === 1,
       "An empty Files panel should describe the document state instead of a failed search.",
     );
+    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
     expect(
@@ -96,14 +98,10 @@ export async function run(ctx) {
       "Comments should describe its missing document context.",
     );
     expect((await page.locator(".right-comments-toolbar").count()) === 0, "Comments should hide unusable controls in an empty workspace.");
-    await page.getByRole("button", { name: "Search", exact: true }).click();
-    await waitForPanelTab(page, "Search");
-    expect(
-      (await page.locator(".right-panel-body").getByText("No documents to search", { exact: true }).count()) === 1,
-      "Workspace Search should describe the unavailable search scope.",
-    );
-    expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
     await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace search", exact: true }).click();
+    await page.getByRole("dialog", { name: "Search documents and commands", exact: true }).waitFor({ state: "visible" });
+    await page.getByRole("button", { name: "Close search", exact: true }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
@@ -179,9 +177,7 @@ export async function run(ctx) {
     await page.keyboard.press("Escape");
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    await ensureFilesPanelOpen(page);
     await page.getByRole("button", { name: "More actions for Untitled.md" }).click();
     expect(
       (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
@@ -189,7 +185,7 @@ export async function run(ctx) {
     );
     await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
     expect((await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === "", "Blank file copy should preserve its source.");
-    await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
@@ -252,9 +248,7 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Manage open tabs", exact: true }).count()) === 1,
       "Tab management should remain available after closing all tabs so the last tab can be reopened.",
     );
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    await ensureFilesPanelOpen(page);
     expect(
       (await page.locator(".right-file-tree-row.file").count()) === 2,
       "Close all tabs should leave the workspace documents available in Files.",
@@ -326,9 +320,7 @@ export async function run(ctx) {
       (await page.locator(".tab-item").count()) === 0,
       "Opening a workspace should import its tree without opening every document as a tab.",
     );
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForPanelTab(page, "Files");
+    await ensureFilesPanelOpen(page);
     await page.getByRole("button", { name: "Open Launch notes.md" }).click();
     await waitForActiveTab(page, { exact: "Launch notes.md" });
     await selectDocumentViewMode(page, "Edit");
@@ -410,7 +402,7 @@ export async function run(ctx) {
       (await page.locator(".tab-item").count()) === 0,
       "A cleared workspace should stay empty after an immediate reload.",
     );
-    await ensureSidePanelOpen(page);
+    await ensureFilesPanelOpen(page);
     const remainingFiles = await page.locator(".right-file-tree-row.file").evaluateAll((rows) =>
       rows.map((row) => row.getAttribute("title")),
     );
@@ -537,9 +529,8 @@ export async function run(ctx) {
       `No-open-file state should use the shared 12px secondary, 13px body, and 15px surface-heading type scale (${JSON.stringify(emptyTypography)}).`,
     );
 
-    await ensureSidePanelOpen(page);
-    await waitForPanelTab(page, "Files");
-    expect((await page.locator(".right-panel").count()) === 1, "The global side-panel control should open project files.");
+    await ensureFilesPanelOpen(page);
+    expect((await page.locator(".left-panel").count()) === 1, "The workspace-panel control should open project files.");
     const closedTabFileState = await page.evaluate(() => ({
       fileRows: Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((row) => ({
         title: row.getAttribute("data-file-name") ?? "",
@@ -558,6 +549,8 @@ export async function run(ctx) {
       "Files panel should not mark an active file when no tab is open.",
     );
 
+    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
     expect(
@@ -595,9 +588,7 @@ export async function run(ctx) {
       "Reloading with no open tabs should keep the branded start state.",
     );
 
-    if ((await page.locator(".right-panel").count()) === 0) {
-      await ensureSidePanelOpen(page);
-    }
+    await ensureFilesPanelOpen(page);
     await page.getByRole("button", { name: "Open Untitled.md" }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
     const reopenedTabs = await getTabs(page);
@@ -1312,6 +1303,18 @@ export async function run(ctx) {
     await mobileClose.click();
     expect((await page.locator(".share-modal").count()) === 0, "The mobile close action should dismiss Share.");
   });
+}
+
+async function ensureFilesPanelOpen(page) {
+  if ((await page.locator(".left-panel").count()) === 0) {
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".left-panel").waitFor({ state: "visible" });
+  }
+  const filesTab = page.locator(".left-panel").getByRole("button", { name: "Files", exact: true });
+  if ((await filesTab.getAttribute("aria-pressed")) !== "true") {
+    await filesTab.click();
+  }
+  await page.locator(".left-panel .right-panel-body.files").waitFor({ state: "visible" });
 }
 
 async function waitForEditorFocus(page) {

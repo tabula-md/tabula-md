@@ -9,6 +9,7 @@ type WorkspaceShortcutAction =
   | "previousFile"
   | "nextFile"
   | "documentSearch"
+  | "workspaceLauncher"
   | "editMode"
   | "splitMode"
   | "previewMode";
@@ -30,6 +31,7 @@ type UseWorkspaceKeyboardShortcutsArgs = {
   openFilesPanel: () => void;
   openHelp: () => void;
   openDocumentSearch: () => void;
+  openWorkspaceLauncher: () => void;
   selectAdjacentFile: (direction: -1 | 1) => void;
   setActiveFileViewMode: (nextViewMode: FileViewMode) => void;
   setCenterPopover: (popover: null) => void;
@@ -52,6 +54,9 @@ export function getWorkspaceShortcutAction(
   const hasCommandModifier = event.metaKey || event.ctrlKey;
   if (hasCommandModifier && !event.altKey && !event.shiftKey && isShortcutKey(event, "f")) {
     return "documentSearch";
+  }
+  if (hasCommandModifier && !event.altKey && !event.shiftKey && isShortcutKey(event, "k")) {
+    return "workspaceLauncher";
   }
 
   const hasAppModifier = hasCommandModifier && event.altKey && !event.shiftKey;
@@ -117,6 +122,7 @@ export function useWorkspaceKeyboardShortcuts({
   openFilesPanel,
   openHelp,
   openDocumentSearch,
+  openWorkspaceLauncher,
   selectAdjacentFile,
   setActiveFileViewMode,
   setCenterPopover,
@@ -133,6 +139,10 @@ export function useWorkspaceKeyboardShortcuts({
 
       if (action === "newFile") {
         addFile();
+        return;
+      }
+      if (action === "workspaceLauncher") {
+        openWorkspaceLauncher();
         return;
       }
 

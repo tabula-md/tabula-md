@@ -21,6 +21,7 @@ type WorkspaceUiStoreState = {
   workspaceMenuOpen: boolean;
   preferencesOpen: boolean;
   searchOpen: boolean;
+  launcherOpen: boolean;
   splitDragging: boolean;
 };
 
@@ -37,6 +38,7 @@ type WorkspaceUiStoreActions = {
   setRightPanelOpen: (isOpen: UiValueUpdater<boolean>) => void;
   setRightPanelView: (view: RightPanelView) => void;
   setSearchOpen: (isOpen: UiValueUpdater<boolean>) => void;
+  setLauncherOpen: (isOpen: UiValueUpdater<boolean>) => void;
   setSplitDragging: (isDragging: boolean) => void;
   setTopPopover: (popover: UiValueUpdater<TopPopover>) => void;
   setWorkspaceMenuOpen: (isOpen: UiValueUpdater<boolean>) => void;
@@ -59,6 +61,7 @@ const DEFAULT_WORKSPACE_UI_STORE_STATE: WorkspaceUiStoreState = {
   workspaceMenuOpen: false,
   preferencesOpen: false,
   searchOpen: false,
+  launcherOpen: false,
   splitDragging: false,
 };
 
@@ -71,6 +74,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
+      launcherOpen: false,
     });
   },
 
@@ -134,6 +138,14 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
 
   setSearchOpen: (isOpen) => {
     set((state) => ({ searchOpen: applyUiValueUpdater(state.searchOpen, isOpen) }));
+  },
+
+  setLauncherOpen: (isOpen) => {
+    set((state) => ({
+      launcherOpen: applyUiValueUpdater(state.launcherOpen, isOpen),
+      workspaceMenuOpen: false,
+      preferencesOpen: false,
+    }));
   },
 
   setSplitDragging: (isDragging) => {

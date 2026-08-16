@@ -1,0 +1,118 @@
+.workspace-launcher-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(680px, calc(100dvh - 48px));
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-launcher-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-soft);
+}
+
+.workspace-launcher-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-ui-large);
+}
+
+.workspace-launcher-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: transparent;
+}
+
+.workspace-launcher-close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.workspace-launcher-results {
+  max-height: min(520px, calc(100dvh - 180px));
+  padding: 10px;
+  overflow: auto;
+}
+
+.workspace-launcher-entry h2 {
+  margin: 10px 10px 6px;
+  color: var(--text-soft);
+  font-size: var(--font-ui-small);
+  font-weight: var(--weight-ui-medium);
+}
+
+.workspace-launcher-entry button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.workspace-launcher-entry button[aria-selected="true"],
+.workspace-launcher-entry button:hover {
+  background: var(--surface-hover);
+}
+
+.workspace-launcher-entry button > span {
+  display: grid;
+  min-width: 0;
+}
+
+.workspace-launcher-entry strong,
+.workspace-launcher-entry small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-launcher-entry strong {
+  font-weight: var(--weight-ui-regular);
+}
+
+.workspace-launcher-entry small,
+.workspace-launcher-empty,
+.workspace-launcher-footer {
+  color: var(--text-soft);
+  font-size: var(--font-ui-small);
+}
+
+.workspace-launcher-empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.workspace-launcher-footer {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .workspace-launcher-modal {
+    width: 100vw;
+    max-width: none;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}

@@ -195,13 +195,13 @@ export async function run(ctx) {
     await firstPage.keyboard.press("Escape");
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
-    await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
-    await firstPage.waitForSelector(".right-panel-tab .right-panel-tab-status-dot.live");
+    await openFilesPanel(firstPage);
     expect(
+      (await firstPage.locator('.left-panel[data-live-workspace="true"]').count()) === 1 &&
       (await firstPage.locator(".right-file-icon-live-dot").count()) === 0,
-      "Live state should be shown on the Files tab, not repeated in the file tree.",
+      "The workspace panel should carry live context without repeating it on every file.",
     );
-    await firstPage.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await firstPage.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
       const avatar = document.querySelector(".avatar.self");
@@ -758,12 +758,15 @@ function wait(ms) {
 }
 
 async function openFilesPanel(page) {
-  if ((await page.locator(".right-panel").count()) === 0) {
-    await page.getByRole("button", { name: "Toggle side panel" }).click();
+  if ((await page.locator(".left-panel").count()) === 0) {
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".left-panel").waitFor({ state: "visible" });
   }
-  if ((await page.getByRole("button", { name: "Files", exact: true }).count()) > 0) {
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+  const filesTab = page.locator(".left-panel").getByRole("button", { name: "Files", exact: true });
+  if ((await filesTab.getAttribute("aria-pressed")) !== "true") {
+    await filesTab.click();
   }
+  await page.locator(".left-panel .right-panel-body.files").waitFor({ state: "visible" });
 }
 
 async function waitForRightPanelFile(page, fileName, timeout = 8_000) {

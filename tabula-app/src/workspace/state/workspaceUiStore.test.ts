@@ -14,12 +14,27 @@ describe("workspace UI store", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
     useWorkspaceUiStore.getState().setPreferencesOpen(true);
+    useWorkspaceUiStore.getState().setLauncherOpen(true);
 
     useWorkspaceUiStore.getState().closeFloatingChrome();
 
     expect(useWorkspaceUiStore.getState()).toMatchObject({
       topPopover: null,
       centerPopover: null,
+      workspaceMenuOpen: false,
+      preferencesOpen: false,
+      launcherOpen: false,
+    });
+  });
+
+  it("opens the launcher and closes conflicting floating chrome", () => {
+    useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
+    useWorkspaceUiStore.getState().setPreferencesOpen(true);
+
+    useWorkspaceUiStore.getState().setLauncherOpen(true);
+
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      launcherOpen: true,
       workspaceMenuOpen: false,
       preferencesOpen: false,
     });
