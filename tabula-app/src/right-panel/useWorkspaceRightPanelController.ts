@@ -105,6 +105,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
+  setLeftPanelView: (view: LeftPanelView) => void;
   text: string;
 };
 
@@ -176,6 +177,7 @@ export function useWorkspaceRightPanelController({
   setRightPanelOpen,
   setRightPanelView,
   setLeftPanelOpen,
+  setLeftPanelView,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
@@ -263,6 +265,10 @@ export function useWorkspaceRightPanelController({
     () => setLeftPanelOpen(false),
     [setLeftPanelOpen],
   );
+  const setLeftPanelViewOnly = useCallback(
+    (view: LeftPanelView) => setLeftPanelView(view),
+    [setLeftPanelView],
+  );
   const selectFromLeftPanel = useCallback((fileId: string) => {
     onSelectFile(fileId);
     if (typeof window !== "undefined" && window.innerWidth <= 1160) {
@@ -281,6 +287,7 @@ export function useWorkspaceRightPanelController({
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     onClose: closeLeftPanel,
+    onViewChange: setLeftPanelViewOnly,
     onNewFile,
     onNewFolder,
     onImportFile,

@@ -429,6 +429,7 @@ export function useWorkspaceRuntime() {
     leftPanelOpen,
     setLeftPanelOpen,
     leftPanelView,
+    setLeftPanelView,
     rightPanelOpen,
     setRightPanelOpen,
     rightPanelView,
@@ -1131,6 +1132,7 @@ export function useWorkspaceRuntime() {
       setRightPanelOpen,
       setRightPanelView,
       setLeftPanelOpen,
+      setLeftPanelView,
       text,
     });
   const resolveWorkspaceLink = useMemo(

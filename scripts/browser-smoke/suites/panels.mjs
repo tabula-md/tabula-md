@@ -390,9 +390,18 @@ export async function run(ctx) {
       "The right panel toggle should expose the shared tooltip copy.",
     );
 
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Libraries", exact: true }).click();
+    await page.getByRole("heading", { name: "No libraries yet", exact: true }).waitFor();
+    expect(
+      await page.getByRole("link", { name: "Browse libraries", exact: true }).getAttribute("href") ===
+        "https://libraries.tabula.md/",
+      "Libraries should expose the future catalog entry point without inventing a local import flow.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Files", exact: true }).click();
+    await waitForLeftPanel(page, "Files");
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".left-panel")),
       ariaLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
@@ -607,7 +616,7 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Open map", exact: true }).count()) === 0,
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
 
     await openProjectMenu(page);
@@ -662,7 +671,7 @@ export async function run(ctx) {
          (await page.locator(".right-graph-panel").count()) === 0,
        "Knowledge should remain a stable active-document context instead of a catalog or dashboard.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -1376,7 +1385,7 @@ export async function run(ctx) {
         () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
       );
     }
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
     const switcher = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1448,7 +1457,7 @@ export async function run(ctx) {
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
     const openRightFileMenu = async (fileTitle) => {
       await page.getByRole("button", { name: `Open ${fileTitle}` }).hover();

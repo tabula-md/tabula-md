@@ -1,5 +1,5 @@
 import { lazy, Suspense, type RefObject } from "react";
-import { PanelLeft } from "lucide-react";
+import { Files, Library, PanelLeft } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -10,6 +10,8 @@ import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelFiles } from "../right-panel/RightPanelFiles";
 import { PanelEmptyState } from "../right-panel/PanelEmptyState";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
+import { LibraryPanel } from "../libraries/LibraryPanel";
+import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
 
 const RightPanelSearch = lazy(() => import("../right-panel/RightPanelSearch").then((module) => ({
   default: module.RightPanelSearch,
@@ -29,6 +31,7 @@ export type LeftPanelProps = {
   isLiveWorkspace: boolean;
   language: WorkspaceLanguage;
   onClose: () => void;
+  onViewChange: (view: LeftPanelView) => void;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -58,6 +61,7 @@ export function LeftPanel({
   isLiveWorkspace,
   language,
   onClose,
+  onViewChange,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -76,6 +80,7 @@ export function LeftPanel({
 }: LeftPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closeLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
+  const libraryCopy = getLibraryPanelCopy(language);
   const {
     collapsedFileTreeFolderIds,
     toggleFileTreeFolderCollapsed,
@@ -87,7 +92,7 @@ export function LeftPanel({
   });
   if (!isOpen) return null;
 
-  const title = copy.tabs[view];
+  const title = view === "libraries" ? libraryCopy.libraries : copy.tabs[view];
   const hasDocuments = files.length > 0;
 
   return (
@@ -102,7 +107,30 @@ export function LeftPanel({
       data-live-workspace={isLiveWorkspace || undefined}
     >
       <header className="left-panel-header">
-        <strong>{title}</strong>
+        {view === "search" ? <strong>{title}</strong> : (
+          <nav className="left-panel-tabs" aria-label={libraryCopy.sections}>
+            <button
+              type="button"
+              className={view === "files" ? "active" : ""}
+              aria-label={libraryCopy.files}
+              aria-pressed={view === "files"}
+              data-tooltip={libraryCopy.files}
+              onClick={() => onViewChange("files")}
+            >
+              <Files size={16} />
+            </button>
+            <button
+              type="button"
+              className={view === "libraries" ? "active" : ""}
+              aria-label={libraryCopy.libraries}
+              aria-pressed={view === "libraries"}
+              data-tooltip={libraryCopy.libraries}
+              onClick={() => onViewChange("libraries")}
+            >
+              <Library size={16} />
+            </button>
+          </nav>
+        )}
         <button
           className="left-panel-close"
           type="button"
@@ -140,6 +168,8 @@ export function LeftPanel({
             onRenameWorkspace={onRenameWorkspace}
           />
         )}
+
+        {view === "libraries" && <LibraryPanel language={language} />}
 
         {!hasDocuments && view === "search" && (
           <section className="right-panel-content">
