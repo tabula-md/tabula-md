@@ -60,14 +60,7 @@ describe("workspace UI store", () => {
     });
   });
 
-  it("switches and toggles workspace navigation independently", () => {
-    useWorkspaceUiStore.getState().toggleLeftPanel("libraries");
-
-    expect(useWorkspaceUiStore.getState()).toMatchObject({
-      leftPanelOpen: true,
-      leftPanelView: "libraries",
-    });
-
+  it("toggles workspace navigation independently", () => {
     useWorkspaceUiStore.getState().toggleLeftPanel("files");
 
     expect(useWorkspaceUiStore.getState()).toMatchObject({

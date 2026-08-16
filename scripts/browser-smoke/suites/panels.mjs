@@ -110,7 +110,7 @@ export async function run(ctx) {
     expect(workbenchPanels.menuButtonCount === 1, "The workspace panel should expose one workspace menu button.");
     expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace panel.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 2, "The workspace panel should expose Files and Libraries only.");
+    expect(workbenchPanels.leftTabCount === 1, "The workspace panel should expose only implemented workspace sections.");
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
@@ -385,14 +385,10 @@ export async function run(ctx) {
     }
     await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Libraries", exact: true }).click();
-    await page.getByRole("heading", { name: "No libraries yet", exact: true }).waitFor();
     expect(
-      await page.getByRole("link", { name: "Browse libraries", exact: true }).getAttribute("href") ===
-        "https://libraries.tabula.md/",
-      "Libraries should expose the future catalog entry point without inventing a local import flow.",
+      (await page.getByRole("button", { name: "Libraries", exact: true }).count()) === 0,
+      "Libraries should stay hidden until installed bundles can be managed in-product.",
     );
-    await page.locator(".left-panel-tabs").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".left-panel")),
