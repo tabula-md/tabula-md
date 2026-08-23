@@ -68,29 +68,17 @@ export function WorkspaceRightPanel({
   }, [width]);
 
   useLayoutEffect(() => {
-    const mainPanel = document.querySelector(".main-panel");
     const updateOverlayMode = () => {
-      const splitViewOpen = mainPanel?.classList.contains("split-view-open") ?? false;
       setOverlayMode(
         panelOpen
-        && (window.innerWidth <= 820 || (window.innerWidth <= 1160 && splitViewOpen)),
+        && window.innerWidth <= 1160,
       );
     };
-    const splitViewObserver = mainPanel
-      ? new MutationObserver(updateOverlayMode)
-      : null;
 
     updateOverlayMode();
     window.addEventListener("resize", updateOverlayMode);
-    if (mainPanel && splitViewObserver) {
-      splitViewObserver.observe(mainPanel, {
-        attributeFilter: ["class"],
-        attributes: true,
-      });
-    }
     return () => {
       window.removeEventListener("resize", updateOverlayMode);
-      splitViewObserver?.disconnect();
     };
   }, [panelOpen]);
 

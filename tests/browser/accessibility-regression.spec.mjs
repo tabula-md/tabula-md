@@ -4,10 +4,12 @@ import { createSmokeContext } from "../../scripts/browser-smoke/support/runtime.
 const layoutCases = [
   { name: "wide light", width: 1440, theme: "light" },
   { name: "wide dark", width: 1440, theme: "dark" },
+  { name: "above panel overlay boundary", width: 1161, theme: "light" },
+  { name: "panel overlay boundary", width: 1160, theme: "dark" },
   { name: "narrow light", width: 900, theme: "light" },
   { name: "narrow dark", width: 900, theme: "dark" },
-  { name: "above tablet boundary", width: 821, theme: "dark" },
-  { name: "tablet boundary", width: 820, theme: "light" },
+  { name: "compact light", width: 821, theme: "dark" },
+  { name: "compact dark", width: 820, theme: "light" },
   { name: "above mobile boundary", width: 561, theme: "light" },
   { name: "mobile boundary", width: 560, theme: "dark", manyTabs: true },
   { name: "mobile", width: 390, theme: "light" },
@@ -87,7 +89,7 @@ for (const layoutCase of layoutCases) {
     await page.keyboard.press("Enter");
     const panel = page.locator(".right-panel");
     await expect(panel).toBeVisible();
-    const overlayExpected = layoutCase.width <= 820;
+    const overlayExpected = layoutCase.width <= 1160;
     if (overlayExpected) {
       await expect(panel).toHaveAttribute("role", "dialog");
       await expect(panel).toHaveAttribute("aria-modal", "true");
