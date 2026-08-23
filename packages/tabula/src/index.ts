@@ -222,6 +222,7 @@ export type {
   PreviewBody,
 } from "./markdown/parse";
 export {
+  addFrontmatterValue,
   getLineNumberForOffset,
   getLineStartOffset,
   getMarkdownDocumentTitle,
@@ -231,6 +232,8 @@ export {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  removeFrontmatterValue,
+  renameFrontmatterKey,
   updateFrontmatterValue,
 } from "./markdown/parse";
 

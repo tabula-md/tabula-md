@@ -1,5 +1,10 @@
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import { updateFrontmatterValue } from "@tabula-md/tabula";
+import {
+  addFrontmatterValue,
+  removeFrontmatterValue,
+  renameFrontmatterKey,
+  updateFrontmatterValue,
+} from "@tabula-md/tabula";
 import type {
   EditorVisualBlockRange,
   EditorVisualReplacement,
@@ -40,7 +45,7 @@ const visualSourceLabels: Partial<Record<EditorVisualReplacement["kind"], string
 };
 
 const visualWidgetResizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
-const expandedFrontmatterDocuments = new Set<string>();
+const collapsedFrontmatterDocuments = new Set<string>();
 
 const isEditableMetadataValue = (value: unknown) =>
   typeof value === "string" ||
@@ -73,11 +78,50 @@ const getMinimalDocumentChange = (before: string, after: string) => {
   return { from, to: beforeTo, insert: after.slice(from, afterTo) };
 };
 
+const applyMetadataResult = (
+  view: EditorView,
+  result: ReturnType<typeof updateFrontmatterValue>,
+) => {
+  const currentMarkdown = view.state.doc.toString();
+  if (!result.ok || result.markdown === currentMarkdown) return false;
+  view.dispatch({ changes: getMinimalDocumentChange(currentMarkdown, result.markdown) });
+  return true;
+};
+
+const getMetadataValueKind = (value: unknown) => {
+  if (Array.isArray(value)) return "list";
+  if (typeof value === "boolean") return "toggle";
+  if (typeof value === "number") return "number";
+  if (value && typeof value === "object") return "object";
+  return "text";
+};
+
+type MetadataValueKind = ReturnType<typeof getMetadataValueKind>;
+
+const metadataKindLabels: Record<MetadataValueKind, string> = {
+  text: "Text",
+  number: "Number",
+  toggle: "Checkbox",
+  list: "List",
+  object: "Object",
+};
+
+const convertMetadataValue = (value: unknown, kind: MetadataValueKind) => {
+  if (kind === "text") return Array.isArray(value) ? value.join(", ") : String(value ?? "");
+  if (kind === "number") {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+  if (kind === "toggle") return Boolean(value);
+  if (kind === "list") return Array.isArray(value) ? value : value === "" ? [] : [String(value)];
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+};
+
 class FrontmatterWidget extends WidgetType {
   constructor(
     readonly sourceTo: number,
     readonly metadata: Record<string, unknown>,
-    readonly label: string,
+    readonly copy: EditorVisualModeCopy,
     readonly documentId: string,
   ) {
     super();
@@ -86,13 +130,13 @@ class FrontmatterWidget extends WidgetType {
   toDOM(view: EditorView) {
     const details = document.createElement("details");
     details.className = "cm-visual-metadata";
-    const initiallyOpen = expandedFrontmatterDocuments.has(this.documentId);
+    const initiallyOpen = !collapsedFrontmatterDocuments.has(this.documentId);
     let initialized = false;
     details.open = initiallyOpen;
     details.addEventListener("toggle", () => {
       if (!initialized) return;
-      if (details.open) expandedFrontmatterDocuments.add(this.documentId);
-      else expandedFrontmatterDocuments.delete(this.documentId);
+      if (details.open) collapsedFrontmatterDocuments.delete(this.documentId);
+      else collapsedFrontmatterDocuments.add(this.documentId);
     });
     window.requestAnimationFrame(() => {
       details.open = initiallyOpen;
@@ -100,39 +144,113 @@ class FrontmatterWidget extends WidgetType {
     });
 
     const summary = document.createElement("summary");
+    const chevron = document.createElement("span");
+    chevron.className = "cm-visual-metadata-chevron";
+    chevron.textContent = "›";
+    chevron.setAttribute("aria-hidden", "true");
     const title = document.createElement("span");
-    title.textContent = this.label;
+    title.className = "cm-visual-metadata-title";
+    title.textContent = this.copy.frontmatter;
     const count = document.createElement("span");
     count.className = "cm-visual-metadata-count";
     count.textContent = String(Object.keys(this.metadata).length);
-    summary.append(title, count);
+    summary.append(chevron, title, count);
     details.append(summary);
 
     const list = document.createElement("div");
     list.className = "cm-visual-metadata-list";
     for (const [key, value] of Object.entries(this.metadata)) {
-      const row = document.createElement("label");
+      const row = document.createElement("div");
       row.className = "cm-visual-metadata-row";
-      const name = document.createElement("span");
+      const valueKind = getMetadataValueKind(value);
+      const type = document.createElement("select");
+      type.className = `cm-visual-metadata-icon cm-visual-metadata-icon-${valueKind}`;
+      type.setAttribute("aria-label", `Type for ${key}`);
+      (["text", "number", "toggle", "list"] as MetadataValueKind[]).forEach((kind) => {
+        const option = document.createElement("option");
+        option.value = kind;
+        option.textContent = metadataKindLabels[kind];
+        option.selected = kind === valueKind;
+        type.append(option);
+      });
+      if (valueKind === "object") {
+        const option = document.createElement("option");
+        option.value = "object";
+        option.textContent = metadataKindLabels.object;
+        option.selected = true;
+        type.append(option);
+      }
+      type.addEventListener("change", () => {
+        applyMetadataResult(view, updateFrontmatterValue(
+          view.state.doc.toString(), key,
+          convertMetadataValue(value, type.value as MetadataValueKind),
+        ));
+      });
+      const name = document.createElement("input");
       name.className = "cm-visual-metadata-key";
-      name.textContent = key;
-      row.append(name);
+      name.value = key;
+      name.setAttribute("aria-label", `Property name ${key}`);
+      const rename = () => {
+        if (name.value.trim() === key) return;
+        if (!applyMetadataResult(view, renameFrontmatterKey(
+          view.state.doc.toString(), key, name.value,
+        ))) name.value = key;
+      };
+      name.addEventListener("change", rename);
+      name.addEventListener("blur", rename);
+      name.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") name.blur();
+      });
+      row.append(type, name);
 
-      if (isEditableMetadataValue(value)) {
+      if (Array.isArray(value) && isEditableMetadataValue(value)) {
+        const tags = document.createElement("div");
+        tags.className = "cm-visual-metadata-tags";
+        value.forEach((item, index) => {
+          const chip = document.createElement("span");
+          chip.className = "cm-visual-metadata-tag";
+          const tagText = document.createElement("span");
+          tagText.textContent = `${key.toLowerCase() === "tags" ? "#" : ""}${String(item)}`;
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.textContent = "×";
+          remove.setAttribute("aria-label", `Remove ${String(item)}`);
+          remove.addEventListener("click", () => {
+            applyMetadataResult(
+              view,
+              updateFrontmatterValue(
+                view.state.doc.toString(),
+                key,
+                value.filter((_, itemIndex) => itemIndex !== index),
+              ),
+            );
+          });
+          chip.append(tagText, remove);
+          tags.append(chip);
+        });
+        const addTag = document.createElement("input");
+        addTag.className = "cm-visual-metadata-tag-input";
+        addTag.placeholder = "+";
+        addTag.setAttribute("aria-label", `Add item to ${key}`);
+        addTag.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" || !addTag.value.trim()) return;
+          event.preventDefault();
+          applyMetadataResult(view, updateFrontmatterValue(
+            view.state.doc.toString(), key, [...value, addTag.value.trim()],
+          ));
+        });
+        tags.append(addTag);
+        row.append(tags);
+      } else if (isEditableMetadataValue(value)) {
         const input = document.createElement("input");
         input.className = "cm-visual-metadata-input";
         input.type = typeof value === "boolean" ? "checkbox" : "text";
         if (typeof value === "boolean") input.checked = value;
         else input.value = Array.isArray(value) ? value.join(", ") : String(value ?? "");
         const commit = () => {
-          const result = updateFrontmatterValue(
-            view.state.doc.toString(),
-            key,
-            parseMetadataInput(input, value),
-          );
-          const currentMarkdown = view.state.doc.toString();
-          if (!result.ok || result.markdown === currentMarkdown) return;
-          view.dispatch({ changes: getMinimalDocumentChange(currentMarkdown, result.markdown) });
+          applyMetadataResult(view, updateFrontmatterValue(
+            view.state.doc.toString(), key, parseMetadataInput(input, value),
+          ));
         };
         input.addEventListener("change", commit);
         input.addEventListener("blur", commit);
@@ -151,14 +269,78 @@ class FrontmatterWidget extends WidgetType {
           : `{${Object.keys(value as object).length}}`;
         row.append(complex);
       }
+      const actions = document.createElement("div");
+      actions.className = "cm-visual-metadata-actions";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Remove ${key}`);
+      remove.addEventListener("click", () => {
+        applyMetadataResult(view, removeFrontmatterValue(view.state.doc.toString(), key));
+      });
+      actions.append(remove);
+      row.append(actions);
       list.append(row);
     }
+    const addRow = document.createElement("div");
+    addRow.className = "cm-visual-metadata-add-row";
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "cm-visual-metadata-add";
+    addButton.textContent = `+ ${this.copy.addProperty}`;
+    addButton.addEventListener("click", () => {
+      addButton.hidden = true;
+      const fields = document.createElement("div");
+      fields.className = "cm-visual-metadata-new-property";
+      const kindInput = document.createElement("select");
+      (["text", "number", "toggle", "list"] as MetadataValueKind[]).forEach((kind) => {
+        const option = document.createElement("option");
+        option.value = kind;
+        option.textContent = metadataKindLabels[kind];
+        kindInput.append(option);
+      });
+      const keyInput = document.createElement("input");
+      keyInput.placeholder = "property";
+      keyInput.setAttribute("aria-label", "Property name");
+      const valueInput = document.createElement("input");
+      valueInput.placeholder = "value";
+      valueInput.setAttribute("aria-label", "Property value");
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.className = "cm-visual-metadata-new-confirm";
+      confirm.textContent = this.copy.addProperty;
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "cm-visual-metadata-new-cancel";
+      cancel.textContent = "×";
+      cancel.setAttribute("aria-label", "Cancel adding property");
+      const commit = () => {
+        if (!keyInput.value.trim()) return;
+        if (applyMetadataResult(view, addFrontmatterValue(
+          view.state.doc.toString(), keyInput.value,
+          convertMetadataValue(valueInput.value, kindInput.value as MetadataValueKind),
+        ))) fields.remove();
+      };
+      valueInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") commit();
+      });
+      confirm.addEventListener("click", commit);
+      cancel.addEventListener("click", () => {
+        fields.remove();
+        addButton.hidden = false;
+      });
+      fields.append(kindInput, keyInput, valueInput, confirm, cancel);
+      addRow.append(fields);
+      keyInput.focus();
+    });
+    addRow.append(addButton);
+    list.append(addRow);
     details.append(list);
     return details;
   }
 
   ignoreEvent(event: Event) {
-    return event.target instanceof Element && Boolean(event.target.closest("details, input"));
+    return event.target instanceof Element && Boolean(event.target.closest("details, input, button"));
   }
 }
 
@@ -793,7 +975,7 @@ export const createEditorVisualReplacementDecoration = (
         widget: new FrontmatterWidget(
           replacement.to,
           replacement.metadata,
-          copy.frontmatter,
+          copy,
           sourceDocumentId,
         ),
       });

@@ -198,7 +198,12 @@ export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
 
 export type FrontmatterValueUpdate =
   | { ok: true; markdown: string }
-  | { ok: false; reason: "invalid_frontmatter" | "missing_key" };
+  | { ok: false; reason: "duplicate_key" | "invalid_frontmatter" | "invalid_key" | "missing_key" };
+
+const stringifyFrontmatterValue = (value: unknown) => stringify(value, {
+  collectionStyle: "flow",
+  lineWidth: 0,
+}).replace(/\n$/, "");
 
 export const updateFrontmatterValue = (
   markdown: string,
@@ -218,15 +223,96 @@ export const updateFrontmatterValue = (
 
   const valueNode = document.get(key, true) as { range?: readonly number[] } | undefined;
   if (!valueNode || !valueNode.range) return { ok: false, reason: "missing_key" };
-  const serializedValue = stringify(value, {
-    collectionStyle: "flow",
-    lineWidth: 0,
-  }).replace(/\n$/, "");
+  const serializedValue = stringifyFrontmatterValue(value);
   const serialized = `${frontmatterBlock.rawFrontmatter.slice(0, valueNode.range[0])}${serializedValue}${frontmatterBlock.rawFrontmatter.slice(valueNode.range[1])}`;
   const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
   return {
     ok: true,
     markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${serialized}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`,
+  };
+};
+
+export const addFrontmatterValue = (
+  markdown: string,
+  key: string,
+  value: unknown,
+): FrontmatterValueUpdate => {
+  const normalizedKey = key.trim();
+  if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(normalizedKey)) {
+    return { ok: false, reason: "invalid_key" };
+  }
+  const frontmatterBlock = getFrontmatterBlock(markdown);
+  if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents)) {
+    return { ok: false, reason: "invalid_frontmatter" };
+  }
+  if (document.has(normalizedKey)) return { ok: false, reason: "duplicate_key" };
+
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const inserted = `${normalizedKey}: ${stringifyFrontmatterValue(value)}${lineBreak}`;
+  return {
+    ok: true,
+    markdown: `${markdown.slice(0, frontmatterBlock.closingStart)}${inserted}${markdown.slice(frontmatterBlock.closingStart)}`,
+  };
+};
+
+export const renameFrontmatterKey = (
+  markdown: string,
+  key: string,
+  nextKey: string,
+): FrontmatterValueUpdate => {
+  const normalizedKey = nextKey.trim();
+  if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(normalizedKey)) {
+    return { ok: false, reason: "invalid_key" };
+  }
+  const frontmatterBlock = getFrontmatterBlock(markdown);
+  if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents)) {
+    return { ok: false, reason: "invalid_frontmatter" };
+  }
+  if (normalizedKey !== key && document.has(normalizedKey)) {
+    return { ok: false, reason: "duplicate_key" };
+  }
+  const pair = document.contents.items.find((item) => isScalar(item.key) && item.key.value === key);
+  if (!pair || !isScalar(pair.key) || !pair.key.range) {
+    return { ok: false, reason: "missing_key" };
+  }
+  const [from, to] = pair.key.range;
+  const raw = `${frontmatterBlock.rawFrontmatter.slice(0, from)}${normalizedKey}${frontmatterBlock.rawFrontmatter.slice(to)}`;
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  return {
+    ok: true,
+    markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${raw}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`,
+  };
+};
+
+export const removeFrontmatterValue = (
+  markdown: string,
+  key: string,
+): FrontmatterValueUpdate => {
+  const frontmatterBlock = getFrontmatterBlock(markdown);
+  if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents)) {
+    return { ok: false, reason: "invalid_frontmatter" };
+  }
+  const index = document.contents.items.findIndex((item) => isScalar(item.key) && item.key.value === key);
+  const pair = document.contents.items[index];
+  if (!pair || !isScalar(pair.key) || !pair.key.range) {
+    return { ok: false, reason: "missing_key" };
+  }
+  const nextPair = document.contents.items[index + 1];
+  const from = pair.key.range[0];
+  const to = nextPair && isScalar(nextPair.key) && nextPair.key.range
+    ? nextPair.key.range[0]
+    : frontmatterBlock.rawFrontmatter.length;
+  const raw = `${frontmatterBlock.rawFrontmatter.slice(0, from)}${frontmatterBlock.rawFrontmatter.slice(to)}`.replace(/\r?\n$/, "");
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  return {
+    ok: true,
+    markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${raw}${raw ? lineBreak : ""}${markdown.slice(frontmatterBlock.closingStart)}`,
   };
 };
 

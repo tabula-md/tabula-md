@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFrontmatterValue,
+  removeFrontmatterValue,
+  renameFrontmatterKey,
   getMarkdownDocumentTitle,
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
@@ -87,6 +90,26 @@ Body`);
     expect(result).toEqual({
       ok: true,
       markdown: "---\ntags: [incident, operations]\nstatus: stable\n---\nBody",
+    });
+  });
+
+  it("adds a property immediately before the closing delimiter", () => {
+    expect(addFrontmatterValue("---\ntitle: Guide\n---\nBody", "owner", "team:docs"))
+      .toEqual({
+        ok: true,
+        markdown: "---\ntitle: Guide\nowner: team:docs\n---\nBody",
+      });
+  });
+
+  it("renames and removes properties without reformatting their siblings", () => {
+    const markdown = "---\ntitle: Guide\ntags: [docs, help]\nowner: team:docs\n---\nBody";
+    expect(renameFrontmatterKey(markdown, "owner", "maintainer")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\ntags: [docs, help]\nmaintainer: team:docs\n---\nBody",
+    });
+    expect(removeFrontmatterValue(markdown, "tags")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\nowner: team:docs\n---\nBody",
     });
   });
 
