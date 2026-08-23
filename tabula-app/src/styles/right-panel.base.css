@@ -323,32 +323,8 @@
 
 
 @media (max-width: 1160px) {
-  .main-panel.right-panel-open {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .right-panel-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: var(--layer-panel);
-    display: block;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    background: var(--overlay-scrim);
-  }
-
   .right-panel {
-    position: fixed;
-    top: 0;
     right: 0;
-    width: min(360px, calc(100vw - 48px));
-    height: 100dvh;
-    box-shadow: var(--shadow-popover);
-  }
-
-  .right-panel-divider {
-    display: none;
   }
 
   .right-panel-overlay-toggle {

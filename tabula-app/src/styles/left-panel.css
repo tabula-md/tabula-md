@@ -126,32 +126,8 @@
 }
 
 @media (max-width: 1160px) {
-  .main-panel.left-panel-open {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .left-panel-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: var(--layer-panel);
-    display: block;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    background: var(--overlay-scrim);
-  }
-
   .left-panel {
-    position: fixed;
-    top: 0;
     left: 0;
-    width: min(360px, calc(100vw - 48px));
-    height: 100dvh;
-    box-shadow: var(--shadow-popover);
-  }
-
-  .left-panel-divider {
-    display: none;
   }
 }
 

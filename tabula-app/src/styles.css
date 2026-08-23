@@ -15,6 +15,7 @@
 @import "./styles/editor-selection.css";
 @import "./styles/preview.css";
 @import "./styles/right-panel.css";
+@import "./styles/panel-layout.css";
 @import "./styles/status-bar.css";
 @import "./styles/toast.css";
 @import "./styles/ui-primitives.css";
