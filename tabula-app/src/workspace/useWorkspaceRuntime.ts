@@ -9,18 +9,9 @@ import { getShortcutPlatform } from "./keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import {
   applyTextPatches,
-  appendOkfVerification,
-  captureWorkspaceKnowledgeBaseline,
-  setOkfConceptType,
-  type OkfConceptRepairUpdate,
-  type OkfIndexCandidate,
-  type OkfWikilinkRepairUpdate,
   type TextChange,
-  type TextPatch,
   type WorkspaceKnowledgeLink,
   type WorkspaceKnowledgeBaseline,
-  type WorkspaceKnowledgeHealthIssue,
-  type WorkspaceOkfLogCandidate,
   type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
@@ -36,7 +27,6 @@ import {
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
   syncUrlForLocalWorkspace,
-  WORKSPACE_ROOT_FOLDER_ID,
   type FileViewMode,
   type WorkspaceState,
 } from "./workspaceStorage";
@@ -103,18 +93,6 @@ import {
   resolveMarkdownPreviewWorkspaceLink,
 } from "../preview/workspacePreviewLinks";
 import { getAmbiguousWorkspaceLinkResolutionEdit } from "./workspaceLinkResolution";
-import {
-  getWorkspaceFilePaths,
-  getWorkspaceFolderPaths,
-} from "./workspaceDisplayTitles";
-import { getWorkspaceKnowledgeDocuments } from "./workspaceKnowledgeModel";
-
-type WorkspaceMarkdownUpdate = {
-  documentId: string;
-  beforeMarkdown: string;
-  markdown: string;
-  patches: readonly TextPatch[];
-};
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -202,7 +180,6 @@ export function useWorkspaceRuntime() {
   const [knowledgeBaseline, setKnowledgeBaseline] = useState<
     WorkspaceKnowledgeBaseline | undefined
   >(initialWorkspace.knowledgeBaseline);
-  const knowledgeCompatibilityOpenRequest = 0;
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
@@ -475,7 +452,6 @@ export function useWorkspaceRuntime() {
     materializeWorkspace: materializeRoomWorkspace,
     materializeDocument: materializeRoomDocument,
     materializeDocumentComments: materializeRoomDocumentComments,
-    replaceDocumentText: replaceRoomDocumentText,
     upsertComment: upsertRoomComment,
     resetCollaborationState,
     retryConnection: retryCollaborationConnection,
@@ -512,192 +488,9 @@ export function useWorkspaceRuntime() {
     setHistoryByFileId,
     updateActiveFileText,
   } = activeFileEditor;
-  const setActiveFileOkfType = useEventCallback((conceptType: string) => {
-    if (!activeFile) return false;
-    flushPendingEditorCommit();
-    const currentText = getLatestFileText(activeFile.id, activeFile.text);
-    const result = setOkfConceptType(currentText, conceptType);
-    if (!result.ok) return false;
-    if (!result.changed) return true;
-    mapFileCommentAnchors(activeFile.id, result.patches, currentText.length);
-    updateActiveFileText(result.markdown, { patches: result.patches });
-    return true;
-  });
   const handleUserWorkspaceBoundary = useEventCallback(() => {
     stopFollowing("local-navigation");
     flushPendingEditorCommit();
-  });
-  const applyWorkspaceMarkdownUpdates = useEventCallback((
-    updates: readonly WorkspaceMarkdownUpdate[],
-  ) => {
-    if (updates.length === 0) return false;
-    handleUserWorkspaceBoundary();
-    const filesById = new Map(files.map((file) => [file.id, file]));
-    for (const update of updates) {
-      const file = filesById.get(update.documentId);
-      if (!file) return false;
-      const currentText = file.id === activeFile?.id
-        ? getLatestFileText(file.id, file.text)
-        : activeRoom
-          ? materializeRoomDocument(file.id)
-          : file.text;
-      if (currentText !== update.beforeMarkdown) return false;
-    }
-
-    for (const update of updates) {
-      if (update.documentId === activeFile?.id) {
-        mapFileCommentAnchors(
-          update.documentId,
-          update.patches,
-          update.beforeMarkdown.length,
-        );
-        updateActiveFileText(update.markdown, { patches: update.patches });
-      } else if (activeRoom) {
-        if (!replaceRoomDocumentText(update.documentId, update.markdown)) return false;
-        mapFileCommentAnchors(
-          update.documentId,
-          update.patches,
-          update.beforeMarkdown.length,
-        );
-      } else {
-        mapFileCommentAnchors(
-          update.documentId,
-          update.patches,
-          update.beforeMarkdown.length,
-        );
-        setFileText(update.documentId, update.markdown);
-      }
-    }
-    return true;
-  });
-  const applyOkfConceptRepairs = useEventCallback((
-    updates: readonly OkfConceptRepairUpdate[],
-  ) => applyWorkspaceMarkdownUpdates(updates));
-  const applyOkfWikilinkRepairs = useEventCallback((
-    updates: readonly OkfWikilinkRepairUpdate[],
-  ) => applyWorkspaceMarkdownUpdates(updates));
-  const verifyKnowledgeDocument = useEventCallback((
-    documentId: string,
-    verifiedBy: string,
-  ) => {
-    const file = files.find((candidate) => candidate.id === documentId);
-    if (!file) return false;
-    flushPendingEditorCommit();
-    const currentText = file.id === activeFile?.id
-      ? getLatestFileText(file.id, file.text)
-      : activeRoom
-        ? materializeRoomDocument(file.id)
-        : file.text;
-    if (currentText === null) return false;
-    const result = appendOkfVerification(currentText, verifiedBy);
-    if (!result.ok) return false;
-    return applyWorkspaceMarkdownUpdates([{
-      documentId,
-      beforeMarkdown: currentText,
-      markdown: result.markdown,
-      patches: result.patches,
-    }]);
-  });
-  const startKnowledgeTracking = useEventCallback(() => {
-    if (activeRoom) return false;
-    handleUserWorkspaceBoundary();
-    const snapshot = getWorkspaceSnapshot();
-    setKnowledgeBaseline(captureWorkspaceKnowledgeBaseline(
-      getWorkspaceKnowledgeDocuments(snapshot.files, snapshot.folders),
-    ));
-    return true;
-  });
-  const materializeOkfLog = useEventCallback(async (
-    candidate: WorkspaceOkfLogCandidate,
-  ) => {
-    if (!knowledgeBaseline || activeRoom || !candidate.markdown) return false;
-    handleUserWorkspaceBoundary();
-    const snapshot = getWorkspaceSnapshot();
-    const currentDocuments = getWorkspaceKnowledgeDocuments(
-      snapshot.files,
-      snapshot.folders,
-    );
-    const { planWorkspaceOkfLog } = await import(
-      "./workspaceKnowledgeChangesRuntime"
-    );
-    const currentCandidate = planWorkspaceOkfLog(
-      knowledgeBaseline,
-      currentDocuments,
-      candidate.date,
-    );
-    if (
-      currentCandidate.state !== candidate.state
-      || currentCandidate.currentMarkdown !== candidate.currentMarkdown
-      || currentCandidate.markdown !== candidate.markdown
-      || currentCandidate.changeSet.changes.length === 0
-    ) {
-      return false;
-    }
-
-    let materialized = false;
-    if (candidate.currentDocumentId && candidate.currentMarkdown) {
-      materialized = applyWorkspaceMarkdownUpdates([{
-        documentId: candidate.currentDocumentId,
-        beforeMarkdown: candidate.currentMarkdown,
-        markdown: candidate.markdown,
-        patches: [{
-          from: 0,
-          to: candidate.currentMarkdown.length,
-          insert: candidate.markdown,
-        }],
-      }]);
-    } else {
-      const rootLogExists = [...getWorkspaceFilePaths(
-        snapshot.files,
-        snapshot.folders,
-      ).values()].some((path) => path.toLocaleLowerCase() === "log.md");
-      if (rootLogExists) return false;
-      materialized = Boolean(addRoomAwareFileFromContent(
-        "log.md",
-        candidate.markdown,
-        "edit",
-        { parentId: WORKSPACE_ROOT_FOLDER_ID },
-      ));
-    }
-    if (!materialized) return false;
-    setKnowledgeBaseline(captureWorkspaceKnowledgeBaseline(currentDocuments));
-    return true;
-  });
-  const materializeOkfIndex = useEventCallback((candidate: OkfIndexCandidate) => {
-    if (candidate.documentId) {
-      if (typeof candidate.currentMarkdown !== "string") return false;
-      return applyWorkspaceMarkdownUpdates([{
-        documentId: candidate.documentId,
-        beforeMarkdown: candidate.currentMarkdown,
-        markdown: candidate.markdown,
-        patches: [{
-          from: 0,
-          to: candidate.currentMarkdown.length,
-          insert: candidate.markdown,
-        }],
-      }]);
-    }
-
-    handleUserWorkspaceBoundary();
-    if ([...getWorkspaceFilePaths(files, folders).values()].includes(candidate.path)) {
-      return false;
-    }
-    const matchingFolderIds = [...getWorkspaceFolderPaths(folders)]
-      .filter(([, path]) => path === candidate.directoryPath)
-      .map(([folderId]) => folderId);
-    if (matchingFolderIds.length !== 1) return false;
-    const createdFile = addRoomAwareFileFromContent(
-      "index.md",
-      candidate.markdown,
-      "edit",
-      { parentId: matchingFolderIds[0] ?? WORKSPACE_ROOT_FOLDER_ID },
-    );
-    return Boolean(
-      createdFile
-      && getWorkspaceStoreSnapshot(workspaceSession.mode).files.some(
-        (file) => file.id === createdFile.id,
-      )
-    );
   });
   const resolveAmbiguousWorkspaceLink = useEventCallback((
     link: WorkspaceKnowledgeLink,
@@ -946,25 +739,6 @@ export function useWorkspaceRuntime() {
     showToast,
     upsertRoomComment,
   });
-  const selectKnowledgeHealthIssue = useEventCallback(
-    (issue: WorkspaceKnowledgeHealthIssue) => {
-      const targetFile = files.find((file) => file.id === issue.documentId);
-      if (!targetFile) return;
-      selectFile(issue.documentId);
-      if (
-        issue.from === undefined ||
-        issue.to === undefined ||
-        issue.from < 0 ||
-        issue.to < issue.from
-      ) {
-        return;
-      }
-      if (targetFile.viewMode !== "edit") {
-        setWorkspaceFileViewMode("edit");
-      }
-      queueEditorTextRange(issue.from, issue.to);
-    },
-  );
   const workspaceCommentActions = useWorkspaceCommentActions({
     activeBookmarks,
     activeFile,
@@ -1069,8 +843,6 @@ export function useWorkspaceRuntime() {
       commentsByFileId,
       files,
       folders,
-      knowledgeBaseline,
-      knowledgeCompatibilityOpenRequest,
       focusTextRange,
       formatCommentDate,
       identityName: identity.name,
@@ -1102,14 +874,6 @@ export function useWorkspaceRuntime() {
       onReplyDraftChange: updateCommentReplyDraft,
       onResolveAmbiguousLink: resolveAmbiguousWorkspaceLink,
       onSelectFile: selectFile,
-      onSelectKnowledgeHealthIssue: selectKnowledgeHealthIssue,
-      onSetActiveFileOkfType: setActiveFileOkfType,
-      onApplyOkfConceptRepairs: applyOkfConceptRepairs,
-      onApplyOkfWikilinkRepairs: applyOkfWikilinkRepairs,
-      onVerifyKnowledgeDocument: verifyKnowledgeDocument,
-      onMaterializeOkfIndex: materializeOkfIndex,
-      onMaterializeOkfLog: materializeOkfLog,
-      onStartKnowledgeTracking: startKnowledgeTracking,
       onStartCommentReply: startCommentReply,
       onToggleCommentResolved: toggleFileCommentResolved,
       outlineHeadings,
