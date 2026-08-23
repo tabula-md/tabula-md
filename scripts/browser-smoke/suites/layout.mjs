@@ -392,12 +392,12 @@ export async function run(ctx) {
     };
 
     const closedLayout = await page.evaluate(readStableDocumentLayout);
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone .left-panel-trigger").click();
     await waitForLeftPanel(page, "Files");
     const workspacePanelLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".left-panel .left-panel-close").click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
     await ensureSidePanelOpen(page);
     const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
@@ -494,11 +494,11 @@ export async function run(ctx) {
         content:
           "---\ntitle: Split layout\ndescription: Frontmatter should remain readable beside the editor.\n---\n\n## Start here\n\nSplit layout smoke content.",
       });
-      await ensureSidePanelOpen(page);
       await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
+      await ensureSidePanelOpen(page);
 
       const splitLayout = await page.evaluate(() => {
         const readRect = (selector) => {

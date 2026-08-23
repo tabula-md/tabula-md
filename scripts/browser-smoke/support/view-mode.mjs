@@ -10,7 +10,7 @@ const getActiveViewMode = (page) =>
   page.locator(".tab-item.active").getAttribute("data-view-mode");
 
 const selectEditingMode = async (page, editingMode) => {
-  await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+  await page.locator(".document-options-button").click();
   await page
     .locator(".document-controls-popover")
     .locator(`[data-editing-mode="${editingMode}"]`)

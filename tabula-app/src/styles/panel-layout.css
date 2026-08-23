@@ -45,3 +45,11 @@
     display: none;
   }
 }
+
+@media (max-width: 560px) {
+  .left-panel,
+  .right-panel {
+    width: 100vw;
+    max-width: none;
+  }
+}
