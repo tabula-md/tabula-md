@@ -1,5 +1,5 @@
 import { type RefObject } from "react";
-import { Files, Library, Menu, PanelLeft } from "lucide-react";
+import { Files, Menu, PanelLeft } from "lucide-react";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -8,8 +8,6 @@ import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelFiles } from "../right-panel/RightPanelFiles";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
-import { LibraryPanel } from "../libraries/LibraryPanel";
-import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
 
 export type LeftPanelProps = {
   isOpen: boolean;
@@ -75,7 +73,6 @@ export function LeftPanel({
   const workspaceMenuLabel = workspaceMenuOpen
     ? getWorkspaceChromeCopy(language).topChrome.closeWorkspaceMenu
     : getWorkspaceChromeCopy(language).topChrome.openWorkspaceMenu;
-  const libraryCopy = getLibraryPanelCopy(language);
   const {
     collapsedFileTreeFolderIds,
     toggleFileTreeFolderCollapsed,
@@ -87,7 +84,7 @@ export function LeftPanel({
   });
   if (!isOpen) return null;
 
-  const title = view === "libraries" ? libraryCopy.libraries : copy.tabs[view];
+  const title = copy.tabs[view];
 
   return (
     <aside
@@ -120,26 +117,16 @@ export function LeftPanel({
         >
           <Menu size={16} />
         </button>
-        <nav className="left-panel-tabs" aria-label={libraryCopy.sections}>
+        <nav className="left-panel-tabs" aria-label="Workspace sections">
             <button
               type="button"
               className={view === "files" ? "active" : ""}
-              aria-label={libraryCopy.files}
+              aria-label={copy.tabs.files}
               aria-pressed={view === "files"}
-              data-tooltip={libraryCopy.files}
+              data-tooltip={copy.tabs.files}
               onClick={() => onViewChange("files")}
             >
               <Files size={16} />
-            </button>
-            <button
-              type="button"
-              className={view === "libraries" ? "active" : ""}
-              aria-label={libraryCopy.libraries}
-              aria-pressed={view === "libraries"}
-              data-tooltip={libraryCopy.libraries}
-              onClick={() => onViewChange("libraries")}
-            >
-              <Library size={16} />
             </button>
         </nav>
       </header>
@@ -170,8 +157,6 @@ export function LeftPanel({
             onRenameWorkspace={onRenameWorkspace}
           />
         )}
-
-        {view === "libraries" && <LibraryPanel language={language} />}
       </div>
     </aside>
   );
