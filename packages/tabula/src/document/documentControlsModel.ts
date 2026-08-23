@@ -1,6 +1,5 @@
 import {
   READING_WIDTHS,
-  getEditingModeViewMode,
   type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
@@ -23,6 +22,7 @@ export type DocumentControlsCopy = {
   standardWidth: string;
   syncScrolling: string;
   sourceOptions: string;
+  sourcePreview: string;
   textWidth: string;
   viewControls: string;
   visual: string;
@@ -35,14 +35,6 @@ export type DocumentViewModeOption = {
   icon: DocumentViewModeIcon;
   label: string;
   viewMode: FileViewMode;
-};
-
-export type DocumentEditingModeOption = {
-  active: boolean;
-  editingMode: FileEditingMode;
-  icon: Extract<DocumentViewModeIcon, "edit" | "visual">;
-  label: string;
-  viewMode: Extract<FileViewMode, "edit" | "visual">;
 };
 
 export type DocumentToggleControl = {
@@ -59,8 +51,6 @@ export type DocumentReadingWidthOption = {
 export type DocumentControlsModel = {
   controlsLabel: string;
   documentControlsLabel: string;
-  editingModeLabel: string;
-  editingModeOptions: DocumentEditingModeOption[];
   lineNumbers: DocumentToggleControl;
   lineWrapping: DocumentToggleControl;
   readingWidthLabel: string;
@@ -69,6 +59,7 @@ export type DocumentControlsModel = {
   showEditorToggles: boolean;
   showSplitToggles: boolean;
   sourceOptionsLabel: string;
+  sourcePreview: DocumentToggleControl;
   syncScrolling: DocumentToggleControl;
   viewModeLabel: string;
   layoutLabel: string;
@@ -85,57 +76,24 @@ export type DocumentControlsModelInput = {
   copy: DocumentControlsCopy;
 };
 
-const getEditingModeOptions = (
-  activeEditingMode: FileEditingMode,
+const getViewModeOptions = (
+  activeViewMode: FileViewMode,
   copy: DocumentControlsCopy,
-): DocumentEditingModeOption[] => [
+): DocumentViewModeOption[] => [
+  { active: activeViewMode === "visual", icon: "visual", label: copy.visual, viewMode: "visual" },
   {
-    active: activeEditingMode === "visual",
-    editingMode: "visual",
-    icon: "visual",
-    label: copy.visual,
-    viewMode: "visual",
-  },
-  {
-    active: activeEditingMode === "source",
-    editingMode: "source",
+    active: activeViewMode === "edit" || activeViewMode === "split",
     icon: "edit",
     label: copy.source,
     viewMode: "edit",
   },
-];
-
-const getViewModeOptions = (
-  activeEditingMode: FileEditingMode,
-  activeViewMode: FileViewMode,
-  copy: DocumentControlsCopy,
-): DocumentViewModeOption[] => {
-  const editorViewMode = getEditingModeViewMode(activeEditingMode);
-  const options: DocumentViewModeOption[] = [
-    {
-      active: activeViewMode === editorViewMode,
-      icon: activeEditingMode === "visual" ? "visual" : "edit",
-      label: copy.editor,
-      viewMode: editorViewMode,
-    },
-  ];
-
-  options.push({
-    active: activeViewMode === "split",
-    icon: "split",
-    label: copy.split,
-    viewMode: "split",
-  });
-
-  options.push({
+  {
     active: activeViewMode === "preview",
     icon: "preview",
     label: copy.preview,
     viewMode: "preview",
-  });
-
-  return options;
-};
+  },
+];
 
 export const buildDocumentControlsModel = ({
   activeEditingMode,
@@ -155,8 +113,6 @@ export const buildDocumentControlsModel = ({
   return {
     controlsLabel: copy.editorControls,
     documentControlsLabel: copy.documentControlsLabel,
-    editingModeLabel: copy.editingMode,
-    editingModeOptions: getEditingModeOptions(activeEditingMode, copy),
     lineNumbers: {
       active: activeLineNumbers,
       label: copy.lineNumbers,
@@ -176,16 +132,13 @@ export const buildDocumentControlsModel = ({
       activeEditingMode === "source" && activeViewMode !== "preview",
     showSplitToggles: activeViewMode === "split",
     sourceOptionsLabel: copy.sourceOptions,
+    sourcePreview: { active: activeViewMode === "split", label: copy.sourcePreview },
     syncScrolling: {
       active: activeSyncScrolling,
       label: copy.syncScrolling,
     },
     viewModeLabel: copy.viewControls,
     layoutLabel: copy.layoutControls,
-    viewModeOptions: getViewModeOptions(
-      activeEditingMode,
-      activeViewMode,
-      copy,
-    ),
+    viewModeOptions: getViewModeOptions(activeViewMode, copy),
   };
 };

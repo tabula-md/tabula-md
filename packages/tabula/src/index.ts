@@ -76,7 +76,6 @@ export type {
   DocumentControlsCopy,
   DocumentControlsModel,
   DocumentControlsModelInput,
-  DocumentEditingModeOption,
   DocumentReadingWidthOption,
   DocumentToggleControl,
   DocumentViewModeIcon,

@@ -253,10 +253,11 @@ const getWorkspaceViewState = (
   activeFileId: string,
 ) => {
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
+  const viewMode = activeFile?.viewMode ?? "visual";
   return activeFile
     ? {
-        editingMode: getFileEditingMode(activeFile),
-        viewMode: activeFile.viewMode,
+        editingMode: viewMode === "split" ? "source" as const : getFileEditingMode(activeFile),
+        viewMode,
       }
     : { editingMode: "visual" as const, viewMode: "visual" as const };
 };
@@ -579,7 +580,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       const editingMode =
         viewMode === "visual"
           ? "visual"
-          : viewMode === "edit"
+          : viewMode === "edit" || viewMode === "split"
             ? "source"
             : activeFile
               ? getFileEditingMode(activeFile)
