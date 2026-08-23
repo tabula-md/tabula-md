@@ -877,24 +877,18 @@ export async function run(ctx) {
       ].join("\n"),
     );
     await selectDocumentViewMode(page, "Preview");
-    await page.waitForSelector(".frontmatter-view", { timeout: 5_000 });
     const previewFrontmatterSurface = await page.evaluate(() => {
       const frontmatter = document.querySelector(".frontmatter-view");
       const bodyHeading = document.querySelector(".preview-document-content h1");
       const firstBodyParagraph = document.querySelector(".preview-document-content p");
       if (
-        !(frontmatter instanceof HTMLElement) ||
         !(bodyHeading instanceof HTMLElement) ||
         !(firstBodyParagraph instanceof HTMLElement)
       ) {
         return null;
       }
-      const frontmatterStyle = window.getComputedStyle(frontmatter);
       return {
-        hasVisibleHeading: Boolean(frontmatter.querySelector("h2")),
-        text: frontmatter.textContent ?? "",
-        background: frontmatterStyle.backgroundColor,
-        borderRadius: frontmatterStyle.borderRadius,
+        hasFrontmatter: frontmatter instanceof HTMLElement,
         bodyHeadingText: Array.from(bodyHeading.childNodes)
           .filter((node) => !(node instanceof HTMLElement && node.classList.contains("preview-heading-anchor")))
           .map((node) => node.textContent ?? "")
@@ -903,14 +897,7 @@ export async function run(ctx) {
         firstBodyText: firstBodyParagraph.textContent ?? "",
       };
     });
-    expect(!previewFrontmatterSurface?.hasVisibleHeading, "Preview frontmatter should not show a redundant Metadata label.");
-    expect(previewFrontmatterSurface?.text.includes("status"), "Preview frontmatter should show user-authored fields beyond title and description.");
-    expect(previewFrontmatterSurface?.text.includes("Draft"), "Preview frontmatter should preserve user-authored status values.");
-    expect(previewFrontmatterSurface?.text.includes("owner"), "Preview frontmatter should not hide user-authored metadata keys.");
-    expect(!previewFrontmatterSurface?.text.includes("hidden fields"), "Preview frontmatter should not replace user content with hidden-field hints.");
-    expect(!previewFrontmatterSurface?.text.includes("future commands"), "Preview frontmatter should not expose internal command language.");
-    expect(previewFrontmatterSurface?.background === "rgb(247, 247, 248)", "Preview frontmatter should stay grouped as a quiet metadata block.");
-    expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
+    expect(!previewFrontmatterSurface?.hasFrontmatter, "Preview should leave frontmatter to Source and Properties.");
     expect(previewFrontmatterSurface?.bodyHeadingText === "Preview Surface Brief", "Preview should render the authored H1 as Markdown.");
     expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should keep body content after the authored H1.");
     await selectDocumentViewMode(page, "Split");

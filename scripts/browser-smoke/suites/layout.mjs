@@ -528,7 +528,6 @@ export async function run(ctx) {
           workspace: readRect(".workspace.split"),
           editor: readRect(".workspace.split .editor-surface"),
           preview: readRect(".workspace.split .preview-surface"),
-          frontmatterRow: readRect(".workspace.split .frontmatter-row"),
         };
       });
 
@@ -570,11 +569,7 @@ export async function run(ctx) {
       );
       expect(
         splitLayout.preview && splitLayout.preview.width >= 360,
-        "Split preview should keep enough width for readable frontmatter.",
-      );
-      expect(
-        splitLayout.frontmatterRow && splitLayout.frontmatterRow.height <= 28,
-        `Split frontmatter should not wrap into tall one-character columns (measured ${splitLayout.frontmatterRow?.height ?? "missing"}px).`,
+        "Split preview should keep enough width for readable body content.",
       );
     },
     { viewport: { width: 1100, height: 800 } },

@@ -69,8 +69,16 @@ export function useDocumentWorkbenchController({
 
       closeFloatingDocumentChrome();
       editorRef.current?.format(command);
+      if (command === "frontmatter" && activeViewMode === "visual") {
+        onSetActiveFileViewMode("edit");
+      }
     },
-    [activeViewMode, closeFloatingDocumentChrome, editorRef],
+    [
+      activeViewMode,
+      closeFloatingDocumentChrome,
+      editorRef,
+      onSetActiveFileViewMode,
+    ],
   );
 
   const onSetReadingWidth = useCallback(

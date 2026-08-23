@@ -337,7 +337,7 @@ describe("editor visual mode model", () => {
     ]);
   });
 
-  it("renders valid frontmatter as one editable metadata block", () => {
+  it("hides valid frontmatter from Visual mode", () => {
     const doc = [
       "---",
       "title: Visual mode",
@@ -350,29 +350,15 @@ describe("editor visual mode model", () => {
     ].join("\n");
     const model = buildEditorVisualModel(createState(doc));
 
-    expect(model.replacements).toContainEqual(expect.objectContaining({
-      attributes: [
-        { key: "title", value: "Visual mode" },
-        { key: "tags", value: "tabula, markdown" },
-      ],
+    expect(model.replacements.some(({ kind }) => kind === "frontmatter")).toBe(false);
+    expect(model.hiddenRanges).toContainEqual({
       from: 0,
-      kind: "frontmatter",
-    }));
+      to: doc.indexOf("\n\n# Body") + 1,
+    });
     expect(
       model.replacements.filter(({ kind }) => kind === "horizontal-rule"),
     ).toEqual([]);
 
-    const frontmatter = model.replacements.find(
-      ({ kind }) => kind === "frontmatter",
-    );
-    const editing = buildEditorVisualModel(
-      createState(doc),
-      undefined,
-      frontmatter ? { from: frontmatter.from, to: frontmatter.to } : null,
-    );
-    expect(
-      editing.replacements.some(({ kind }) => kind === "frontmatter"),
-    ).toBe(false);
   });
 
   it.each([
@@ -385,7 +371,6 @@ describe("editor visual mode model", () => {
     ["callout", "callout"],
     ["accordion", "accordion"],
     ["tabs", "tabs"],
-    ["frontmatter", "frontmatter"],
   ] as Array<[MarkdownFormatCommand, string]>)(
     "renders the %s toolbar insertion in Visual mode",
     (command, expectedKind) => {

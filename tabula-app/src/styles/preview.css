@@ -110,41 +110,6 @@
   background: color-mix(in srgb, var(--comment-mark) 24%, transparent);
 }
 
-.frontmatter-view {
-  display: grid;
-  gap: 6px;
-  margin: 0 0 28px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--surface-muted);
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-}
-
-.frontmatter-row {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 18px;
-  min-height: var(--control-size-compact);
-  font-size: var(--preview-secondary-text-size);
-  line-height: var(--preview-secondary-line-height);
-}
-
-.frontmatter-row span {
-  color: var(--preview-metadata-key-color);
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-weight: var(--preview-supporting-font-weight);
-}
-
-.frontmatter-row strong {
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--preview-metadata-value-color);
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-weight: var(--preview-supporting-font-weight);
-}
-
 .preview-surface > *:first-child,
 .preview-document-content > *:first-child {
   margin-top: 0;

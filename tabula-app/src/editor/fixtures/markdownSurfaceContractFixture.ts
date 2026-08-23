@@ -241,11 +241,6 @@ export type VisualSurfaceExpectation = {
 };
 
 export const visualSurfaceExpectations: VisualSurfaceExpectation[] = [
-  {
-    feature: "frontmatter",
-    kind: "frontmatter",
-    source: `${markdownSurfaceFeatureAnchors.frontmatter}\n`,
-  },
   { feature: "inline-math", kind: "inline-math", source: markdownSurfaceFeatureAnchors["inline-math"] },
   { feature: "table", kind: "table", source: markdownSurfaceFeatureAnchors.table },
   {

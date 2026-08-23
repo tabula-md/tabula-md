@@ -639,12 +639,8 @@ export const buildEditorVisualModel = (
   const frontmatter = getFrontmatter(state);
   if (frontmatter) {
     parsedReplacements.push(frontmatter);
-    if (
-      isVisible(frontmatter.from, frontmatter.to, visibleRanges) &&
-      !isEditingBlock(editingBlock, frontmatter.from, frontmatter.to) &&
-      !(revealActiveSource && hasSelectedSource(state, frontmatter.from, frontmatter.to))
-    ) {
-      model.replacements.push(frontmatter);
+    if (isVisible(frontmatter.from, frontmatter.to, visibleRanges)) {
+      model.hiddenRanges.push({ from: frontmatter.from, to: frontmatter.to });
     }
   }
   for (const replacement of getFootnotes(state)) {
