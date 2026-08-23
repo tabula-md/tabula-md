@@ -37,7 +37,7 @@ export function useWorkspaceChromeController({
   const closeUiFloatingChrome = useWorkspaceUiStore((state) => state.closeFloatingChrome);
   const openUiFilesPanel = useWorkspaceUiStore((state) => state.openFilesPanel);
   const openSharePanel = useWorkspaceUiStore((state) => state.openSharePanel);
-  const toggleWorkspaceMenu = useWorkspaceUiStore((state) => state.toggleWorkspaceMenu);
+  const toggleUiWorkspaceMenu = useWorkspaceUiStore((state) => state.toggleWorkspaceMenu);
   const toggleUiLeftPanel = useWorkspaceUiStore((state) => state.toggleLeftPanel);
   const toggleUiRightPanel = useWorkspaceUiStore((state) => state.toggleRightPanel);
 
@@ -67,6 +67,12 @@ export function useWorkspaceChromeController({
     const willOpen = !rightPanelOpen;
     toggleUiRightPanel();
     if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
+  };
+
+  const toggleWorkspaceMenu = () => {
+    const willOpen = !workspaceMenuOpen;
+    toggleUiWorkspaceMenu();
+    if (willOpen && usesOverlayPanels()) setRightPanelOpen(false);
   };
 
   useEffect(() => {

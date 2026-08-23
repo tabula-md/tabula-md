@@ -145,7 +145,18 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
   },
 
   setWorkspaceMenuOpen: (isOpen) => {
-    set((state) => ({ workspaceMenuOpen: applyUiValueUpdater(state.workspaceMenuOpen, isOpen) }));
+    set((state) => {
+      const nextOpen = applyUiValueUpdater(state.workspaceMenuOpen, isOpen);
+      return {
+        workspaceMenuOpen: nextOpen,
+        ...(nextOpen ? {
+          leftPanelOpen: true,
+          leftPanelView: "files" as const,
+          topPopover: null,
+          centerPopover: null,
+        } : {}),
+      };
+    });
   },
 
   togglePreferences: () => {
@@ -187,6 +198,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
   toggleWorkspaceMenu: () => {
     set((state) => ({
       workspaceMenuOpen: !state.workspaceMenuOpen,
+      leftPanelOpen: true,
+      leftPanelView: "files",
       preferencesOpen: false,
       topPopover: null,
       centerPopover: null,
