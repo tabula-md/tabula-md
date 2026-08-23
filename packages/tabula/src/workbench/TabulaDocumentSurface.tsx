@@ -37,7 +37,6 @@ import {
   type MarkdownPreviewCommentAnchor,
   type MarkdownPreviewLineActionRequest,
   type MarkdownPreviewLineAnnotation,
-  type MarkdownPreviewMetadata,
   type MarkdownPreviewProps,
 } from "../../../../tabula-app/src/preview/markdownPreviewTypes";
 import {
@@ -165,7 +164,6 @@ export type TabulaDocumentSurfaceProps = {
   previewBody: string;
   previewBodyStartOffset: number;
   previewBodyTextChange?: TextChange | null;
-  previewMetadata: MarkdownPreviewMetadata[];
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchMatches: SearchMatch[];
@@ -226,7 +224,6 @@ export function TabulaDocumentSurface({
   previewBody,
   previewBodyStartOffset,
   previewBodyTextChange,
-  previewMetadata,
   previewRef,
   previewSurfaceRef,
   searchMatches,
@@ -392,7 +389,6 @@ export function TabulaDocumentSurface({
             <ResolvedMarkdownPreview
               ref={previewRef}
               uiLanguage={language}
-              metadata={previewMetadata}
               body={previewBody}
               sourceLineOffset={previewBodySourceLineOffset}
               bodyTextChange={previewBodyTextChange}

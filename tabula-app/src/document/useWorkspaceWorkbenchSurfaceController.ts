@@ -120,7 +120,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       previewBody: document.renderedPreview.body,
       previewBodyStartOffset: document.previewBodyStartOffset,
       previewBodyTextChange: document.previewBodyTextChange,
-      previewMetadata: document.parsedMarkdown.attributes,
       previewRef,
       previewSurfaceRef: document.previewSurfaceRef,
       largeDocumentMode: document.activeDocument.largeDocumentMode,

@@ -39,7 +39,6 @@ import { FormattingToolbar } from "./FormattingToolbar";
 import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineAnnotation,
-  MarkdownPreviewMetadata,
   MarkdownPreviewProps,
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
@@ -79,7 +78,6 @@ export type DocumentWorkbenchProps = {
   previewBodyTextChange?: TextChange | null;
   largeDocumentMode: boolean;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
-  previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchMatches: SearchMatch[];
   searchOpen: boolean;
@@ -181,7 +179,6 @@ export function DocumentWorkbench({
   previewBodyTextChange,
   largeDocumentMode,
   previewRef,
-  previewMetadata,
   previewSurfaceRef,
   searchMatches,
   searchOpen,
@@ -308,7 +305,6 @@ export function DocumentWorkbench({
         previewBody={previewBody}
         previewBodyStartOffset={previewBodyStartOffset}
         previewBodyTextChange={previewBodyTextChange}
-        previewMetadata={previewMetadata}
         previewRef={previewRef}
         previewSurfaceRef={previewSurfaceRef}
         searchMatches={searchMatches}

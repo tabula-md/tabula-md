@@ -30,7 +30,6 @@ const visualSourceLabels: Partial<Record<EditorVisualReplacement["kind"], string
   diagram: "Edit Mermaid Markdown",
   "footnote-definition": "Edit footnote Markdown",
   "footnote-reference": "Edit footnote Markdown",
-  frontmatter: "Edit frontmatter Markdown",
   "horizontal-rule": "Edit separator Markdown",
   image: "Edit image Markdown",
   "inline-math": "Edit math Markdown",
@@ -83,46 +82,6 @@ abstract class RevealableBlockWidget extends WidgetType {
     visualWidgetResizeObservers.get(dom)?.disconnect();
     visualWidgetResizeObservers.delete(dom);
     destroyEditorVisualMarkdown(dom);
-  }
-}
-
-class FrontmatterWidget extends RevealableBlockWidget {
-  constructor(
-    sourceFrom: number,
-    sourceTo: number,
-    sourceLabel: string,
-    readonly attributes: Array<{ key: string; value: string }>,
-  ) {
-    super(sourceFrom, sourceTo, sourceLabel);
-  }
-
-  eq(other: FrontmatterWidget) {
-    return this.sourceFrom === other.sourceFrom &&
-      this.sourceTo === other.sourceTo &&
-      this.sourceLabel === other.sourceLabel &&
-      JSON.stringify(this.attributes) === JSON.stringify(other.attributes);
-  }
-
-  get estimatedHeight() {
-    return Math.max(48, this.attributes.length * 32 + 24);
-  }
-
-  toDOM(view: EditorView) {
-    const container = this.makeContainer(
-      view,
-      "cm-visual-block cm-visual-frontmatter",
-    );
-    for (const attribute of this.attributes) {
-      const row = document.createElement("div");
-      row.className = "cm-visual-frontmatter-row";
-      const key = document.createElement("span");
-      key.textContent = attribute.key;
-      const value = document.createElement("strong");
-      value.textContent = attribute.value;
-      row.append(key, value);
-      container.append(row);
-    }
-    return container;
   }
 }
 
@@ -754,16 +713,6 @@ export const createEditorVisualReplacementDecoration = (
           sourceLabel,
           replacement.index,
           replacement.label,
-        ),
-      });
-    case "frontmatter":
-      return Decoration.replace({
-        block: true,
-        widget: new FrontmatterWidget(
-          replacement.from,
-          replacement.to,
-          sourceLabel,
-          replacement.attributes,
         ),
       });
     case "footnote-definition":

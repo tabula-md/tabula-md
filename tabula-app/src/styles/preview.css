@@ -1502,10 +1502,6 @@ button.preview-task-checkbox.checked::after {
     padding-top: 8px;
   }
 
-  .frontmatter-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
 }
 
 .preview-surface :is(em, i) {

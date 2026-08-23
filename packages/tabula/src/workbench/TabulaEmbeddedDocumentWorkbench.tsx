@@ -207,7 +207,6 @@ export function TabulaEmbeddedDocumentWorkbench({
           largeDocumentMode={activeDocument.largeDocumentMode}
           previewBody={activeDocument.renderedPreview.body}
           previewBodyStartOffset={activeDocument.previewBodyStartOffset}
-          previewMetadata={activeDocument.parsedMarkdown.attributes}
           previewRef={previewRef}
           previewSurfaceRef={previewSurfaceRef}
           searchMatches={[]}

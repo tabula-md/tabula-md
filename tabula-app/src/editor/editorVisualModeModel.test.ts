@@ -350,7 +350,6 @@ describe("editor visual mode model", () => {
     ].join("\n");
     const model = buildEditorVisualModel(createState(doc));
 
-    expect(model.replacements.some(({ kind }) => kind === "frontmatter")).toBe(false);
     expect(model.hiddenRanges).toContainEqual({
       from: 0,
       to: doc.indexOf("\n\n# Body") + 1,
