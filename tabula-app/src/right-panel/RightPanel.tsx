@@ -8,15 +8,8 @@ import {
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
-  type OkfConceptRepairUpdate,
-  type OkfCompatibilityReport,
-  type OkfIndexCandidate,
-  type OkfWikilinkRepairUpdate,
-  type WorkspaceKnowledgeBaseline,
-  type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
-  type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { MarkdownHeading } from "@tabula-md/tabula";
@@ -47,11 +40,8 @@ type RightPanelProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   knowledgeIndex?: WorkspaceKnowledgeIndex;
-  knowledgeCompatibilityReport?: OkfCompatibilityReport;
   knowledgeIndexPending: boolean;
   knowledgeIndexSource: "none" | "worker" | "fallback";
-  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
-  knowledgeCompatibilityOpenRequest: number;
   activeFileId: string;
   activeFileTitle: string;
   language: WorkspaceLanguage;
@@ -70,19 +60,11 @@ type RightPanelProps = {
   onSetView: (view: RightPanelView) => void;
   onClose: () => void;
   onSelectFile: (fileId: string) => void;
-  onSelectKnowledgeHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
   onResolveAmbiguousLink: (
     link: WorkspaceKnowledgeLink,
     targetPath: string,
   ) => boolean;
-  onSetActiveFileOkfType: (conceptType: string) => boolean;
-  onApplyOkfConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
-  onApplyOkfWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
-  onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
-  onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
-  onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
-  onStartKnowledgeTracking: () => boolean;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
