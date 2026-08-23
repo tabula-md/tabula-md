@@ -6,6 +6,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .main-panel.left-panel-open .center-workbench,
+  .main-panel.left-panel-open.right-panel-open .center-workbench {
+    grid-column: 1;
+  }
+
   .left-panel-backdrop,
   .right-panel-backdrop {
     position: fixed;
@@ -40,4 +45,3 @@
     display: none;
   }
 }
-
