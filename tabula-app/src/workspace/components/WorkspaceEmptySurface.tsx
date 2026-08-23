@@ -17,6 +17,7 @@ export type WorkspaceEmptySurfaceProps = {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenWorkspace: () => void;
+  workspaceMode: "connected" | "copy";
 };
 
 export function WorkspaceEmptySurface({
@@ -30,6 +31,7 @@ export function WorkspaceEmptySurface({
   onNewFile,
   onOpenFile,
   onOpenWorkspace,
+  workspaceMode,
 }: WorkspaceEmptySurfaceProps) {
   return (
     <section
@@ -44,6 +46,7 @@ export function WorkspaceEmptySurface({
         onNewFile={onNewFile}
         onOpenFile={onOpenFile}
         onOpenWorkspace={onOpenWorkspace}
+        workspaceMode={workspaceMode}
         shortcutPlatform={shortcutPlatform}
       />
     </section>

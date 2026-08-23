@@ -33,7 +33,7 @@ describe("workspace locale chrome copy", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.actions.importFile).toBe("Import document (.md)…");
-    expect(english.actions.importWorkspace).toBe("Open folder…");
+    expect(english.actions.importWorkspace).toBe("Import folder copy…");
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
     expect(english.emptyState.tagline).toBe(
@@ -44,7 +44,7 @@ describe("workspace locale chrome copy", () => {
       "Start a blank Markdown document in this browser.",
     );
     expect(english.emptyState.openWorkspaceDescription).toBe(
-      "Work with the Markdown files in a local folder.",
+      "Edit Markdown in a local folder and save changes back to it.",
     );
     expect(english.emptyState.openFileDescription).toBe(
       "Open one .md file without creating a project.",

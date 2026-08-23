@@ -163,7 +163,7 @@ export async function run(ctx) {
       "Live rooms should not expose the local workspace clear action.",
     );
     expect(
-      (await firstPage.getByRole("button", { name: "Open folder…", exact: true }).count()) === 0,
+      (await firstPage.getByRole("button", { name: "Import folder copy…", exact: true }).count()) === 0,
       "Live rooms should not replace the shared workspace through folder import.",
     );
     expect(

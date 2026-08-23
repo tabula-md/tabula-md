@@ -10,6 +10,7 @@ type EmptyFileStateProps = {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenWorkspace: () => void;
+  workspaceMode: "connected" | "copy";
   shortcutPlatform: ShortcutPlatform;
 };
 
@@ -18,6 +19,7 @@ export function EmptyFileState({
   onNewFile,
   onOpenFile,
   onOpenWorkspace,
+  workspaceMode,
   shortcutPlatform,
 }: EmptyFileStateProps) {
   const copy = getWorkspaceMenuCopy(language).emptyState;
@@ -41,8 +43,8 @@ export function EmptyFileState({
           <button type="button" onClick={onOpenWorkspace} className="empty-file-action secondary">
             <FolderOpen size={16} />
             <span className="empty-file-action-copy">
-              <strong>{copy.openWorkspace}</strong>
-              <span>{copy.openWorkspaceDescription}</span>
+              <strong>{workspaceMode === "connected" ? copy.openWorkspace : getWorkspaceMenuCopy(language).actions.importWorkspace.replace(/…$/, "")}</strong>
+              <span>{workspaceMode === "connected" ? copy.openWorkspaceDescription : copy.importWorkspaceDescription}</span>
             </span>
             <span className="empty-file-action-hint" />
           </button>

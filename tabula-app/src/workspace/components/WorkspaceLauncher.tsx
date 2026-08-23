@@ -53,7 +53,7 @@ export function WorkspaceLauncher({
     { id: "new-document", label: "New document", section: "Commands", icon: FilePlus2, run: onNewFile },
     { id: "new-folder", label: "New folder", section: "Commands", icon: FolderPlus, run: onNewFolder },
     { id: "import-document", label: "Import document (.md)…", section: "Commands", icon: FileText, run: onImportFile },
-    { id: "import-folder", label: "Open folder…", section: "Commands", icon: FolderInput, run: onImportWorkspace },
+    { id: "import-folder", label: "Import folder copy…", section: "Commands", icon: FolderInput, run: onImportWorkspace },
     { id: "preferences", label: "Preferences", section: "Settings", icon: SlidersHorizontal, run: onOpenPreferences },
   ], [onImportFile, onImportWorkspace, onNewFile, onNewFolder, onOpenPreferences]);
   const trimmed = query.trim();
