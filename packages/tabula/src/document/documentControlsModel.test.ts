@@ -7,6 +7,7 @@ import {
 const copy: DocumentControlsCopy = {
   documentControlsLabel: "Document controls",
   editingMode: "Editing mode",
+  editor: "Editor",
   editorControls: "Editor controls",
   fillWidth: "Fill",
   focusWidth: "Focus",
@@ -68,8 +69,14 @@ describe("document controls model", () => {
       {
         active: true,
         icon: "visual",
-        label: "Visual edit",
+        label: "Editor",
         viewMode: "visual",
+      },
+      {
+        active: false,
+        icon: "split",
+        label: "Split",
+        viewMode: "split",
       },
       {
         active: false,
@@ -87,6 +94,7 @@ describe("document controls model", () => {
     expect(model.editingModeOptions[0]?.active).toBe(true);
     expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
       { active: false, viewMode: "visual" },
+      { active: false, viewMode: "split" },
       { active: true, viewMode: "preview" },
     ]);
     expect(model.showEditorToggles).toBe(false);

@@ -69,6 +69,7 @@ export type MarkdownEditorExtensionConfig = {
   activeSearchMatchIndex: number;
   copy: MarkdownEditorInterfaceCopy;
   updateExtension: Extension;
+  visualModeExtension?: Extension;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
 };
@@ -240,6 +241,7 @@ export const createMarkdownEditorExtensions = ({
   activeSearchMatchIndex,
   copy,
   updateExtension,
+  visualModeExtension,
   onOpenLineActions,
   onOpenComment,
 }: MarkdownEditorExtensionConfig): Extension[] => [
@@ -255,7 +257,7 @@ export const createMarkdownEditorExtensions = ({
   compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, copy, onOpenLineActions)),
   compartments.lineNumbers.of(createEditorLineNumbersExtension(lineNumbers)),
   compartments.wrapping.of(createEditorLineWrappingExtension(lineWrapping)),
-  compartments.visualMode.of([]),
+  compartments.visualMode.of(visualModeExtension ?? []),
   compartments.commentAnchor.of(
     commentsEnabled
       ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, copy, onOpenComment)

@@ -9,6 +9,7 @@ import {
 export type DocumentControlsCopy = {
   documentControlsLabel: string;
   editingMode: string;
+  editor: string;
   editorControls: string;
   fillWidth: string;
   focusWidth: string;
@@ -114,19 +115,17 @@ const getViewModeOptions = (
     {
       active: activeViewMode === editorViewMode,
       icon: activeEditingMode === "visual" ? "visual" : "edit",
-      label: activeEditingMode === "visual" ? copy.visual : copy.source,
+      label: copy.editor,
       viewMode: editorViewMode,
     },
   ];
 
-  if (activeEditingMode === "source") {
-    options.push({
-      active: activeViewMode === "split",
-      icon: "split",
-      label: copy.split,
-      viewMode: "split",
-    });
-  }
+  options.push({
+    active: activeViewMode === "split",
+    icon: "split",
+    label: copy.split,
+    viewMode: "split",
+  });
 
   options.push({
     active: activeViewMode === "preview",

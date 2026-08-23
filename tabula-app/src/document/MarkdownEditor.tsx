@@ -18,6 +18,7 @@ import {
 } from "../editor/editorLayout";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import { revealEditorVisualSelection } from "../editor/editorVisualEffects";
+import { createEditorVisualModeExtension } from "../editor/editorVisualMode";
 import {
   createEditorAnnotationGutterExtension,
   createEditorCollaborationExtensions,
@@ -635,6 +636,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         activeSearchMatchIndex,
         copy: interfaceCopy,
         updateExtension,
+        visualModeExtension: visualEditing
+          ? createEditorVisualModeExtension(interfaceCopy, {
+              resolveWorkspaceLink,
+              sourceDocumentId: fileId,
+            })
+          : [],
         onOpenLineActions: (request) => onOpenLineActionsRef.current?.(request),
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
       });
@@ -687,7 +694,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               createEditorSearchExtension(searchMatches, activeSearchMatchIndex),
             ),
             compartmentsRef.current.visualMode.reconfigure(
-              [],
+              visualEditing
+                ? createEditorVisualModeExtension(interfaceCopy, {
+                    resolveWorkspaceLink,
+                    sourceDocumentId: fileId,
+                  })
+                : [],
             ),
           ],
         });
@@ -842,21 +854,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
-      let cancelled = false;
-      void import("../editor/editorVisualMode").then(({ createEditorVisualModeExtension }) => {
-        if (cancelled) return;
-        view.dispatch({
-          effects: compartmentsRef.current.visualMode.reconfigure(
-            createEditorVisualModeExtension(interfaceCopy, {
-              resolveWorkspaceLink,
-              sourceDocumentId: fileId,
-            }),
-          ),
-        });
+      view.dispatch({
+        effects: compartmentsRef.current.visualMode.reconfigure(
+          createEditorVisualModeExtension(interfaceCopy, {
+            resolveWorkspaceLink,
+            sourceDocumentId: fileId,
+          }),
+        ),
       });
-      return () => {
-        cancelled = true;
-      };
     }, [fileId, interfaceCopy, resolveWorkspaceLink, visualEditing]);
 
     useEffect(() => {

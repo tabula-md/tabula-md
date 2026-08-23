@@ -918,6 +918,7 @@ export type WorkspaceChromeCopy = {
     documentToolbar: string;
     documentControlsLabel: string;
     editingMode: string;
+    editor: string;
     split: string;
     source: string;
     visual: string;
@@ -989,6 +990,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "Document toolbar",
       documentControlsLabel: "Document controls",
       editingMode: "Editing mode",
+      editor: "Editor",
       split: "Split",
       source: "Source edit",
       visual: "Visual edit",
@@ -1058,6 +1060,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "문서 툴바",
       documentControlsLabel: "문서 컨트롤",
       editingMode: "편집 모드",
+      editor: "편집기",
       split: "분할",
       source: "원문 편집",
       visual: "비주얼 편집",
@@ -1127,6 +1130,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "ドキュメントツールバー",
       documentControlsLabel: "ドキュメント操作",
       editingMode: "編集モード",
+      editor: "エディター",
       split: "分割",
       source: "ソース編集",
       visual: "ビジュアル編集",
@@ -1196,6 +1200,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "文档工具栏",
       documentControlsLabel: "文档控制",
       editingMode: "编辑模式",
+      editor: "编辑器",
       split: "分屏",
       source: "源码编辑",
       visual: "可视化编辑",
@@ -1265,6 +1270,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "Barra del documento",
       documentControlsLabel: "Controles del documento",
       editingMode: "Modo de edición",
+      editor: "Editor",
       split: "Dividir",
       source: "Editar fuente",
       visual: "Edición visual",
@@ -1334,6 +1340,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "Barre du document",
       documentControlsLabel: "Contrôles du document",
       editingMode: "Mode d’édition",
+      editor: "Éditeur",
       split: "Scinder",
       source: "Édition source",
       visual: "Édition visuelle",
@@ -1403,6 +1410,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentToolbar: "Dokument-Toolbar",
       documentControlsLabel: "Dokumentsteuerung",
       editingMode: "Bearbeitungsmodus",
+      editor: "Editor",
       split: "Teilen",
       source: "Quelltext bearbeiten",
       visual: "Visuell bearbeiten",

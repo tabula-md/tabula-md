@@ -126,7 +126,7 @@ export function DocumentControls({
               option.active && option.viewMode === "preview"
                 ? getEditingModeViewMode(activeEditingMode)
                 : option.active && option.viewMode === "split"
-                  ? "edit"
+                  ? getEditingModeViewMode(activeEditingMode)
                   : option.viewMode;
 
             return (
