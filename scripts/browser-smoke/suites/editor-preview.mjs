@@ -680,6 +680,34 @@ export async function run(ctx) {
       "Pasting source-sensitive text should preserve quotes and blank lines while normalizing leading tabs.",
     );
 
+    await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await pasteIntoEditor(
+      Array.from({ length: 160 }, (_, index) => `Pasted line ${index + 1}`).join("\n"),
+    );
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
+    const initialPasteViewport = await page.evaluate(() => {
+      const scroller = document.querySelector(".cm-scroller");
+      const firstLine = document.querySelector(".cm-line");
+      if (!(scroller instanceof HTMLElement) || !(firstLine instanceof HTMLElement)) {
+        return null;
+      }
+      const scrollerRect = scroller.getBoundingClientRect();
+      const firstLineRect = firstLine.getBoundingClientRect();
+      return {
+        firstLineVisible:
+          firstLineRect.bottom >= scrollerRect.top && firstLineRect.top <= scrollerRect.bottom,
+        scrollTop: scroller.scrollTop,
+      };
+    });
+    expect(
+      initialPasteViewport?.scrollTop === 0 && initialPasteViewport.firstLineVisible,
+      `The first paste into an empty document should keep the document start visible. state=${JSON.stringify(initialPasteViewport)}`,
+    );
+
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("-o\noo");
     await selectDocumentViewMode(page, "Preview");

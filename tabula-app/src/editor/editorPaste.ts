@@ -11,4 +11,22 @@ export const normalizePastedMarkdown = (pastedText: string) => {
 };
 
 export const createEditorPasteNormalizationExtension = (): Extension =>
-  EditorView.clipboardInputFilter.of((pastedText) => normalizePastedMarkdown(pastedText) ?? pastedText);
+  [
+    EditorView.clipboardInputFilter.of(
+      (pastedText) => normalizePastedMarkdown(pastedText) ?? pastedText,
+    ),
+    EditorView.domEventHandlers({
+      paste: (_event, view) => {
+        if (view.state.doc.length !== 0) {
+          return false;
+        }
+
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            view.scrollDOM.scrollTop = 0;
+          });
+        });
+        return false;
+      },
+    }),
+  ];
