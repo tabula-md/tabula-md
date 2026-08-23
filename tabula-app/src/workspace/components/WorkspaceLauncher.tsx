@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { inspectFrontmatterData } from "@tabula-md/tabula";
-import { FileText, FolderInput, FolderPlus, FilePlus2, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  Braces,
+  FileText,
+  FolderInput,
+  FolderPlus,
+  FilePlus2,
+  MessageSquare,
+  PanelLeft,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { ModalSurface } from "../../ui/ModalSurface";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
@@ -32,6 +43,9 @@ export function WorkspaceLauncher({
   onNewFolder,
   onImportFile,
   onImportWorkspace,
+  onOpenFiles,
+  onOpenComments,
+  onOpenProperties,
   onOpenPreferences,
 }: {
   files: WorkspaceFile[];
@@ -44,6 +58,9 @@ export function WorkspaceLauncher({
   onNewFolder: () => void;
   onImportFile: () => void;
   onImportWorkspace: () => void;
+  onOpenFiles: () => void;
+  onOpenComments: () => void;
+  onOpenProperties: () => void;
   onOpenPreferences: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -54,8 +71,20 @@ export function WorkspaceLauncher({
     { id: "new-folder", label: "New folder", section: "Commands", icon: FolderPlus, run: onNewFolder },
     { id: "import-document", label: "Import document (.md)…", section: "Commands", icon: FileText, run: onImportFile },
     { id: "import-folder", label: "Import folder copy…", section: "Commands", icon: FolderInput, run: onImportWorkspace },
+    { id: "open-files", label: "Open Files", section: "Commands", icon: PanelLeft, run: onOpenFiles },
+    { id: "open-comments", label: "Open Comments", section: "Commands", icon: MessageSquare, run: onOpenComments },
+    { id: "open-properties", label: "Open Properties", section: "Commands", icon: Braces, run: onOpenProperties },
     { id: "preferences", label: "Preferences", section: "Settings", icon: SlidersHorizontal, run: onOpenPreferences },
-  ], [onImportFile, onImportWorkspace, onNewFile, onNewFolder, onOpenPreferences]);
+  ], [
+    onImportFile,
+    onImportWorkspace,
+    onNewFile,
+    onNewFolder,
+    onOpenComments,
+    onOpenFiles,
+    onOpenPreferences,
+    onOpenProperties,
+  ]);
   const trimmed = query.trim();
   const filter = trimmed.match(/^([\w.-]+):(.*)$/u);
   const documentResults = useMemo(() => {

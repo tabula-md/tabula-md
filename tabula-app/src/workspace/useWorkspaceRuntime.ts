@@ -1420,6 +1420,27 @@ export function useWorkspaceRuntime() {
           onNewFolder: () => { addWorkspaceFolder(); },
           onImportFile: () => importInputRef.current?.click(),
           onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onOpenFiles: () => {
+            setLeftPanelView("files");
+            setLeftPanelOpen(true);
+            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+              setRightPanelOpen(false);
+            }
+          },
+          onOpenComments: () => {
+            setRightPanelView("comments");
+            setRightPanelOpen(true);
+            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+              setLeftPanelOpen(false);
+            }
+          },
+          onOpenProperties: () => {
+            setRightPanelView("properties");
+            setRightPanelOpen(true);
+            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+              setLeftPanelOpen(false);
+            }
+          },
           onOpenPreferences: () => {
             setLeftPanelOpen(true);
             setLeftPanelView("files");
