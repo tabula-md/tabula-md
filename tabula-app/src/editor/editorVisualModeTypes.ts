@@ -4,6 +4,7 @@ import type {
 } from "../preview/markdownPreviewTypes";
 
 export type EditorVisualModeCopy = {
+  frontmatter: string;
   imageFailed: string;
   markTaskComplete: string;
   markTaskIncomplete: string;

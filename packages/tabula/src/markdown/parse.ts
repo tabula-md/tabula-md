@@ -1,4 +1,4 @@
-import { isMap, isScalar, parseDocument } from "yaml";
+import { isMap, isScalar, parseDocument, stringify } from "yaml";
 
 export type ParsedFrontmatter = {
   attributes: { key: string; value: string }[];
@@ -104,6 +104,8 @@ const getFrontmatterBlock = (markdown: string) => {
     if (frontmatterClosingDelimiterPattern.test(line)) {
       const bodyStart = nextLineBreakIndex === -1 ? markdown.length : nextLineBreakIndex + 1;
       return {
+        rawStart,
+        closingStart: cursor,
         rawFrontmatter: markdown.slice(rawStart, cursor).replace(/\r?\n$/, ""),
         body: markdown.slice(bodyStart),
         bodyOffset: bodyStart,
@@ -191,6 +193,40 @@ export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
       value: formatYamlMetadataValue(value),
     })),
     body: parsed.body,
+  };
+};
+
+export type FrontmatterValueUpdate =
+  | { ok: true; markdown: string }
+  | { ok: false; reason: "invalid_frontmatter" | "missing_key" };
+
+export const updateFrontmatterValue = (
+  markdown: string,
+  key: string,
+  value: unknown,
+): FrontmatterValueUpdate => {
+  const frontmatterBlock = getFrontmatterBlock(markdown);
+  if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
+
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents) || !document.has(key)) {
+    return {
+      ok: false,
+      reason: document.has(key) ? "invalid_frontmatter" : "missing_key",
+    };
+  }
+
+  const valueNode = document.get(key, true) as { range?: readonly number[] } | undefined;
+  if (!valueNode || !valueNode.range) return { ok: false, reason: "missing_key" };
+  const serializedValue = stringify(value, {
+    collectionStyle: "flow",
+    lineWidth: 0,
+  }).replace(/\n$/, "");
+  const serialized = `${frontmatterBlock.rawFrontmatter.slice(0, valueNode.range[0])}${serializedValue}${frontmatterBlock.rawFrontmatter.slice(valueNode.range[1])}`;
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  return {
+    ok: true,
+    markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${serialized}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`,
   };
 };
 

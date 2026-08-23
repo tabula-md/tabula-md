@@ -215,6 +215,7 @@ export {
 
 export type {
   FrontmatterInspection,
+  FrontmatterValueUpdate,
   MarkdownHeading,
   ParsedFrontmatter,
   ParsedFrontmatterData,
@@ -230,6 +231,7 @@ export {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  updateFrontmatterValue,
 } from "./markdown/parse";
 
 export type {

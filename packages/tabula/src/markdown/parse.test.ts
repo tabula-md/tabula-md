@@ -7,6 +7,7 @@ import {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  updateFrontmatterValue,
 } from "./parse";
 
 describe("markdown document model", () => {
@@ -57,6 +58,36 @@ Body`);
     });
     expect(parsed.body).toBe("\r\nBody");
     expect(parsed.bodyOffset).toBe(markdown.indexOf("\r\nBody"));
+  });
+
+  it("updates one frontmatter value without dropping comments or extension fields", () => {
+    const markdown = [
+      "---",
+      "title: Guide # visible title",
+      "status: draft",
+      "extension: { owner: taeha }",
+      "---",
+      "",
+      "# Body",
+    ].join("\n");
+    const result = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("title: Guide # visible title");
+    expect(result.markdown).toContain("status: stable");
+    expect(result.markdown).toContain("extension: { owner: taeha }");
+    expect(result.markdown.endsWith("\n# Body")).toBe(true);
+  });
+
+  it("does not reformat sibling frontmatter values", () => {
+    const markdown = "---\ntags: [incident, operations]\nstatus: draft\n---\nBody";
+    const result = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(result).toEqual({
+      ok: true,
+      markdown: "---\ntags: [incident, operations]\nstatus: stable\n---\nBody",
+    });
   });
 
   it("treats invalid frontmatter as normal markdown text", () => {

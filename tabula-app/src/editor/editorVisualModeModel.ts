@@ -25,6 +25,7 @@ export type EditorVisualLine = {
 };
 
 type EditorVisualReplacementPayload =
+  | { kind: "frontmatter"; metadata: Record<string, unknown> }
   | { kind: "bullet"; label: string }
   | { kind: "task"; checked: boolean }
   | { kind: "horizontal-rule" }
@@ -109,7 +110,10 @@ const getLineClass = (nodeName: string) => {
   return "";
 };
 
-const frontmatterByDocument = new WeakMap<object, EditorVisualBlockRange | null>();
+const frontmatterByDocument = new WeakMap<
+  object,
+  (EditorVisualBlockRange & { metadata: Record<string, unknown> }) | null
+>();
 const presentationByDocument =
   new WeakMap<object, MarkdownPresentationDocument>();
 const presentationNodesByDocument =
@@ -367,6 +371,7 @@ const getFrontmatter = (state: EditorState) => {
   const replacement = inspection.status === "valid" && inspection.bodyOffset > 0
     ? {
         from: 0,
+        metadata: inspection.metadata,
         to: inspection.bodyOffset,
       }
     : null;
@@ -635,7 +640,12 @@ export const buildEditorVisualModel = (
   if (frontmatter) {
     parsedReplacements.push(frontmatter);
     if (isVisible(frontmatter.from, frontmatter.to, visibleRanges)) {
-      model.hiddenRanges.push({ from: frontmatter.from, to: frontmatter.to });
+      model.replacements.push({
+        from: frontmatter.from,
+        kind: "frontmatter",
+        metadata: frontmatter.metadata,
+        to: frontmatter.to,
+      });
     }
   }
   for (const replacement of getFootnotes(state)) {
@@ -692,6 +702,7 @@ export const buildEditorVisualModel = (
 export const isEditorVisualNavigableReplacement = (
   replacement: EditorVisualReplacement,
 ) =>
+  replacement.kind !== "frontmatter" &&
   replacement.kind !== "bullet" &&
   replacement.kind !== "task" &&
   replacement.kind !== "footnote-reference" &&
@@ -700,6 +711,7 @@ export const isEditorVisualNavigableReplacement = (
 const isEditorVisualEditableReplacement = (
   replacement: EditorVisualReplacement,
 ) =>
+  replacement.kind !== "frontmatter" &&
   replacement.kind !== "bullet" &&
   replacement.kind !== "task" &&
   replacement.kind !== "footnote-reference";

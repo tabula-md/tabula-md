@@ -337,7 +337,7 @@ describe("editor visual mode model", () => {
     ]);
   });
 
-  it("hides valid frontmatter from Visual mode", () => {
+  it("replaces valid frontmatter with a metadata block in Visual mode", () => {
     const doc = [
       "---",
       "title: Visual mode",
@@ -350,10 +350,12 @@ describe("editor visual mode model", () => {
     ].join("\n");
     const model = buildEditorVisualModel(createState(doc));
 
-    expect(model.hiddenRanges).toContainEqual({
+    expect(model.replacements).toContainEqual(expect.objectContaining({
       from: 0,
+      kind: "frontmatter",
+      metadata: { title: "Visual mode", tags: ["tabula", "markdown"] },
       to: doc.indexOf("\n\n# Body") + 1,
-    });
+    }));
     expect(
       model.replacements.filter(({ kind }) => kind === "horizontal-rule"),
     ).toEqual([]);

@@ -28,6 +28,77 @@
   line-height: var(--preview-text-line-height);
 }
 
+.markdown-editor .cm-visual-editor .cm-visual-metadata {
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata > summary {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-list {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) 0 var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.32fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 34px;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-key,
+.markdown-editor .cm-visual-editor .cm-visual-metadata-complex {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 28px;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-input:hover,
+.markdown-editor .cm-visual-editor .cm-visual-metadata-input:focus {
+  background: var(--surface-control-hover);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-metadata-input:focus {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 .markdown-editor .cm-visual-editor .cm-line {
   line-height: var(--preview-text-line-height);
 }

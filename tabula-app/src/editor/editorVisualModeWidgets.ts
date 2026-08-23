@@ -1,4 +1,5 @@
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { updateFrontmatterValue } from "@tabula-md/tabula";
 import type {
   EditorVisualBlockRange,
   EditorVisualReplacement,
@@ -39,6 +40,127 @@ const visualSourceLabels: Partial<Record<EditorVisualReplacement["kind"], string
 };
 
 const visualWidgetResizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
+const expandedFrontmatterDocuments = new Set<string>();
+
+const isEditableMetadataValue = (value: unknown) =>
+  typeof value === "string" ||
+  typeof value === "number" ||
+  typeof value === "boolean" ||
+  (Array.isArray(value) && value.every((item) =>
+    typeof item === "string" || typeof item === "number" || typeof item === "boolean"));
+
+const parseMetadataInput = (input: HTMLInputElement, current: unknown) => {
+  if (typeof current === "boolean") return input.checked;
+  if (typeof current === "number") {
+    const next = Number(input.value);
+    return Number.isFinite(next) ? next : current;
+  }
+  if (Array.isArray(current)) {
+    return input.value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return input.value;
+};
+
+const getMinimalDocumentChange = (before: string, after: string) => {
+  let from = 0;
+  while (from < before.length && from < after.length && before[from] === after[from]) from += 1;
+  let beforeTo = before.length;
+  let afterTo = after.length;
+  while (beforeTo > from && afterTo > from && before[beforeTo - 1] === after[afterTo - 1]) {
+    beforeTo -= 1;
+    afterTo -= 1;
+  }
+  return { from, to: beforeTo, insert: after.slice(from, afterTo) };
+};
+
+class FrontmatterWidget extends WidgetType {
+  constructor(
+    readonly sourceTo: number,
+    readonly metadata: Record<string, unknown>,
+    readonly label: string,
+    readonly documentId: string,
+  ) {
+    super();
+  }
+
+  toDOM(view: EditorView) {
+    const details = document.createElement("details");
+    details.className = "cm-visual-metadata";
+    const initiallyOpen = expandedFrontmatterDocuments.has(this.documentId);
+    let initialized = false;
+    details.open = initiallyOpen;
+    details.addEventListener("toggle", () => {
+      if (!initialized) return;
+      if (details.open) expandedFrontmatterDocuments.add(this.documentId);
+      else expandedFrontmatterDocuments.delete(this.documentId);
+    });
+    window.requestAnimationFrame(() => {
+      details.open = initiallyOpen;
+      initialized = true;
+    });
+
+    const summary = document.createElement("summary");
+    const title = document.createElement("span");
+    title.textContent = this.label;
+    const count = document.createElement("span");
+    count.className = "cm-visual-metadata-count";
+    count.textContent = String(Object.keys(this.metadata).length);
+    summary.append(title, count);
+    details.append(summary);
+
+    const list = document.createElement("div");
+    list.className = "cm-visual-metadata-list";
+    for (const [key, value] of Object.entries(this.metadata)) {
+      const row = document.createElement("label");
+      row.className = "cm-visual-metadata-row";
+      const name = document.createElement("span");
+      name.className = "cm-visual-metadata-key";
+      name.textContent = key;
+      row.append(name);
+
+      if (isEditableMetadataValue(value)) {
+        const input = document.createElement("input");
+        input.className = "cm-visual-metadata-input";
+        input.type = typeof value === "boolean" ? "checkbox" : "text";
+        if (typeof value === "boolean") input.checked = value;
+        else input.value = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+        const commit = () => {
+          const result = updateFrontmatterValue(
+            view.state.doc.toString(),
+            key,
+            parseMetadataInput(input, value),
+          );
+          const currentMarkdown = view.state.doc.toString();
+          if (!result.ok || result.markdown === currentMarkdown) return;
+          view.dispatch({ changes: getMinimalDocumentChange(currentMarkdown, result.markdown) });
+        };
+        input.addEventListener("change", commit);
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            input.blur();
+          }
+        });
+        row.append(input);
+      } else {
+        const complex = document.createElement("span");
+        complex.className = "cm-visual-metadata-complex";
+        complex.textContent = Array.isArray(value)
+          ? `${value.length} items`
+          : `{${Object.keys(value as object).length}}`;
+        row.append(complex);
+      }
+      list.append(row);
+    }
+    details.append(list);
+    return details;
+  }
+
+  ignoreEvent(event: Event) {
+    return event.target instanceof Element && Boolean(event.target.closest("details, input"));
+  }
+}
 
 abstract class RevealableBlockWidget extends WidgetType {
   constructor(
@@ -661,9 +783,20 @@ class TabsWidget extends RevealableBlockWidget {
 export const createEditorVisualReplacementDecoration = (
   replacement: EditorVisualReplacement,
   copy: EditorVisualModeCopy,
+  sourceDocumentId = "active-document",
 ) => {
   const sourceLabel = visualSourceLabels[replacement.kind] ?? "Edit Markdown source";
   switch (replacement.kind) {
+    case "frontmatter":
+      return Decoration.replace({
+        block: true,
+        widget: new FrontmatterWidget(
+          replacement.to,
+          replacement.metadata,
+          copy.frontmatter,
+          sourceDocumentId,
+        ),
+      });
     case "bullet":
       return Decoration.replace({ widget: new ListMarkerWidget(replacement.label) });
     case "task":
