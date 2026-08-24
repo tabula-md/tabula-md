@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
+  addFrontmatterMarkdownValueAtPath,
   addFrontmatterValue,
   convertFrontmatterPropertyValue,
   diffTextPatch,
@@ -26,11 +27,11 @@ import {
   getFrontmatterValueAtPath,
   getFrontmatterValueType,
   parseFrontmatterPropertyDraft,
-  removeFrontmatterValueAtPath,
+  removeFrontmatterMarkdownValueAtPath,
   removeFrontmatterValue,
-  renameFrontmatterValuePathKey,
+  renameFrontmatterMarkdownKeyAtPath,
   renameFrontmatterKey,
-  updateFrontmatterValueAtPath,
+  updateFrontmatterMarkdownValueAtPath,
   updateFrontmatterValue,
   type FrontmatterProperty,
   type FrontmatterPropertyType,
@@ -241,13 +242,23 @@ const getUniqueNestedKey = (value: Record<string, unknown>) => {
 
 function StructuredPropertyValue({
   copy,
+  onAddValue,
   onError,
-  onValueChange,
+  onRemoveValue,
+  onRenameKey,
+  onUpdateValue,
   property,
 }: {
   copy: ReturnType<typeof getCopy>;
+  onAddValue: (
+    parentPath: FrontmatterValuePath,
+    segment: string | number,
+    value: unknown,
+  ) => boolean;
   onError: (message: string | null) => void;
-  onValueChange: (value: unknown) => boolean;
+  onRemoveValue: (path: FrontmatterValuePath) => boolean;
+  onRenameKey: (path: FrontmatterValuePath, nextKey: string) => boolean;
+  onUpdateValue: (path: FrontmatterValuePath, value: unknown) => boolean;
   property: FrontmatterProperty;
 }) {
   const rootPathId = getStructuredPathId([]);
@@ -271,12 +282,7 @@ function StructuredPropertyValue({
   };
 
   const applyNestedValue = (path: FrontmatterValuePath, value: unknown) => {
-    const result = updateFrontmatterValueAtPath(property.value, path, value);
-    if (!result.ok) {
-      onError(copy.updateFailed);
-      return false;
-    }
-    const applied = onValueChange(result.value);
+    const applied = onUpdateValue(path, value);
     if (applied) onError(null);
     return applied;
   };
@@ -284,16 +290,7 @@ function StructuredPropertyValue({
   const commitEditor = () => {
     if (!editor) return;
     if (editor.mode === "key") {
-      const result = renameFrontmatterValuePathKey(
-        property.value,
-        editor.path,
-        editor.draft,
-      );
-      if (!result.ok) {
-        onError(result.reason === "duplicate_key" ? copy.duplicateKey : copy.invalidKey);
-        return;
-      }
-      if (onValueChange(result.value)) {
+      if (onRenameKey(editor.path, editor.draft)) {
         setEditor(null);
         onError(null);
       }
@@ -311,8 +308,7 @@ function StructuredPropertyValue({
   };
 
   const removeNestedValue = (path: FrontmatterValuePath) => {
-    const result = removeFrontmatterValueAtPath(property.value, path);
-    if (!result.ok || !onValueChange(result.value)) {
+    if (!onRemoveValue(path)) {
       onError(copy.updateFailed);
       return;
     }
@@ -334,8 +330,9 @@ function StructuredPropertyValue({
 
   const addNestedValue = (path: FrontmatterValuePath, collection: unknown) => {
     if (Array.isArray(collection)) {
-      const nextPath = [...path, collection.length];
-      if (applyNestedValue(nextPath, "")) {
+      const segment = collection.length;
+      const nextPath = [...path, segment];
+      if (onAddValue(path, segment, "")) {
         setEditor({ draft: "", isNew: true, mode: "value", path: nextPath });
       }
       return;
@@ -343,7 +340,7 @@ function StructuredPropertyValue({
     if (collection && typeof collection === "object") {
       const key = getUniqueNestedKey(collection as Record<string, unknown>);
       const nextPath = [...path, key];
-      if (applyNestedValue(nextPath, "")) {
+      if (onAddValue(path, key, "")) {
         setEditor({ draft: key, isNew: true, mode: "key", path: nextPath });
       }
     }
@@ -982,8 +979,33 @@ export function DocumentProperties({
                         copy={copy}
                         property={property}
                         onError={setError}
-                        onValueChange={(nextValue) => applyResult(
-                          updateFrontmatterValue(markdown, property.key, nextValue),
+                        onAddValue={(parentPath, segment, value) => applyResult(
+                          addFrontmatterMarkdownValueAtPath(
+                            markdown,
+                            [property.key, ...parentPath],
+                            segment,
+                            value,
+                          ),
+                        )}
+                        onRemoveValue={(path) => applyResult(
+                          removeFrontmatterMarkdownValueAtPath(
+                            markdown,
+                            [property.key, ...path],
+                          ),
+                        )}
+                        onRenameKey={(path, nextKey) => applyResult(
+                          renameFrontmatterMarkdownKeyAtPath(
+                            markdown,
+                            [property.key, ...path],
+                            nextKey,
+                          ),
+                        )}
+                        onUpdateValue={(path, value) => applyResult(
+                          updateFrontmatterMarkdownValueAtPath(
+                            markdown,
+                            [property.key, ...path],
+                            value,
+                          ),
                         )}
                       />
                     ) : editingKey === property.key ? (

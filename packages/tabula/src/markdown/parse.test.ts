@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFrontmatterMarkdownValueAtPath,
   addFrontmatterValue,
+  removeFrontmatterMarkdownValueAtPath,
   removeFrontmatterValue,
+  renameFrontmatterMarkdownKeyAtPath,
   renameFrontmatterKey,
   getMarkdownDocumentTitle,
   getOutlineHeadings,
@@ -10,6 +13,7 @@ import {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  updateFrontmatterMarkdownValueAtPath,
   updateFrontmatterValue,
 } from "./parse";
 
@@ -136,6 +140,111 @@ Body`);
         "Body",
       ].join("\n"),
     });
+  });
+
+  it("updates a nested scalar without reformatting comments or sibling YAML", () => {
+    const markdown = [
+      "---",
+      "title: \"Guide\" # visible title",
+      "tags: [docs,help]",
+      "generated:",
+      "  by: human:old # generator",
+      "  at: 2026-01-10T00:00:00Z",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(updateFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["generated", "by"],
+      "human:new",
+    )).toEqual({
+      ok: true,
+      markdown: markdown.replace("human:old", "human:new"),
+    });
+  });
+
+  it("renames a nested extension key without serializing its value", () => {
+    const markdown = [
+      "---",
+      "extension:",
+      "  team: Platform # custom extension",
+      "  settings: {compact: true}",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(renameFrontmatterMarkdownKeyAtPath(
+      markdown,
+      ["extension", "team"],
+      "owner team",
+    )).toEqual({
+      ok: true,
+      markdown: markdown.replace("  team:", "  owner team:"),
+    });
+  });
+
+  it("adds a structured list item without reformatting unrelated properties", () => {
+    const markdown = [
+      "---",
+      "tags: [docs,help]",
+      "sources:",
+      "  - id: handbook # canonical",
+      "    resource: https://example.com/handbook",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+    const result = addFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["sources"],
+      1,
+      { id: "runbook", resource: "https://example.com/runbook" },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("tags: [docs,help]");
+    expect(result.markdown).toContain("extension: {owner: taeha}");
+    expect(result.markdown).toContain("  - id: handbook # canonical");
+    expect(result.markdown).toContain("  - id: runbook\n    resource: https://example.com/runbook");
+  });
+
+  it("removes one nested field without touching data outside its parent", () => {
+    const markdown = [
+      "---",
+      "title: Guide",
+      "generated: {by: human:taeha, at: 2026-01-10T00:00:00Z}",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+    const result = removeFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["generated", "at"],
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("generated: { by: human:taeha }");
+    expect(result.markdown).toContain("extension: {owner: taeha}");
+  });
+
+  it("keeps CRLF endings when a nested collection grows", () => {
+    const markdown = "---\r\nsources:\r\n  - id: one\r\next: {owner: taeha}\r\n---\r\nBody";
+    const result = addFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["sources"],
+      1,
+      { id: "two" },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).not.toMatch(/(?<!\r)\n/);
+    expect(result.markdown).toContain("  - id: one\r\n  - id: two\r\n");
+    expect(result.markdown).toContain("ext: {owner: taeha}");
   });
 
   it("adds a property immediately before the closing delimiter", () => {

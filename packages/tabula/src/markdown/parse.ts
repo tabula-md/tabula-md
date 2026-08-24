@@ -1,4 +1,4 @@
-import { isMap, isScalar, parseDocument, stringify } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 
 export type ParsedFrontmatter = {
   attributes: { key: string; value: string }[];
@@ -200,6 +200,8 @@ export type FrontmatterValueUpdate =
   | { ok: true; markdown: string }
   | { ok: false; reason: "duplicate_key" | "invalid_frontmatter" | "invalid_key" | "missing_key" };
 
+export type FrontmatterMarkdownPath = readonly (string | number)[];
+
 const stringifyFrontmatterValue = (value: unknown) => stringify(value, {
   collectionStyle: "flow",
   lineWidth: 0,
@@ -214,6 +216,173 @@ const stringifyFrontmatterKey = (key: string) => stringify(key, {
   collectionStyle: "flow",
   lineWidth: 0,
 }).replace(/\n$/, "");
+
+type RangedYamlNode = {
+  range?: readonly number[];
+};
+
+const getRangedNode = (value: unknown): RangedYamlNode | null => {
+  if (!value || typeof value !== "object") return null;
+  const node = value as RangedYamlNode;
+  return node.range && node.range.length >= 2 ? node : null;
+};
+
+const replaceFrontmatterRange = (
+  markdown: string,
+  frontmatterBlock: NonNullable<ReturnType<typeof getFrontmatterBlock>>,
+  from: number,
+  to: number,
+  replacement: string,
+): FrontmatterValueUpdate => {
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const raw = `${frontmatterBlock.rawFrontmatter.slice(0, from)}${replacement}${frontmatterBlock.rawFrontmatter.slice(to)}`;
+  return {
+    ok: true,
+    markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${raw}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`,
+  };
+};
+
+const parseMutableFrontmatter = (markdown: string) => {
+  const frontmatterBlock = getFrontmatterBlock(markdown);
+  if (!frontmatterBlock) return null;
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents)) return null;
+  return { document, frontmatterBlock };
+};
+
+const getNodeAtPath = (
+  document: ReturnType<typeof parseDocument>,
+  path: FrontmatterMarkdownPath,
+) => path.length === 0 ? document.contents : document.getIn(path, true);
+
+/**
+ * Replaces only the selected YAML node. Unchanged keys, comments, collection
+ * styles, and extension fields remain byte-for-byte identical.
+ */
+export const updateFrontmatterMarkdownValueAtPath = (
+  markdown: string,
+  path: FrontmatterMarkdownPath,
+  value: unknown,
+): FrontmatterValueUpdate => {
+  const parsed = parseMutableFrontmatter(markdown);
+  if (!parsed || path.length === 0 || !parsed.document.hasIn(path)) {
+    return { ok: false, reason: parsed ? "missing_key" : "invalid_frontmatter" };
+  }
+  const node = getRangedNode(getNodeAtPath(parsed.document, path));
+  if (!node?.range) return { ok: false, reason: "missing_key" };
+  return replaceFrontmatterRange(
+    markdown,
+    parsed.frontmatterBlock,
+    node.range[0],
+    node.range[1],
+    stringifyFrontmatterValue(value),
+  );
+};
+
+/** Renames one mapping key without serializing its value or siblings. */
+export const renameFrontmatterMarkdownKeyAtPath = (
+  markdown: string,
+  path: FrontmatterMarkdownPath,
+  nextKey: string,
+): FrontmatterValueUpdate => {
+  const normalizedKey = normalizeFrontmatterKey(nextKey);
+  if (!normalizedKey) return { ok: false, reason: "invalid_key" };
+  const parsed = parseMutableFrontmatter(markdown);
+  if (!parsed || path.length === 0) {
+    return { ok: false, reason: "invalid_frontmatter" };
+  }
+  const currentKey = path.at(-1);
+  const parentPath = path.slice(0, -1);
+  const parent = getNodeAtPath(parsed.document, parentPath);
+  if (typeof currentKey !== "string" || !isMap(parent)) {
+    return { ok: false, reason: "missing_key" };
+  }
+  if (normalizedKey !== currentKey && parent.has(normalizedKey)) {
+    return { ok: false, reason: "duplicate_key" };
+  }
+  const pair = parent.items.find(
+    (item) => isScalar(item.key) && item.key.value === currentKey,
+  );
+  if (!pair || !isScalar(pair.key) || !pair.key.range) {
+    return { ok: false, reason: "missing_key" };
+  }
+  return replaceFrontmatterRange(
+    markdown,
+    parsed.frontmatterBlock,
+    pair.key.range[0],
+    pair.key.range[1],
+    stringifyFrontmatterKey(normalizedKey),
+  );
+};
+
+const mutateFrontmatterCollection = (
+  markdown: string,
+  parentPath: FrontmatterMarkdownPath,
+  mutate: (document: ReturnType<typeof parseDocument>) => boolean,
+): FrontmatterValueUpdate => {
+  const parsed = parseMutableFrontmatter(markdown);
+  if (!parsed) return { ok: false, reason: "invalid_frontmatter" };
+  const originalParent = getRangedNode(getNodeAtPath(parsed.document, parentPath));
+  if (!originalParent?.range || !mutate(parsed.document)) {
+    return { ok: false, reason: "missing_key" };
+  }
+
+  // yaml preserves comments and the block/flow style of parsed nodes. We only
+  // take the mutated parent slice from its output, so unrelated frontmatter is
+  // never reformatted.
+  const serialized = parsed.document.toString({ lineWidth: 0 }).replace(/\n$/, "");
+  const nextDocument = parseDocument(serialized, { prettyErrors: false });
+  const nextParent = getRangedNode(getNodeAtPath(nextDocument, parentPath));
+  if (!nextParent?.range) return { ok: false, reason: "missing_key" };
+  const replacement = serialized
+    .slice(nextParent.range[0], nextParent.range[1])
+    .replace(/\n/g, markdown.includes("\r\n") ? "\r\n" : "\n");
+  return replaceFrontmatterRange(
+    markdown,
+    parsed.frontmatterBlock,
+    originalParent.range[0],
+    originalParent.range[1],
+    replacement,
+  );
+};
+
+/** Adds one child while limiting any style normalization to its parent collection. */
+export const addFrontmatterMarkdownValueAtPath = (
+  markdown: string,
+  parentPath: FrontmatterMarkdownPath,
+  segment: string | number,
+  value: unknown,
+): FrontmatterValueUpdate => {
+  const normalizedSegment = typeof segment === "string"
+    ? normalizeFrontmatterKey(segment)
+    : segment;
+  if (normalizedSegment === null) return { ok: false, reason: "invalid_key" };
+  return mutateFrontmatterCollection(markdown, parentPath, (document) => {
+    const parent = getNodeAtPath(document, parentPath);
+    if (isMap(parent)) {
+      if (typeof normalizedSegment !== "string" || parent.has(normalizedSegment)) return false;
+    } else if (isSeq(parent)) {
+      if (typeof normalizedSegment !== "number" || normalizedSegment !== parent.items.length) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+    document.setIn([...parentPath, normalizedSegment], value);
+    return true;
+  });
+};
+
+/** Removes one child while limiting any style normalization to its parent collection. */
+export const removeFrontmatterMarkdownValueAtPath = (
+  markdown: string,
+  path: FrontmatterMarkdownPath,
+): FrontmatterValueUpdate => {
+  if (path.length < 2) return { ok: false, reason: "missing_key" };
+  const parentPath = path.slice(0, -1);
+  return mutateFrontmatterCollection(markdown, parentPath, (document) =>
+    document.deleteIn(path));
+};
 
 export const updateFrontmatterValue = (
   markdown: string,

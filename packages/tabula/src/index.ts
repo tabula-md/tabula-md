@@ -214,6 +214,7 @@ export {
 } from "./lineSurfaceModel";
 
 export type {
+  FrontmatterMarkdownPath,
   FrontmatterInspection,
   FrontmatterValueUpdate,
   MarkdownHeading,
@@ -222,6 +223,7 @@ export type {
   PreviewBody,
 } from "./markdown/parse";
 export {
+  addFrontmatterMarkdownValueAtPath,
   addFrontmatterValue,
   getLineNumberForOffset,
   getLineStartOffset,
@@ -232,8 +234,11 @@ export {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  removeFrontmatterMarkdownValueAtPath,
   removeFrontmatterValue,
+  renameFrontmatterMarkdownKeyAtPath,
   renameFrontmatterKey,
+  updateFrontmatterMarkdownValueAtPath,
   updateFrontmatterValue,
 } from "./markdown/parse";
 
