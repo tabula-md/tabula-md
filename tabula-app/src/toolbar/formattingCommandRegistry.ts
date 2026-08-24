@@ -52,7 +52,7 @@ export type FormattingToolbarCommandPlacement =
   | "cleanup"
   | "overflow";
 
-export type FormattingToolbarDensity = "wide" | "medium" | "compact";
+export type FormattingToolbarDensity = "wide" | "medium" | "compact" | "minimal";
 
 export type FormattingToolbarCommandState = {
   canRedo: boolean;
@@ -279,6 +279,7 @@ export const formattingToolbarGroupOrder: FormattingToolbarCommandGroup[] = [
 export const getFormattingToolbarDensity = (width: number): FormattingToolbarDensity => {
   if (width >= 880) return "wide";
   if (width >= 560) return "medium";
+  if (width < 320) return "minimal";
   return "compact";
 };
 
@@ -296,10 +297,17 @@ export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) =>
   const componentCommands = getFormattingToolbarCommandsByPlacement("component");
   const cleanupCommands = getFormattingToolbarCommandsByPlacement("cleanup");
   const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
+  const minimal = density === "minimal";
   const compact = density === "compact";
   const medium = density === "medium";
-  const hiddenHistoryCommands = compact ? historyCommands.filter((command) => command.id === "redo") : [];
-  const visibleInlineCommandIds = compact
+  const hiddenHistoryCommands = minimal
+    ? historyCommands
+    : compact
+      ? historyCommands.filter((command) => command.id === "redo")
+      : [];
+  const visibleInlineCommandIds = minimal
+    ? new Set<string>()
+    : compact
     ? compactInlineCommandIds
     : medium
       ? mediumInlineCommandIds
@@ -309,23 +317,27 @@ export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) =>
     : [];
 
   return {
-    history: compact
+    history: minimal
+      ? []
+      : compact
       ? historyCommands.filter((command) => command.id === "undo")
       : historyCommands,
     inline: visibleInlineCommandIds
       ? inlineCommands.filter((command) => visibleInlineCommandIds.has(command.id))
       : inlineCommands,
-    block: getFormattingToolbarCommandsByPlacement("block"),
-    list: getFormattingToolbarCommandsByPlacement("list"),
-    insert: compact ? [] : insertCommands,
-    component: compact ? [] : componentCommands,
-    cleanup: compact || medium ? [] : cleanupCommands,
+    block: minimal ? [] : getFormattingToolbarCommandsByPlacement("block"),
+    list: minimal ? [] : getFormattingToolbarCommandsByPlacement("list"),
+    insert: compact || minimal ? [] : insertCommands,
+    component: compact || minimal ? [] : componentCommands,
+    cleanup: compact || minimal || medium ? [] : cleanupCommands,
     overflow: hiddenHistoryCommands
       .concat(
         hiddenInlineCommands,
-        compact ? insertCommands : [],
-        compact ? componentCommands : [],
-        compact || medium ? cleanupCommands : [],
+        minimal ? getFormattingToolbarCommandsByPlacement("block") : [],
+        minimal ? getFormattingToolbarCommandsByPlacement("list") : [],
+        compact || minimal ? insertCommands : [],
+        compact || minimal ? componentCommands : [],
+        compact || minimal || medium ? cleanupCommands : [],
         overflowCommands,
       ),
   };

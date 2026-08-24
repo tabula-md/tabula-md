@@ -131,7 +131,26 @@ describe("formatting command registry", () => {
     expect(getFormattingToolbarDensity(879)).toBe("medium");
     expect(getFormattingToolbarDensity(880)).toBe("wide");
     expect(getFormattingToolbarDensity(559)).toBe("compact");
+    expect(getFormattingToolbarDensity(319)).toBe("minimal");
+    expect(getFormattingToolbarDensity(320)).toBe("compact");
     expect(getFormattingToolbarDensity(560)).toBe("medium");
+  });
+
+  it("moves every command into More on minimal lanes", () => {
+    const layout = getFormattingToolbarLayout("minimal");
+
+    expect(layout.history).toEqual([]);
+    expect(layout.inline).toEqual([]);
+    expect(layout.block).toEqual([]);
+    expect(layout.list).toEqual([]);
+    expect(layout.insert).toEqual([]);
+    expect(layout.component).toEqual([]);
+    expect(layout.cleanup).toEqual([]);
+    expect(layout.overflow.map((command) => command.id).sort()).toEqual(
+      formattingToolbarCommands
+        .map((command) => command.id)
+        .sort(),
+    );
   });
 
   it("keeps dedicated insert controls on wide lanes", () => {
@@ -155,7 +174,7 @@ describe("formatting command registry", () => {
     expect(layout.overflow).toEqual([]);
   });
 
-  it.each(["compact", "medium", "wide"] as const)(
+  it.each(["minimal", "compact", "medium", "wide"] as const)(
     "renders every registered command exactly once at %s density",
     (density) => {
       const layout = getFormattingToolbarLayout(density);
