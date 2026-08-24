@@ -591,7 +591,7 @@ export function DocumentProperties({
     }
   }, [adding, editingKey, listItemEditor, renamingKey]);
 
-  if (model.status === "invalid" || (model.status === "absent" && !adding)) {
+  if (model.status === "invalid") {
     return null;
   }
 
@@ -773,25 +773,31 @@ export function DocumentProperties({
     ? model.properties
     : model.properties.slice(0, DEFAULT_VISIBLE_PROPERTY_COUNT);
   const hiddenCount = model.properties.length - visibleProperties.length;
+  const hasFrontmatter = model.status === "valid";
 
   return (
-    <section className="document-properties" aria-label={surfaceCopy.frontmatter}>
-      <button
-        className="document-properties-heading"
-        type="button"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((current) => !current)}
-      >
-        <ChevronDown
-          className="document-properties-chevron"
-          size={16}
-          aria-hidden="true"
-        />
-        <span>{surfaceCopy.frontmatter}</span>
-        <span className="document-properties-count">{model.properties.length}</span>
-      </button>
+    <section
+      className={`document-properties${hasFrontmatter ? "" : " document-properties-empty"}`}
+      aria-label={surfaceCopy.frontmatter}
+    >
+      {hasFrontmatter && (
+        <button
+          className="document-properties-heading"
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <ChevronDown
+            className="document-properties-chevron"
+            size={16}
+            aria-hidden="true"
+          />
+          <span>{surfaceCopy.frontmatter}</span>
+          <span className="document-properties-count">{model.properties.length}</span>
+        </button>
+      )}
 
-      {expanded && (
+      {(!hasFrontmatter || expanded) && (
         <div className="document-properties-body">
           <div className="document-properties-list">
             {visibleProperties.map((property) => {
