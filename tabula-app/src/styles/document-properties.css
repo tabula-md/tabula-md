@@ -1,11 +1,11 @@
 .document-properties {
   box-sizing: border-box;
   width: calc(100% - var(--editor-frame-rails));
-  margin: 0 var(--editor-right-inset) var(--space-6) var(--editor-left-rail);
+  margin: 0 var(--editor-right-inset) var(--space-5) var(--editor-left-rail);
   padding: 0 8px;
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .document-properties-heading {
@@ -16,13 +16,11 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-soft);
+  color: var(--text-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .document-properties-heading:hover {
