@@ -464,12 +464,12 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Properties",
+      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Metadata",
       `The right panel should contain document context only. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     await page.getByRole("navigation", { name: "Side panel sections" })
-      .getByRole("button", { name: "Properties", exact: true }).click();
+      .getByRole("button", { name: "Metadata", exact: true }).click();
     await page.locator('.right-properties[aria-label="Metadata"]').waitFor();
     await page.getByRole("navigation", { name: "Side panel sections" })
       .getByRole("button", { name: "Outline", exact: true }).click();
@@ -553,14 +553,15 @@ export async function run(ctx) {
     );
 
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.getByRole("navigation", { name: "Side panel sections" })
+      .getByRole("button", { name: "Metadata", exact: true }).click();
     await page.locator(".right-properties").waitFor({
       state: "visible",
     });
     expect(
       (await page.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
-      "Properties should be the only metadata context exposed during editing.",
+      "Metadata should be the only metadata context exposed during editing.",
     );
     expect(
       (await page.locator(".right-compatibility-scroll").count()) === 0,
@@ -658,14 +659,14 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
 
     const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
-    await sidePanelNavigation.getByRole("button", { name: "Properties", exact: true }).click();
+    await sidePanelNavigation.getByRole("button", { name: "Metadata", exact: true }).click();
     expect(
       await page.locator(".right-properties").isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
         (await page.locator(".right-panel-search-field").count()) === 0 &&
          (await page.locator(".right-graph-panel").count()) === 0,
-       "Properties should remain document metadata instead of a catalog or dashboard.",
+       "Metadata should remain document metadata instead of a catalog or dashboard.",
     );
     await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
 

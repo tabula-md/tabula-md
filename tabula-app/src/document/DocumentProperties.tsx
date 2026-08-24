@@ -64,8 +64,6 @@ import {
   type FrontmatterPropertyTypeHint,
 } from "./frontmatterPropertySuggestions";
 
-const DEFAULT_VISIBLE_PROPERTY_COUNT = 5;
-
 const propertyTypes: FrontmatterPropertyType[] = [
   "text",
   "number",
@@ -573,6 +571,7 @@ export type DocumentPropertiesProps = {
   onChange: (nextValue: string | null, change?: TextChange) => void;
   onPropertyAddRequestHandled?: () => void;
   onOpenSource?: () => void;
+  variant?: "inline" | "drawer";
   workspaceMarkdownDocuments?: readonly string[];
 };
 
@@ -585,6 +584,7 @@ export function DocumentProperties({
   onChange,
   onPropertyAddRequestHandled,
   onOpenSource,
+  variant = "inline",
   workspaceMarkdownDocuments = [],
 }: DocumentPropertiesProps) {
   const copy = getDocumentPropertiesCopy(language);
@@ -601,7 +601,6 @@ export function DocumentProperties({
     ];
   }, [workspaceMarkdownDocuments]);
   const [expanded, setExpanded] = useState(true);
-  const [showAll, setShowAll] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -624,7 +623,6 @@ export function DocumentProperties({
   const addConfirmRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    setShowAll(false);
     setEditingKey(null);
     setRenamingKey(null);
     setListItemEditor(null);
@@ -636,7 +634,6 @@ export function DocumentProperties({
   useEffect(() => {
     if (typeof addPropertyRequestId !== "number") return;
     setExpanded(true);
-    setShowAll(true);
     setEditingKey(null);
     setRenamingKey(null);
     setListItemEditor(null);
@@ -687,7 +684,10 @@ export function DocumentProperties({
 
   if (model.status === "invalid") {
     return (
-      <section className="document-properties document-properties-invalid" aria-label={surfaceCopy.frontmatter}>
+      <section
+        className={`document-properties document-properties-invalid${variant === "drawer" ? " document-properties-drawer" : ""}`}
+        aria-label={surfaceCopy.frontmatter}
+      >
         <div className="document-properties-invalid-state" role="status">
           <span>{copy.invalidMetadata}</span>
           {onOpenSource && (
@@ -831,6 +831,15 @@ export function DocumentProperties({
     setError(null);
   };
 
+  const beginAdd = () => {
+    setAddPhase("key");
+    setNewKey("");
+    setNewType("text");
+    setNewDraft("");
+    setNewTypeWasChosen(false);
+    setError(null);
+  };
+
   const changeNewType = (type: FrontmatterPropertyType) => {
     const converted = convertFrontmatterPropertyValue(undefined, type);
     if (!converted.ok) return;
@@ -926,7 +935,6 @@ export function DocumentProperties({
     }
     if (applyResult(addFrontmatterValue(markdown, newKey, value.value))) {
       resetAddForm();
-      setShowAll(true);
     }
   };
 
@@ -973,10 +981,6 @@ export function DocumentProperties({
     }
   };
 
-  const visibleProperties = showAll
-    ? model.properties
-    : model.properties.slice(0, DEFAULT_VISIBLE_PROPERTY_COUNT);
-  const hiddenCount = model.properties.length - visibleProperties.length;
   // An empty YAML envelope has no distinct meaning in Write. Treat it like
   // absent metadata so imported `--- / ---` documents and new documents share
   // the same visible empty state.
@@ -996,10 +1000,10 @@ export function DocumentProperties({
 
   return (
     <section
-      className={`document-properties${hasFrontmatter ? "" : " document-properties-empty"}`}
+      className={`document-properties${hasFrontmatter ? "" : " document-properties-empty"}${variant === "drawer" ? " document-properties-drawer" : ""}`}
       aria-label={surfaceCopy.frontmatter}
     >
-      {hasFrontmatter && (
+      {variant !== "drawer" && hasFrontmatter && (
         <button
           className="document-properties-heading"
           type="button"
@@ -1012,20 +1016,18 @@ export function DocumentProperties({
             aria-hidden="true"
           />
           <span>{surfaceCopy.frontmatter}</span>
-          {model.properties.length > 0 && (
-            <span className="document-properties-count">{model.properties.length}</span>
-          )}
         </button>
       )}
 
-      {(!hasFrontmatter || expanded) && (
+      {(variant === "drawer" || !hasFrontmatter || expanded) && (
         <div className="document-properties-body">
           <div className="document-properties-list">
-            {visibleProperties.map((property) => {
+            {model.properties.map((property, propertyIndex) => {
               const scalarList = isScalarList(property);
               const isTagList = property.key.toLowerCase() === "tags" && scalarList;
               const isStructured = property.type === "object" ||
                 (property.type === "list" && !scalarList);
+              const isLastProperty = propertyIndex === model.properties.length - 1;
               return (
                 <div className="document-property-row" key={property.key}>
                   <PropertyTypeMenu
@@ -1245,49 +1247,51 @@ export function DocumentProperties({
                     )}
                   </div>
 
-                  <MenuRoot>
-                    <MenuTrigger asChild>
+                  <div className="document-property-row-actions">
+                    {isLastProperty && !adding && (
                       <button
-                        className="document-property-actions-trigger"
+                        className="document-properties-add-icon"
                         type="button"
-                        aria-label={copy.moreActions(property.key)}
+                        aria-label={copy.addProperty}
+                        onClick={beginAdd}
                       >
-                        <MoreHorizontal size={16} aria-hidden="true" />
+                        <Plus size={15} aria-hidden="true" />
                       </button>
-                    </MenuTrigger>
-                    <MenuContent
-                      ariaLabel={copy.moreActions(property.key)}
-                      className="document-property-actions-menu"
-                    >
-                      {onOpenSource && (
+                    )}
+                    <MenuRoot>
+                      <MenuTrigger asChild>
+                        <button
+                          className="document-property-actions-trigger"
+                          type="button"
+                          aria-label={copy.moreActions(property.key)}
+                        >
+                          <MoreHorizontal size={16} aria-hidden="true" />
+                        </button>
+                      </MenuTrigger>
+                      <MenuContent
+                        ariaLabel={copy.moreActions(property.key)}
+                        className="document-property-actions-menu"
+                      >
+                        {onOpenSource && (
+                          <MenuItem
+                            icon={<Code2 size={15} />}
+                            label={copy.editInSource}
+                            onSelect={onOpenSource}
+                          />
+                        )}
                         <MenuItem
-                          icon={<Code2 size={15} />}
-                          label={copy.editInSource}
-                          onSelect={onOpenSource}
+                          danger
+                          icon={<Trash2 size={15} />}
+                          label={copy.remove}
+                          onSelect={() => applyResult(removeFrontmatterValue(markdown, property.key))}
                         />
-                      )}
-                      <MenuItem
-                        danger
-                        icon={<Trash2 size={15} />}
-                        label={copy.remove}
-                        onSelect={() => applyResult(removeFrontmatterValue(markdown, property.key))}
-                      />
-                    </MenuContent>
-                  </MenuRoot>
+                      </MenuContent>
+                    </MenuRoot>
+                  </div>
                 </div>
               );
             })}
           </div>
-
-          {model.properties.length > DEFAULT_VISIBLE_PROPERTY_COUNT && (
-            <button
-              className="document-properties-show-more"
-              type="button"
-              onClick={() => setShowAll((current) => !current)}
-            >
-              {showAll ? copy.showLess : copy.showMore(hiddenCount)}
-            </button>
-          )}
 
           {adding ? (
             <div className="document-property-add-form" ref={addFormRef}>
@@ -1411,23 +1415,16 @@ export function DocumentProperties({
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
-          ) : (
+          ) : model.properties.length === 0 ? (
             <button
               className="document-properties-add"
               type="button"
-              onClick={() => {
-                setAddPhase("key");
-                setNewKey("");
-                setNewType("text");
-                setNewDraft("");
-                setNewTypeWasChosen(false);
-                setError(null);
-              }}
+              onClick={beginAdd}
             >
               <Plus size={16} aria-hidden="true" />
               {copy.addProperty}
             </button>
-          )}
+          ) : null}
 
           {error && (
             <p className="document-properties-error" role="alert">

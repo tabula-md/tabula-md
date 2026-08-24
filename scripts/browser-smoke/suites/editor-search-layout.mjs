@@ -117,10 +117,15 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Toggle replace" }).click();
     expect((await page.getByLabel("Replace with").count()) === 0, "Toggle replace should collapse the replace input.");
 
-    await page.getByRole("button", { name: "Open Workspace menu" }).click();
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await page.locator(".left-panel").waitFor({ state: "visible" });
+    }
+    const workspaceMenuTrigger = page.locator(".left-panel .left-panel-menu");
+    await workspaceMenuTrigger.click();
     await page.getByRole("button", { name: "Preferences", exact: true }).click();
     expect((await page.getByRole("button", { name: "Light", exact: true }).count()) === 1, "Workspace preferences should remain interactive above an open Search row.");
-    await page.getByRole("button", { name: "Close Workspace menu" }).click();
+    await workspaceMenuTrigger.click();
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor controls are opened.");
