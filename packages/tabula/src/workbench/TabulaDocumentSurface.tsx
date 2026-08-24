@@ -32,6 +32,7 @@ import type {
 import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
 import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspace/workspaceStorage";
 import { MarkdownEditor } from "../../../../tabula-app/src/document/MarkdownEditor";
+import { DocumentProperties } from "../../../../tabula-app/src/document/DocumentProperties";
 import { ResizeHandle } from "../../../../tabula-app/src/ui/ResizeHandle";
 import {
   type MarkdownPreviewCommentAnchor,
@@ -186,6 +187,7 @@ export type TabulaDocumentSurfaceProps = {
   onEditorSelectionChange: (selection?: CollaborationLiveSelection) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onOpenSource?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -246,6 +248,7 @@ export function TabulaDocumentSurface({
   onEditorSelectionChange,
   onLineAction,
   onOpenComment,
+  onOpenSource,
   onOpenWorkspaceLink,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -327,6 +330,16 @@ export function TabulaDocumentSurface({
         ref={editorSurfaceRef}
         onScroll={onEditorScroll}
       >
+        {documentSurface.documentControls.activeViewMode === "visual" && (
+          <DocumentProperties
+            documentId={activeFile.id}
+            editorRef={editorRef}
+            language={language}
+            markdown={text}
+            onChange={onTextChange}
+            onOpenSource={onOpenSource}
+          />
+        )}
         <MarkdownEditor
           ref={editorRef}
           ariaLabel={copy.editor}

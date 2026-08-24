@@ -93,6 +93,22 @@ Body`);
     });
   });
 
+  it("keeps comments attached to the value being edited", () => {
+    const markdown = "---\nstatus: draft # lifecycle state\ntags: [docs, help] # search labels\n---\nBody";
+    const statusResult = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(statusResult).toEqual({
+      ok: true,
+      markdown: "---\nstatus: stable # lifecycle state\ntags: [docs, help] # search labels\n---\nBody",
+    });
+    if (!statusResult.ok) return;
+    expect(updateFrontmatterValue(statusResult.markdown, "tags", ["docs", "reference"]))
+      .toEqual({
+        ok: true,
+        markdown: "---\nstatus: stable # lifecycle state\ntags: [ docs, reference ] # search labels\n---\nBody",
+      });
+  });
+
   it("adds a property immediately before the closing delimiter", () => {
     expect(addFrontmatterValue("---\ntitle: Guide\n---\nBody", "owner", "team:docs"))
       .toEqual({

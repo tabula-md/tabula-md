@@ -327,6 +327,12 @@ export function DocumentWorkbench({
         onEditorSelectionChange={onEditorSelectionChange}
         onLineAction={onLineAction}
         onOpenComment={onOpenComment}
+        onOpenSource={() => {
+          onSetViewMode("edit");
+          window.requestAnimationFrame(() => {
+            editorRef.current?.revealRange(0);
+          });
+        }}
         onOpenWorkspaceLink={onOpenWorkspaceLink}
         onPreviewKeyUp={onPreviewKeyUp}
         onPreviewMouseUp={onPreviewMouseUp}

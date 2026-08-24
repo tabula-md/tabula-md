@@ -65,7 +65,7 @@ export const buildEditorVisualDecorationSets = (
   const hiddenRanges = model.hiddenRanges.map(({ from, to }) =>
     Decoration.replace({}).range(from, to));
   const replacementRanges = model.replacements.map((replacement) =>
-    createEditorVisualReplacementDecoration(replacement, copy, options.sourceDocumentId)
+    createEditorVisualReplacementDecoration(replacement, copy)
       .range(replacement.from, replacement.to));
   const workspaceLinkRanges = getEditorVisualWorkspaceLinkRanges(state, options).map(
     ({ from, status, to }) =>

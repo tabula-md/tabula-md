@@ -238,6 +238,14 @@ export {
 } from "./markdown/parse";
 
 export type {
+  FrontmatterPropertiesModel,
+  FrontmatterProperty,
+  FrontmatterPropertyKind,
+  FrontmatterScalar,
+} from "./frontmatterProperties";
+export { getFrontmatterProperties } from "./frontmatterProperties";
+
+export type {
   BlockInteractionPolicy,
   MarkdownPresentationDocument,
   PresentationBlock,

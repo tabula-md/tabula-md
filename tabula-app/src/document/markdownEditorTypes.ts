@@ -19,8 +19,6 @@ export type MarkdownEditorInterfaceCopy = Pick<
   | "activeComment"
   | "openComment"
   | "imageFailed"
-  | "frontmatter"
-  | "addProperty"
   | "markTaskComplete"
   | "markTaskIncomplete"
 >;

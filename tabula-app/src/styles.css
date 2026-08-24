@@ -10,6 +10,7 @@
 @import "./styles/editor-controls.css";
 @import "./styles/editor-code.css";
 @import "./styles/editor-visual.css";
+@import "./styles/document-properties.css";
 @import "./styles/editor-search.css";
 @import "./styles/split-view.css";
 @import "./styles/editor-selection.css";

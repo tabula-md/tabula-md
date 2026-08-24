@@ -337,7 +337,7 @@ describe("editor visual mode model", () => {
     ]);
   });
 
-  it("replaces valid frontmatter with a metadata block in Visual mode", () => {
+  it("hides valid frontmatter source in Visual mode", () => {
     const doc = [
       "---",
       "title: Visual mode",
@@ -353,7 +353,6 @@ describe("editor visual mode model", () => {
     expect(model.replacements).toContainEqual(expect.objectContaining({
       from: 0,
       kind: "frontmatter",
-      metadata: { title: "Visual mode", tags: ["tabula", "markdown"] },
       to: doc.indexOf("\n\n# Body") + 1,
     }));
     expect(

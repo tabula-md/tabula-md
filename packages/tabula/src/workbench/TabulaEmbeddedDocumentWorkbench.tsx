@@ -243,6 +243,10 @@ export function TabulaEmbeddedDocumentWorkbench({
             );
           }}
           onOpenComment={() => undefined}
+          onOpenSource={() => {
+            setDocumentViewMode("edit");
+            window.requestAnimationFrame(() => editorRef.current?.revealRange(0));
+          }}
           onPreviewKeyUp={() => undefined}
           onPreviewMouseUp={() => undefined}
           onPreviewScroll={previewFollow.handlePreviewScroll}

@@ -1,4 +1,4 @@
-import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
+import { getFrontmatterProperties } from "@tabula-md/tabula";
 import type { ReactNode } from "react";
 import { PanelEmptyState } from "./PanelEmptyState";
 
@@ -60,27 +60,26 @@ const formatValue = (value: unknown): ReactNode => {
 
 export function RightPanelProperties({
   activeFileId,
-  index,
+  markdown,
   noDocumentCopy,
   emptyCopy,
 }: {
   activeFileId: string;
-  index?: WorkspaceKnowledgeIndex;
+  markdown: string;
   noDocumentCopy: string;
   emptyCopy: string;
 }) {
-  const metadata = index?.analysesByDocumentId.get(activeFileId)?.metadata;
-  const entries = Object.entries(metadata ?? {});
+  const entries = getFrontmatterProperties(markdown).properties;
 
   return (
     <section className="right-properties" aria-label="Metadata">
       {!activeFileId ? <PanelEmptyState>{noDocumentCopy}</PanelEmptyState> :
         !entries.length ? <PanelEmptyState>{emptyCopy}</PanelEmptyState> : (
           <dl className="right-properties-list">
-            {entries.map(([key, value]) => (
-              <div className="right-properties-row" key={key}>
-                <dt>{key}</dt>
-                <dd>{formatValue(value)}</dd>
+            {entries.map((property) => (
+              <div className="right-properties-row" key={property.key}>
+                <dt>{property.key}</dt>
+                <dd>{formatValue(property.value)}</dd>
               </div>
             ))}
           </dl>
