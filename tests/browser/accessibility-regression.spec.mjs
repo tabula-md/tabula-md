@@ -73,6 +73,29 @@ for (const layoutCase of layoutCases) {
 
     const smoke = createSmokeContext(page.context().browser());
     await createDocument(page, smoke);
+    const toolbarGeometry = await page.evaluate(() => {
+      const toolbar = document.querySelector(".document-toolbar-row");
+      const formatting = document.querySelector(".formatting-row");
+      const controls = document.querySelector(".document-controls-wrap");
+      if (!(toolbar instanceof HTMLElement)
+        || !(formatting instanceof HTMLElement)
+        || !(controls instanceof HTMLElement)) {
+        return null;
+      }
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const formattingRect = formatting.getBoundingClientRect();
+      const controlsRect = controls.getBoundingClientRect();
+      return {
+        height: toolbarRect.height,
+        centerDelta: Math.abs(
+          (formattingRect.top + formattingRect.height / 2)
+          - (controlsRect.top + controlsRect.height / 2),
+        ),
+      };
+    });
+    expect(toolbarGeometry).not.toBeNull();
+    expect(toolbarGeometry.height).toBeLessThanOrEqual(60);
+    expect(toolbarGeometry.centerDelta).toBeLessThanOrEqual(1);
     if (layoutCase.manyTabs) {
       for (let index = 0; index < 7; index += 1) {
         await page.locator(".add-tab-button").click();
@@ -86,7 +109,8 @@ for (const layoutCase of layoutCases) {
       exact: true,
     });
     await panelToggle.focus();
-    await page.keyboard.press("Enter");
+    await expect(panelToggle).toBeFocused();
+    await panelToggle.press("Enter");
     const panel = page.locator(".right-panel");
     await expect(panel).toBeVisible();
     const overlayExpected = layoutCase.width <= 1160;

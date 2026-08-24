@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -260,43 +261,63 @@ export function FormattingToolbar({
   return (
     <div ref={rowRef} className={`formatting-row ${className}`} data-density={density}>
       <nav className="formatting-toolbar" aria-label={copy.formatting}>
-        <div className="formatting-command-group">
-          {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
-        </div>
-        <span className="formatting-group-divider" aria-hidden="true" />
-        <div className="formatting-command-group">
-          {density === "wide"
-            ? layout.block.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
-            : renderMenu("block")}
-        </div>
-        <span className="formatting-group-divider" aria-hidden="true" />
-        <div className="formatting-command-group">
-          {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
-        </div>
-        <span className="formatting-group-divider" aria-hidden="true" />
-        <div className="formatting-command-group">
-          {density === "wide"
-            ? layout.list.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
-            : renderMenu("list")}
-        </div>
-        <span className="formatting-group-divider" aria-hidden="true" />
-        <div className="formatting-command-group formatting-secondary-group">
-          {density === "wide"
-            ? layout.insert.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
-            : layout.insert.length > 0 && renderMenu("insert")}
-          {density !== "compact" && layout.insert.length > 0 && layout.component.length > 0 && (
+        {layout.history.length > 0 && (
+          <div className="formatting-command-group">
+            {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+          </div>
+        )}
+        {layout.block.length > 0 && (
+          <Fragment>
             <span className="formatting-group-divider" aria-hidden="true" />
-          )}
-          {density === "wide"
-            ? layout.component.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
-            : layout.component.length > 0 && renderMenu("component")}
-          {layout.cleanup.length > 0 && (
-            <div className="formatting-command-group formatting-cleanup-group">
-              {layout.cleanup.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+            <div className="formatting-command-group">
+              {density === "wide"
+                ? layout.block.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+                : renderMenu("block")}
             </div>
-          )}
-          {layout.overflow.length > 0 && renderMenu("overflow")}
-        </div>
+          </Fragment>
+        )}
+        {layout.inline.length > 0 && (
+          <Fragment>
+            <span className="formatting-group-divider" aria-hidden="true" />
+            <div className="formatting-command-group">
+              {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+            </div>
+          </Fragment>
+        )}
+        {layout.list.length > 0 && (
+          <Fragment>
+            <span className="formatting-group-divider" aria-hidden="true" />
+            <div className="formatting-command-group">
+              {density === "wide"
+                ? layout.list.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+                : renderMenu("list")}
+            </div>
+          </Fragment>
+        )}
+        {(layout.insert.length > 0 || layout.component.length > 0 || layout.cleanup.length > 0 || layout.overflow.length > 0) && (
+          <Fragment>
+            {(layout.history.length > 0 || layout.block.length > 0 || layout.inline.length > 0 || layout.list.length > 0) && (
+              <span className="formatting-group-divider" aria-hidden="true" />
+            )}
+            <div className="formatting-command-group formatting-secondary-group">
+              {density === "wide"
+                ? layout.insert.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+                : layout.insert.length > 0 && renderMenu("insert")}
+              {density !== "compact" && density !== "minimal" && layout.insert.length > 0 && layout.component.length > 0 && (
+                <span className="formatting-group-divider" aria-hidden="true" />
+              )}
+              {density === "wide"
+                ? layout.component.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+                : layout.component.length > 0 && renderMenu("component")}
+              {layout.cleanup.length > 0 && (
+                <div className="formatting-command-group formatting-cleanup-group">
+                  {layout.cleanup.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+                </div>
+              )}
+              {layout.overflow.length > 0 && renderMenu("overflow")}
+            </div>
+          </Fragment>
+        )}
       </nav>
     </div>
   );

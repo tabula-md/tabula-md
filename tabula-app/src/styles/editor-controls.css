@@ -351,20 +351,22 @@
   }
 
   .document-toolbar-row.with-formatting {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: var(--control-size-row) var(--control-size-row);
-    gap: var(--space-1);
-    height: 88px;
-    padding: var(--space-2) var(--space-1);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: var(--control-size-row);
+    gap: 8px;
+    height: 50px;
+    padding: var(--space-2) 0;
   }
 
   .document-toolbar-row.with-formatting .document-controls-wrap {
     grid-row: 1;
+    grid-column: 2;
     justify-self: end;
   }
 
   .document-toolbar-row.with-formatting .formatting-row {
-    grid-row: 2;
+    grid-row: 1;
+    grid-column: 1;
   }
 
   .formatting-row,
@@ -389,9 +391,9 @@
   }
 
   .document-toolbar-row.with-formatting {
-    grid-template-rows: var(--control-size-touch) var(--control-size-touch);
-    height: 100px;
-    padding: var(--space-1);
+    grid-template-rows: var(--control-size-touch);
+    height: 52px;
+    padding: var(--space-1) 0;
   }
 
   .formatting-toolbar {

@@ -1906,7 +1906,10 @@ export async function run(ctx) {
         };
       });
       expect(mobileToolbar.toolbarVisible, "Formatting toolbar should remain visible on mobile edit screens.");
-      expect(mobileToolbar.primaryCommandCount === 2, "Mobile formatting toolbar should keep only core inline commands visible.");
+      expect(
+        mobileToolbar.primaryCommandCount === 0,
+        "Very narrow formatting lanes should move inline commands into More.",
+      );
       expect(mobileToolbar.moreButtonVisible, "Mobile formatting toolbar should keep More formatting visible.");
       expect(mobileToolbar.toolbarOverflowX === "hidden", "Mobile formatting should use deterministic overflow instead of horizontal scrolling.");
       expect(mobileToolbar.rowLeft >= 16, "Mobile formatting toolbar should keep page-edge padding.");

@@ -100,9 +100,17 @@ export function useWorkspaceScrollSync({
       return;
     }
 
+    const focusOwner = document.activeElement;
     const frame = window.requestAnimationFrame(() => {
       pendingEditorCommandRef.current = null;
       if (pendingEditorCommand.kind === "focus") {
+        const activeElement = document.activeElement;
+        const userMovedFocus = activeElement !== focusOwner
+          && activeElement !== document.body
+          && activeElement !== document.documentElement;
+        if (userMovedFocus) {
+          return;
+        }
         editorRef.current?.focus({ preventScroll: pendingEditorCommand.preventScroll });
         return;
       }
