@@ -183,6 +183,11 @@ export function useWorkspaceRuntime() {
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
+  const propertyAddRequestIdRef = useRef(0);
+  const [propertyAddRequest, setPropertyAddRequest] = useState<{
+    documentId: string;
+    requestId: number;
+  } | null>(null);
   const [pendingPreviewNavigation, setPendingPreviewNavigation] = useState<{
     documentId: string;
     fragment: string;
@@ -1090,7 +1095,39 @@ export function useWorkspaceRuntime() {
     }
     void loadMarkdownPreview().then(applyViewMode).catch(() => undefined);
   });
+  const canAddPropertyToActiveFile = Boolean(
+    activeFile &&
+    activeFile.artifact?.editable !== false &&
+    (!activeFile.artifact ||
+      activeFile.artifact.kind === "document" ||
+      activeFile.artifact.kind === "instruction"),
+  );
+  const requestAddProperty = useEventCallback(() => {
+    const latestActiveFile = getActiveFileSnapshot();
+    if (
+      !latestActiveFile ||
+      latestActiveFile.artifact?.editable === false ||
+      (latestActiveFile.artifact &&
+        latestActiveFile.artifact.kind !== "document" &&
+        latestActiveFile.artifact.kind !== "instruction")
+    ) {
+      return;
+    }
+    propertyAddRequestIdRef.current += 1;
+    setViewModeWithPendingCommit("visual");
+    setPropertyAddRequest({
+      documentId: latestActiveFile.id,
+      requestId: propertyAddRequestIdRef.current,
+    });
+  });
+  const handlePropertyAddRequest = useEventCallback(() => {
+    setPropertyAddRequest(null);
+  });
   const { workbenchProps } = useWorkspaceWorkbenchSurfaceController({
+    addPropertyRequestId:
+      propertyAddRequest && propertyAddRequest.documentId === activeFile?.id
+        ? propertyAddRequest.requestId
+        : undefined,
     activeFile,
     activeSyncScrolling: workspacePreferences.syncScrolling,
     centerPopover,
@@ -1101,6 +1138,7 @@ export function useWorkspaceRuntime() {
     focusedCommentId,
     language: workspacePreferences.language,
     onOpenWorkspaceLink: openPreviewWorkspaceLink,
+    onPropertyAddRequestHandled: handlePropertyAddRequest,
     onSetViewMode: setViewModeWithPendingCommit,
     persistence: localWorkspacePersistence,
     previewRef,
@@ -1184,6 +1222,7 @@ export function useWorkspaceRuntime() {
           onNewFolder: () => { addWorkspaceFolder(); },
           onImportFile: () => importInputRef.current?.click(),
           onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onAddProperty: canAddPropertyToActiveFile ? requestAddProperty : undefined,
           onOpenFiles: () => {
             setLeftPanelView("files");
             setLeftPanelOpen(true);

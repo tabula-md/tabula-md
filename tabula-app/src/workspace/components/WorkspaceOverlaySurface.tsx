@@ -65,6 +65,7 @@ export type WorkspaceOverlaySurfaceProps = {
     onNewFolder: () => void;
     onImportFile: () => void;
     onImportWorkspace: () => void;
+    onAddProperty?: () => void;
     onOpenFiles: () => void;
     onOpenComments: () => void;
     onOpenProperties: () => void;

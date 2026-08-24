@@ -514,20 +514,24 @@ function StructuredPropertyValue({
 }
 
 export type DocumentPropertiesProps = {
+  addPropertyRequestId?: number;
   documentId: string;
   editorRef: React.RefObject<MarkdownEditorHandle | null>;
   language: WorkspaceLanguage;
   markdown: string;
   onChange: (nextValue: string | null, change?: TextChange) => void;
+  onPropertyAddRequestHandled?: () => void;
   onOpenSource?: () => void;
 };
 
 export function DocumentProperties({
+  addPropertyRequestId,
   documentId,
   editorRef,
   language,
   markdown,
   onChange,
+  onPropertyAddRequestHandled,
   onOpenSource,
 }: DocumentPropertiesProps) {
   const copy = getCopy(language);
@@ -562,6 +566,21 @@ export function DocumentProperties({
   }, [documentId]);
 
   useEffect(() => {
+    if (typeof addPropertyRequestId !== "number") return;
+    setExpanded(true);
+    setShowAll(true);
+    setEditingKey(null);
+    setRenamingKey(null);
+    setListItemEditor(null);
+    setAdding(true);
+    setNewKey("");
+    setNewType("text");
+    setNewDraft("");
+    setError(null);
+    onPropertyAddRequestHandled?.();
+  }, [addPropertyRequestId, onPropertyAddRequestHandled]);
+
+  useEffect(() => {
     if (adding) {
       addKeyRef.current?.focus();
       return;
@@ -572,7 +591,9 @@ export function DocumentProperties({
     }
   }, [adding, editingKey, listItemEditor, renamingKey]);
 
-  if (model.status !== "valid") return null;
+  if (model.status === "invalid" || (model.status === "absent" && !adding)) {
+    return null;
+  }
 
   const applyResult = (result: FrontmatterValueUpdate) => {
     if (!result.ok) {

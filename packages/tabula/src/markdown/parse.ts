@@ -257,7 +257,19 @@ export const addFrontmatterValue = (
     return { ok: false, reason: "invalid_key" };
   }
   const frontmatterBlock = getFrontmatterBlock(markdown);
-  if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
+  if (!frontmatterBlock) {
+    if (inspectFrontmatterData(markdown).status === "invalid") {
+      return { ok: false, reason: "invalid_frontmatter" };
+    }
+    const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+    const inserted = `${stringifyFrontmatterKey(normalizedKey)}: ${stringifyFrontmatterValue(value)}`;
+    return {
+      ok: true,
+      markdown: markdown
+        ? `---${lineBreak}${inserted}${lineBreak}---${lineBreak}${lineBreak}${markdown}`
+        : `---${lineBreak}${inserted}${lineBreak}---${lineBreak}`,
+    };
+  }
   const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
   if (
     document.errors.length > 0 ||

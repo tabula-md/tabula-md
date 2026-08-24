@@ -139,6 +139,7 @@ const useLongLineWrappingSuspension = (
  * without inheriting the browser workspace runtime.
  */
 export type TabulaDocumentSurfaceProps = {
+  addPropertyRequestId?: number;
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: Pick<WorkspaceFile, "id">;
@@ -188,6 +189,7 @@ export type TabulaDocumentSurfaceProps = {
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
   onOpenSource?: () => void;
+  onPropertyAddRequestHandled?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -206,6 +208,7 @@ export type TabulaDocumentSurfaceProps = {
 };
 
 export function TabulaDocumentSurface({
+  addPropertyRequestId,
   activeBookmarks,
   activeCommentAnchors,
   activeFile,
@@ -249,6 +252,7 @@ export function TabulaDocumentSurface({
   onLineAction,
   onOpenComment,
   onOpenSource,
+  onPropertyAddRequestHandled,
   onOpenWorkspaceLink,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -332,12 +336,14 @@ export function TabulaDocumentSurface({
       >
         {documentSurface.documentControls.activeViewMode === "visual" && (
           <DocumentProperties
+            addPropertyRequestId={addPropertyRequestId}
             documentId={activeFile.id}
             editorRef={editorRef}
             language={language}
             markdown={text}
             onChange={onTextChange}
             onOpenSource={onOpenSource}
+            onPropertyAddRequestHandled={onPropertyAddRequestHandled}
           />
         )}
         <MarkdownEditor

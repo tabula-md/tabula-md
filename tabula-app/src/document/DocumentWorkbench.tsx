@@ -49,6 +49,7 @@ import { TabulaDocumentSurface } from "../workbench/index";
 const MemoStatusBar = memo(StatusBar);
 
 export type DocumentWorkbenchProps = {
+  addPropertyRequestId?: number;
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: WorkspaceFile;
@@ -106,6 +107,7 @@ export type DocumentWorkbenchProps = {
   onFormat: (command: MarkdownFormatCommand) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onPropertyAddRequestHandled?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
@@ -150,6 +152,7 @@ const getFloatingPopoverStyle = (
 };
 
 export function DocumentWorkbench({
+  addPropertyRequestId,
   activeBookmarks,
   activeCommentAnchors,
   activeFile,
@@ -207,6 +210,7 @@ export function DocumentWorkbench({
   onFormat,
   onLineAction,
   onOpenComment,
+  onPropertyAddRequestHandled,
   onOpenWorkspaceLink,
   onOpenSelectionComment,
   onPreviewKeyUp,
@@ -286,6 +290,7 @@ export function DocumentWorkbench({
       )}
 
       <TabulaDocumentSurface
+        addPropertyRequestId={addPropertyRequestId}
         activeBookmarks={activeBookmarks}
         activeCommentAnchors={activeCommentAnchors}
         activeFile={activeFile}
@@ -327,6 +332,7 @@ export function DocumentWorkbench({
         onEditorSelectionChange={onEditorSelectionChange}
         onLineAction={onLineAction}
         onOpenComment={onOpenComment}
+        onPropertyAddRequestHandled={onPropertyAddRequestHandled}
         onOpenSource={() => {
           onSetViewMode("edit");
           window.requestAnimationFrame(() => {

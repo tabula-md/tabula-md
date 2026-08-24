@@ -153,6 +153,34 @@ Body`);
     });
   });
 
+  it("creates frontmatter when adding the first property to a plain document", () => {
+    expect(addFrontmatterValue("# Guide\n\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n---\n\n# Guide\n\nBody",
+    });
+  });
+
+  it("creates frontmatter in an empty document without adding a visible body", () => {
+    expect(addFrontmatterValue("", "draft", true)).toEqual({
+      ok: true,
+      markdown: "---\ndraft: true\n---\n",
+    });
+  });
+
+  it("preserves CRLF line endings when creating frontmatter", () => {
+    expect(addFrontmatterValue("# Guide\r\n\r\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\r\ntitle: Guide\r\n---\r\n\r\n# Guide\r\n\r\nBody",
+    });
+  });
+
+  it("does not hide malformed frontmatter by prepending another block", () => {
+    expect(addFrontmatterValue("---\ntitle: [\nBody", "owner", "team:docs")).toEqual({
+      ok: false,
+      reason: "invalid_frontmatter",
+    });
+  });
+
   it("supports human-readable and quoted YAML property names", () => {
     const added = addFrontmatterValue(
       "---\ntitle: Guide\n---\nBody",

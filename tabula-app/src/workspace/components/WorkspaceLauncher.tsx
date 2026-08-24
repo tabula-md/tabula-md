@@ -6,6 +6,7 @@ import {
   FolderInput,
   FolderPlus,
   FilePlus2,
+  ListPlus,
   MessageSquare,
   PanelLeft,
   Search,
@@ -43,6 +44,7 @@ export function WorkspaceLauncher({
   onNewFolder,
   onImportFile,
   onImportWorkspace,
+  onAddProperty,
   onOpenFiles,
   onOpenComments,
   onOpenProperties,
@@ -58,6 +60,7 @@ export function WorkspaceLauncher({
   onNewFolder: () => void;
   onImportFile: () => void;
   onImportWorkspace: () => void;
+  onAddProperty?: () => void;
   onOpenFiles: () => void;
   onOpenComments: () => void;
   onOpenProperties: () => void;
@@ -69,6 +72,9 @@ export function WorkspaceLauncher({
   const commands = useMemo<LauncherCommand[]>(() => [
     { id: "new-document", label: "New document", section: "Commands", icon: FilePlus2, run: onNewFile },
     { id: "new-folder", label: "New folder", section: "Commands", icon: FolderPlus, run: onNewFolder },
+    ...(onAddProperty
+      ? [{ id: "add-property", label: "Add property", section: "Commands" as const, icon: ListPlus, run: onAddProperty }]
+      : []),
     { id: "import-document", label: "Import document (.md)…", section: "Commands", icon: FileText, run: onImportFile },
     { id: "import-folder", label: "Import folder copy…", section: "Commands", icon: FolderInput, run: onImportWorkspace },
     { id: "open-files", label: "Open Files", section: "Commands", icon: PanelLeft, run: onOpenFiles },
@@ -76,6 +82,7 @@ export function WorkspaceLauncher({
     { id: "open-properties", label: "Open Properties", section: "Commands", icon: Braces, run: onOpenProperties },
     { id: "preferences", label: "Preferences", section: "Settings", icon: SlidersHorizontal, run: onOpenPreferences },
   ], [
+    onAddProperty,
     onImportFile,
     onImportWorkspace,
     onNewFile,

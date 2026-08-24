@@ -21,6 +21,7 @@ type RoomController = ReturnType<typeof useWorkspaceRoomController>;
 type WorkspacePersistence = ReturnType<typeof useWorkspacePersistenceRuntime>;
 
 type UseWorkspaceWorkbenchSurfaceControllerOptions = {
+  addPropertyRequestId?: number;
   activeFile?: WorkspaceFile;
   activeSyncScrolling: boolean;
   centerPopover: CenterPopover;
@@ -32,6 +33,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   language: WorkspaceLanguage;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
+  onPropertyAddRequestHandled?: () => void;
   persistence: Pick<WorkspacePersistence, "persistedRevision">;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   room: Pick<
@@ -50,6 +52,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
 };
 
 export function useWorkspaceWorkbenchSurfaceController({
+  addPropertyRequestId,
   activeFile,
   activeSyncScrolling,
   centerPopover,
@@ -60,6 +63,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   focusedCommentId,
   language,
   onOpenWorkspaceLink,
+  onPropertyAddRequestHandled,
   onSetViewMode,
   persistence,
   previewRef,
@@ -74,6 +78,7 @@ export function useWorkspaceWorkbenchSurfaceController({
 
   return {
     workbenchProps: {
+      addPropertyRequestId,
       activeBookmarks: document.activeBookmarks,
       activeCommentAnchors: comments.activeCommentAnchors,
       activeFile,
@@ -166,6 +171,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,
+      onPropertyAddRequestHandled,
       onOpenSelectionComment: comments.openSelectionComment,
       onPreviewKeyUp: document.syncPreviewSelection,
       onPreviewMouseUp: document.syncPreviewSelection,
