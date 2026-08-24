@@ -39,6 +39,15 @@ export type FrontmatterPropertyValueResult =
   | { ok: true; value: unknown }
   | { ok: false };
 
+export type FrontmatterValuePath = readonly (string | number)[];
+
+export type FrontmatterValueMutationResult =
+  | { ok: true; value: unknown }
+  | {
+      ok: false;
+      reason: "duplicate_key" | "invalid_key" | "invalid_path";
+    };
+
 const isScalar = (value: unknown): value is FrontmatterScalar =>
   typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 
@@ -77,6 +86,102 @@ const getPropertyType = (kind: FrontmatterPropertyKind): FrontmatterPropertyType
     default:
       return "text";
   }
+};
+
+export const getFrontmatterValueType = (value: unknown): FrontmatterPropertyType =>
+  getPropertyType(getPropertyKind(value));
+
+const isMappingValue = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+export const getFrontmatterValueAtPath = (
+  value: unknown,
+  path: FrontmatterValuePath,
+) => path.reduce<unknown>((current, segment) => {
+  if (typeof segment === "number") {
+    return Array.isArray(current) ? current[segment] : undefined;
+  }
+  return isMappingValue(current) ? current[segment] : undefined;
+}, value);
+
+export const updateFrontmatterValueAtPath = (
+  value: unknown,
+  path: FrontmatterValuePath,
+  nextValue: unknown,
+): FrontmatterValueMutationResult => {
+  if (path.length === 0) return { ok: true, value: nextValue };
+
+  const [segment, ...rest] = path;
+  if (typeof segment === "number") {
+    if (!Array.isArray(value) || segment < 0 || segment > value.length) {
+      return { ok: false, reason: "invalid_path" };
+    }
+    const nextItems = [...value];
+    const child = updateFrontmatterValueAtPath(nextItems[segment], rest, nextValue);
+    if (!child.ok) return child;
+    nextItems[segment] = child.value;
+    return { ok: true, value: nextItems };
+  }
+
+  if (!isMappingValue(value)) return { ok: false, reason: "invalid_path" };
+  const child = updateFrontmatterValueAtPath(value[segment], rest, nextValue);
+  if (!child.ok) return child;
+  return { ok: true, value: { ...value, [segment]: child.value } };
+};
+
+export const removeFrontmatterValueAtPath = (
+  value: unknown,
+  path: FrontmatterValuePath,
+): FrontmatterValueMutationResult => {
+  if (path.length === 0) return { ok: false, reason: "invalid_path" };
+  const parentPath = path.slice(0, -1);
+  const segment = path.at(-1);
+  const parent = getFrontmatterValueAtPath(value, parentPath);
+
+  if (typeof segment === "number") {
+    if (!Array.isArray(parent) || segment < 0 || segment >= parent.length) {
+      return { ok: false, reason: "invalid_path" };
+    }
+    const nextParent = [...parent];
+    nextParent.splice(segment, 1);
+    return updateFrontmatterValueAtPath(value, parentPath, nextParent);
+  }
+
+  if (typeof segment !== "string" || !isMappingValue(parent) || !(segment in parent)) {
+    return { ok: false, reason: "invalid_path" };
+  }
+  const nextParent = { ...parent };
+  delete nextParent[segment];
+  return updateFrontmatterValueAtPath(value, parentPath, nextParent);
+};
+
+export const renameFrontmatterValuePathKey = (
+  value: unknown,
+  path: FrontmatterValuePath,
+  nextKey: string,
+): FrontmatterValueMutationResult => {
+  const normalizedKey = nextKey.trim();
+  if (!normalizedKey || /[\r\n]/.test(normalizedKey)) {
+    return { ok: false, reason: "invalid_key" };
+  }
+  const currentKey = path.at(-1);
+  const parentPath = path.slice(0, -1);
+  const parent = getFrontmatterValueAtPath(value, parentPath);
+  if (typeof currentKey !== "string" || !isMappingValue(parent) || !(currentKey in parent)) {
+    return { ok: false, reason: "invalid_path" };
+  }
+  if (normalizedKey !== currentKey && normalizedKey in parent) {
+    return { ok: false, reason: "duplicate_key" };
+  }
+  if (normalizedKey === currentKey) return { ok: true, value };
+
+  const nextParent = Object.fromEntries(
+    Object.entries(parent).map(([key, child]) => [
+      key === currentKey ? normalizedKey : key,
+      child,
+    ]),
+  );
+  return updateFrontmatterValueAtPath(value, parentPath, nextParent);
 };
 
 const stringifyPropertyValue = (value: unknown) => stringify(value, {
@@ -170,7 +275,7 @@ export const getFrontmatterProperties = (markdown: string): FrontmatterPropertie
       return {
         key,
         kind,
-        type: getPropertyType(kind),
+        type: getFrontmatterValueType(value),
         value,
         ...(Array.isArray(value)
           ? { itemCount: value.length }

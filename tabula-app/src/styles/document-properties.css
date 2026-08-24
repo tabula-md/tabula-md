@@ -155,18 +155,6 @@
   white-space: pre-wrap;
 }
 
-.document-property-value-button.structured {
-  width: fit-content;
-  color: var(--text-secondary);
-}
-
-.document-property-value-button.structured::before {
-  content: "›";
-  display: inline-block;
-  margin-right: 6px;
-  color: var(--text-muted);
-}
-
 .document-property-value-button:hover,
 .document-property-value-input {
   background: var(--surface-muted);
@@ -193,15 +181,6 @@
   outline: 0;
   background: var(--surface-muted);
   color: var(--text-primary);
-}
-
-.document-property-value-input.structured {
-  min-height: 76px;
-  padding: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre;
 }
 
 .document-property-boolean {
@@ -283,6 +262,146 @@
   font: inherit;
 }
 
+.document-property-structured-value {
+  min-width: 0;
+}
+
+.document-property-collection-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 30px;
+  padding: 5px 7px 5px 3px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  line-height: 20px;
+}
+
+.document-property-collection-toggle svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  transition: transform var(--motion-hover) ease;
+}
+
+.document-property-collection-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.document-property-collection-toggle:hover,
+.document-property-collection-toggle:focus-visible {
+  outline: 0;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.document-property-nested-children {
+  display: grid;
+  gap: 1px;
+  margin: 2px 0 3px 4px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.document-property-nested-row {
+  display: grid;
+  grid-template-columns: 24px minmax(88px, 0.26fr) minmax(0, 1fr) 24px;
+  align-items: start;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 2px 0;
+}
+
+.document-property-nested-key {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: text;
+  font: inherit;
+  line-height: 20px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-property-nested-key.index {
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+
+.document-property-nested-key:not(.index):hover,
+.document-property-nested-key:focus-visible {
+  outline: 0;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.document-property-nested-value {
+  min-width: 0;
+}
+
+.document-property-nested-value .document-property-value-button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-property-nested-remove {
+  display: grid;
+  width: 24px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.document-property-nested-row:hover .document-property-nested-remove,
+.document-property-nested-row:focus-within .document-property-nested-remove {
+  opacity: 1;
+}
+
+.document-property-nested-remove:hover,
+.document-property-nested-remove:focus-visible {
+  outline: 0;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.document-property-nested-add {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.document-property-nested-add:hover,
+.document-property-nested-add:focus-visible {
+  outline: 0;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
 .document-property-actions-trigger {
   opacity: 0;
 }
@@ -348,6 +467,14 @@
   background: var(--surface-muted);
   color: var(--text-primary);
   font: inherit;
+  line-height: 20px;
+}
+
+.document-property-add-collection {
+  display: block;
+  min-height: 30px;
+  padding: 5px 7px;
+  color: var(--text-muted);
   line-height: 20px;
 }
 
@@ -436,6 +563,15 @@
   .document-property-actions-trigger {
     grid-column: 3;
     grid-row: 1;
+    opacity: 1;
+  }
+
+  .document-property-nested-row {
+    grid-template-columns: 22px minmax(72px, 0.34fr) minmax(0, 1fr) 24px;
+    gap: 4px;
+  }
+
+  .document-property-nested-remove {
     opacity: 1;
   }
 

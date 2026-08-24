@@ -3,7 +3,12 @@ import {
   convertFrontmatterPropertyValue,
   formatFrontmatterPropertyDraft,
   getFrontmatterProperties,
+  getFrontmatterValueAtPath,
+  getFrontmatterValueType,
   parseFrontmatterPropertyDraft,
+  removeFrontmatterValueAtPath,
+  renameFrontmatterValuePathKey,
+  updateFrontmatterValueAtPath,
 } from "./frontmatterProperties";
 
 describe("frontmatter properties model", () => {
@@ -88,5 +93,52 @@ Body`);
       ok: true,
       value: "2026-08-24",
     });
+  });
+
+  it("updates and removes nested values without mutating the original value", () => {
+    const original = {
+      owner: { team: "platform", required: true },
+      sources: [{ id: "handbook", verified: false }],
+    };
+    const updated = updateFrontmatterValueAtPath(
+      original,
+      ["sources", 0, "verified"],
+      true,
+    );
+
+    expect(updated).toEqual({
+      ok: true,
+      value: {
+        owner: { team: "platform", required: true },
+        sources: [{ id: "handbook", verified: true }],
+      },
+    });
+    expect(getFrontmatterValueAtPath(original, ["sources", 0, "verified"]))
+      .toBe(false);
+    expect(updated.ok && removeFrontmatterValueAtPath(updated.value, ["owner", "required"]))
+      .toEqual({
+        ok: true,
+        value: {
+          owner: { team: "platform" },
+          sources: [{ id: "handbook", verified: true }],
+        },
+      });
+  });
+
+  it("renames nested mapping keys in place and rejects duplicates", () => {
+    const original = { owner: { team: "platform", required: true } };
+    expect(renameFrontmatterValuePathKey(original, ["owner", "team"], "group"))
+      .toEqual({
+        ok: true,
+        value: { owner: { group: "platform", required: true } },
+      });
+    expect(renameFrontmatterValuePathKey(original, ["owner", "team"], "required"))
+      .toEqual({ ok: false, reason: "duplicate_key" });
+  });
+
+  it("infers types for values at every nesting level", () => {
+    expect(getFrontmatterValueType("2026-08-24")).toBe("date");
+    expect(getFrontmatterValueType([{ id: "source" }])).toBe("list");
+    expect(getFrontmatterValueType({ id: "source" })).toBe("object");
   });
 });

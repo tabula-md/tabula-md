@@ -244,12 +244,19 @@ export type {
   FrontmatterPropertyType,
   FrontmatterPropertyValueResult,
   FrontmatterScalar,
+  FrontmatterValueMutationResult,
+  FrontmatterValuePath,
 } from "./frontmatterProperties";
 export {
   convertFrontmatterPropertyValue,
   formatFrontmatterPropertyDraft,
   getFrontmatterProperties,
+  getFrontmatterValueAtPath,
+  getFrontmatterValueType,
   parseFrontmatterPropertyDraft,
+  removeFrontmatterValueAtPath,
+  renameFrontmatterValuePathKey,
+  updateFrontmatterValueAtPath,
 } from "./frontmatterProperties";
 
 export type {

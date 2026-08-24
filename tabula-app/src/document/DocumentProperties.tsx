@@ -4,6 +4,7 @@ import {
   Check,
   CheckSquare2,
   ChevronDown,
+  ChevronRight,
   Code2,
   Hash,
   List,
@@ -20,12 +21,18 @@ import {
   diffTextPatch,
   formatFrontmatterPropertyDraft,
   getFrontmatterProperties,
+  getFrontmatterValueAtPath,
+  getFrontmatterValueType,
   parseFrontmatterPropertyDraft,
+  removeFrontmatterValueAtPath,
   removeFrontmatterValue,
+  renameFrontmatterValuePathKey,
   renameFrontmatterKey,
+  updateFrontmatterValueAtPath,
   updateFrontmatterValue,
   type FrontmatterProperty,
   type FrontmatterPropertyType,
+  type FrontmatterValuePath,
   type FrontmatterValueUpdate,
   type TextChange,
 } from "@tabula-md/tabula";
@@ -46,6 +53,8 @@ const DEFAULT_VISIBLE_PROPERTY_COUNT = 5;
 const propertyCopy = {
   en: {
     addProperty: "Add property",
+    addField: "Add field",
+    addItem: "Add item",
     cancel: "Cancel",
     changeType: (key: string) => `Change type for ${key}`,
     checkbox: "Checkbox",
@@ -74,6 +83,8 @@ const propertyCopy = {
   },
   ko: {
     addProperty: "속성 추가",
+    addField: "필드 추가",
+    addItem: "항목 추가",
     cancel: "취소",
     changeType: (key: string) => `${key} 타입 변경`,
     checkbox: "체크박스",
@@ -196,6 +207,312 @@ function PropertyTypeMenu({
   );
 }
 
+type StructuredValueEditor = {
+  draft: string;
+  isNew?: boolean;
+  mode: "key" | "value";
+  path: FrontmatterValuePath;
+};
+
+const getStructuredPathId = (path: FrontmatterValuePath) => JSON.stringify(path);
+
+const getUniqueNestedKey = (value: Record<string, unknown>) => {
+  if (!("property" in value)) return "property";
+  let suffix = 2;
+  while (`property ${suffix}` in value) suffix += 1;
+  return `property ${suffix}`;
+};
+
+function StructuredPropertyValue({
+  copy,
+  onError,
+  onValueChange,
+  property,
+}: {
+  copy: ReturnType<typeof getCopy>;
+  onError: (message: string | null) => void;
+  onValueChange: (value: unknown) => boolean;
+  property: FrontmatterProperty;
+}) {
+  const rootPathId = getStructuredPathId([]);
+  const [expandedPaths, setExpandedPaths] = useState(() => new Set<string>());
+  const [editor, setEditor] = useState<StructuredValueEditor | null>(null);
+  const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    editorRef.current?.focus();
+    if (editorRef.current instanceof HTMLInputElement) editorRef.current.select();
+  }, [editor]);
+
+  const togglePath = (path: FrontmatterValuePath) => {
+    const pathId = getStructuredPathId(path);
+    setExpandedPaths((current) => {
+      const next = new Set(current);
+      if (next.has(pathId)) next.delete(pathId);
+      else next.add(pathId);
+      return next;
+    });
+  };
+
+  const applyNestedValue = (path: FrontmatterValuePath, value: unknown) => {
+    const result = updateFrontmatterValueAtPath(property.value, path, value);
+    if (!result.ok) {
+      onError(copy.updateFailed);
+      return false;
+    }
+    const applied = onValueChange(result.value);
+    if (applied) onError(null);
+    return applied;
+  };
+
+  const commitEditor = () => {
+    if (!editor) return;
+    if (editor.mode === "key") {
+      const result = renameFrontmatterValuePathKey(
+        property.value,
+        editor.path,
+        editor.draft,
+      );
+      if (!result.ok) {
+        onError(result.reason === "duplicate_key" ? copy.duplicateKey : copy.invalidKey);
+        return;
+      }
+      if (onValueChange(result.value)) {
+        setEditor(null);
+        onError(null);
+      }
+      return;
+    }
+
+    const currentValue = getFrontmatterValueAtPath(property.value, editor.path);
+    const type = getFrontmatterValueType(currentValue);
+    const parsed = parseFrontmatterPropertyDraft(editor.draft, type);
+    if (!parsed.ok) {
+      onError(copy.invalidValue);
+      return;
+    }
+    if (applyNestedValue(editor.path, parsed.value)) setEditor(null);
+  };
+
+  const removeNestedValue = (path: FrontmatterValuePath) => {
+    const result = removeFrontmatterValueAtPath(property.value, path);
+    if (!result.ok || !onValueChange(result.value)) {
+      onError(copy.updateFailed);
+      return;
+    }
+    onError(null);
+  };
+
+  const changeNestedType = (
+    path: FrontmatterValuePath,
+    type: FrontmatterPropertyType,
+  ) => {
+    const currentValue = getFrontmatterValueAtPath(property.value, path);
+    const converted = convertFrontmatterPropertyValue(currentValue, type);
+    if (!converted.ok || !applyNestedValue(path, converted.value)) {
+      onError(copy.invalidValue);
+      return;
+    }
+    setEditor(null);
+  };
+
+  const addNestedValue = (path: FrontmatterValuePath, collection: unknown) => {
+    if (Array.isArray(collection)) {
+      const nextPath = [...path, collection.length];
+      if (applyNestedValue(nextPath, "")) {
+        setEditor({ draft: "", isNew: true, mode: "value", path: nextPath });
+      }
+      return;
+    }
+    if (collection && typeof collection === "object") {
+      const key = getUniqueNestedKey(collection as Record<string, unknown>);
+      const nextPath = [...path, key];
+      if (applyNestedValue(nextPath, "")) {
+        setEditor({ draft: key, isNew: true, mode: "key", path: nextPath });
+      }
+    }
+  };
+
+  const handleEditorKeyDown = (
+    event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (editor?.isNew) removeNestedValue(editor.path);
+      setEditor(null);
+      onError(null);
+    } else if (event.key === "Enter" &&
+      (!(event.currentTarget instanceof HTMLTextAreaElement) || event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      commitEditor();
+    }
+  };
+
+  const renderChildren = (collection: unknown, parentPath: FrontmatterValuePath) => {
+    const entries: Array<[string | number, unknown]> = Array.isArray(collection)
+      ? collection.map((value, index) => [index, value])
+      : collection && typeof collection === "object"
+        ? Object.entries(collection as Record<string, unknown>)
+        : [];
+
+    return (
+      <div className="document-property-nested-children">
+        {entries.map(([key, value]) => {
+          const path = [...parentPath, key];
+          const pathId = getStructuredPathId(path);
+          const type = getFrontmatterValueType(value);
+          const isCollection = type === "list" || type === "object";
+          const isExpanded = expandedPaths.has(pathId);
+          const activeEditor = editor && getStructuredPathId(editor.path) === pathId
+            ? editor
+            : null;
+          const count = Array.isArray(value)
+            ? value.length
+            : value && typeof value === "object"
+              ? Object.keys(value).length
+              : 0;
+
+          return (
+            <div className="document-property-nested-branch" key={pathId}>
+              <div className="document-property-nested-row">
+                <PropertyTypeMenu
+                  copy={copy}
+                  label={copy.changeType(String(key))}
+                  value={type}
+                  onChange={(nextType) => changeNestedType(path, nextType)}
+                />
+
+                {activeEditor?.mode === "key" ? (
+                  <input
+                    ref={editorRef as React.RefObject<HTMLInputElement>}
+                    className="document-property-key-input"
+                    value={activeEditor.draft}
+                    aria-label={copy.newPropertyName}
+                    onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
+                    onBlur={commitEditor}
+                    onKeyDown={handleEditorKeyDown}
+                  />
+                ) : (
+                  <button
+                    className={`document-property-nested-key${typeof key === "number" ? " index" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      if (typeof key === "string") {
+                        setEditor({ draft: key, mode: "key", path });
+                      }
+                    }}
+                  >
+                    {typeof key === "number" ? key + 1 : key}
+                  </button>
+                )}
+
+                <div className="document-property-nested-value">
+                  {type === "checkbox" ? (
+                    <label className="document-property-boolean">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(value)}
+                        onChange={(event) => applyNestedValue(path, event.target.checked)}
+                      />
+                      <span>{String(value)}</span>
+                    </label>
+                  ) : isCollection ? (
+                    <button
+                      className="document-property-collection-toggle"
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={() => togglePath(path)}
+                    >
+                      <ChevronRight size={15} aria-hidden="true" />
+                      {type === "object" ? copy.fields(count) : copy.items(count)}
+                    </button>
+                  ) : activeEditor?.mode === "value" ? (
+                    type === "text" ? (
+                      <textarea
+                        ref={editorRef as React.RefObject<HTMLTextAreaElement>}
+                        className="document-property-value-input"
+                        rows={1}
+                        value={activeEditor.draft}
+                        aria-label={`${String(key)} value`}
+                        onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
+                        onBlur={commitEditor}
+                        onKeyDown={handleEditorKeyDown}
+                      />
+                    ) : (
+                      <input
+                        ref={editorRef as React.RefObject<HTMLInputElement>}
+                        className="document-property-value-input"
+                        type={type === "date" && !activeEditor.draft.includes("T") ? "date" : "text"}
+                        inputMode={type === "number" ? "decimal" : undefined}
+                        value={activeEditor.draft}
+                        aria-label={`${String(key)} value`}
+                        onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
+                        onBlur={commitEditor}
+                        onKeyDown={handleEditorKeyDown}
+                      />
+                    )
+                  ) : (
+                    <button
+                      className="document-property-value-button"
+                      type="button"
+                      title={String(value ?? "")}
+                      onClick={() => setEditor({
+                        draft: formatFrontmatterPropertyDraft(value, type),
+                        mode: "value",
+                        path,
+                      })}
+                    >
+                      {String(value ?? "") || copy.empty}
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  className="document-property-nested-remove"
+                  type="button"
+                  aria-label={copy.removeItem(String(key))}
+                  onClick={() => removeNestedValue(path)}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+
+              {isCollection && isExpanded && renderChildren(value, path)}
+            </div>
+          );
+        })}
+
+        <button
+          className="document-property-nested-add"
+          type="button"
+          onClick={() => addNestedValue(parentPath, collection)}
+        >
+          <Plus size={14} aria-hidden="true" />
+          {Array.isArray(collection) ? copy.addItem : copy.addField}
+        </button>
+      </div>
+    );
+  };
+
+  const rootExpanded = expandedPaths.has(rootPathId);
+  return (
+    <div className="document-property-structured-value">
+      <button
+        className="document-property-collection-toggle"
+        type="button"
+        aria-expanded={rootExpanded}
+        onClick={() => togglePath([])}
+      >
+        <ChevronRight size={15} aria-hidden="true" />
+        {property.type === "object"
+          ? copy.fields(property.itemCount ?? 0)
+          : copy.items(property.itemCount ?? 0)}
+      </button>
+      {rootExpanded && renderChildren(property.value, [])}
+    </div>
+  );
+}
+
 export type DocumentPropertiesProps = {
   documentId: string;
   editorRef: React.RefObject<MarkdownEditorHandle | null>;
@@ -299,7 +616,11 @@ export function DocumentProperties({
   };
 
   const beginValueEdit = (property: FrontmatterProperty) => {
-    if (property.type === "checkbox") return;
+    if (
+      property.type === "checkbox" ||
+      property.type === "object" ||
+      (property.type === "list" && !isScalarList(property))
+    ) return;
     setEditingKey(property.key);
     setRenamingKey(null);
     setListItemEditor(null);
@@ -381,7 +702,11 @@ export function DocumentProperties({
       const normalizedKey = newKey.trim();
       resetAddForm();
       setShowAll(true);
-      setEditingKey(newType === "checkbox" ? null : normalizedKey);
+      setEditingKey(
+        newType === "checkbox" || newType === "list" || newType === "object"
+          ? null
+          : normalizedKey,
+      );
       setDraft(formatFrontmatterPropertyDraft(value.value, newType));
     }
   };
@@ -586,23 +911,17 @@ export function DocumentProperties({
                           </button>
                         )}
                       </div>
+                    ) : isStructured ? (
+                      <StructuredPropertyValue
+                        copy={copy}
+                        property={property}
+                        onError={setError}
+                        onValueChange={(nextValue) => applyResult(
+                          updateFrontmatterValue(markdown, property.key, nextValue),
+                        )}
+                      />
                     ) : editingKey === property.key ? (
-                      isStructured ? (
-                        <textarea
-                          ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
-                          className="document-property-value-input structured"
-                          rows={Math.min(8, Math.max(3, draft.split("\n").length))}
-                          value={draft}
-                          aria-label={`${property.key} value`}
-                          onChange={(event) => setDraft(event.target.value)}
-                          onBlur={() => commitValueEdit(property)}
-                          onKeyDown={(event) => handleValueEditorKeyDown(
-                            event,
-                            () => commitValueEdit(property),
-                            true,
-                          )}
-                        />
-                      ) : property.type === "text" ? (
+                      property.type === "text" ? (
                         <textarea
                           ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
                           className="document-property-value-input"
@@ -725,21 +1044,9 @@ export function DocumentProperties({
                     <span>{newDraft}</span>
                   </label>
                 ) : newType === "list" || newType === "object" ? (
-                  <textarea
-                    value={newDraft}
-                    rows={3}
-                    aria-label={copy.propertyValue}
-                    onChange={(event) => setNewDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        resetAddForm();
-                      } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                        event.preventDefault();
-                        commitAdd();
-                      }
-                    }}
-                  />
+                  <span className="document-property-add-collection">
+                    {newType === "list" ? copy.items(0) : copy.fields(0)}
+                  </span>
                 ) : (
                   <input
                     value={newDraft}
