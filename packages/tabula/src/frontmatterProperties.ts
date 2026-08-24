@@ -8,6 +8,7 @@ export type FrontmatterPropertyKind =
   | "number"
   | "boolean"
   | "date"
+  | "datetime"
   | "empty"
   | "scalar-list"
   | "structured-list"
@@ -18,6 +19,8 @@ export type FrontmatterPropertyType =
   | "number"
   | "checkbox"
   | "date"
+  | "datetime"
+  | "empty"
   | "list"
   | "object";
 
@@ -51,15 +54,23 @@ export type FrontmatterValueMutationResult =
 const isScalar = (value: unknown): value is FrontmatterScalar =>
   typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}(?:[T ][0-9:.+-]+Z?)?$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATETIME_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/i;
 
 const isDateValue = (value: unknown): value is string =>
   typeof value === "string" &&
   ISO_DATE_PATTERN.test(value) &&
   !Number.isNaN(Date.parse(value));
 
+const isDateTimeValue = (value: unknown): value is string =>
+  typeof value === "string" &&
+  ISO_DATETIME_PATTERN.test(value) &&
+  !Number.isNaN(Date.parse(value));
+
 const getPropertyKind = (value: unknown): FrontmatterPropertyKind => {
   if (value === null || typeof value === "undefined") return "empty";
+  if (isDateTimeValue(value)) return "datetime";
   if (isDateValue(value)) return "date";
   if (typeof value === "string") return "text";
   if (typeof value === "number") return "number";
@@ -78,6 +89,10 @@ const getPropertyType = (kind: FrontmatterPropertyKind): FrontmatterPropertyType
       return "checkbox";
     case "date":
       return "date";
+    case "datetime":
+      return "datetime";
+    case "empty":
+      return "empty";
     case "scalar-list":
     case "structured-list":
       return "list";
@@ -192,7 +207,10 @@ export const formatFrontmatterPropertyDraft = (
   value: unknown,
   type: FrontmatterPropertyType,
 ) => {
-  if (type === "text" || type === "date") return value == null ? "" : String(value);
+  if (type === "empty") return "";
+  if (type === "text" || type === "date" || type === "datetime") {
+    return value == null ? "" : String(value);
+  }
   if (type === "number") return typeof value === "number" ? String(value) : "0";
   if (type === "checkbox") return value === true ? "true" : "false";
   return stringifyPropertyValue(value);
@@ -202,6 +220,7 @@ export const parseFrontmatterPropertyDraft = (
   draft: string,
   type: FrontmatterPropertyType,
 ): FrontmatterPropertyValueResult => {
+  if (type === "empty") return { ok: true, value: null };
   if (type === "text") return { ok: true, value: draft };
   if (type === "number") {
     const value = Number(draft);
@@ -214,6 +233,9 @@ export const parseFrontmatterPropertyDraft = (
   }
   if (type === "date") {
     return isDateValue(draft) ? { ok: true, value: draft } : { ok: false };
+  }
+  if (type === "datetime") {
+    return isDateTimeValue(draft) ? { ok: true, value: draft } : { ok: false };
   }
 
   const document = parseDocument(draft, { prettyErrors: false });
@@ -229,7 +251,9 @@ export const convertFrontmatterPropertyValue = (
   value: unknown,
   type: FrontmatterPropertyType,
   fallbackDate = new Date().toISOString().slice(0, 10),
+  fallbackDateTime = new Date().toISOString(),
 ): FrontmatterPropertyValueResult => {
+  if (type === "empty") return { ok: true, value: null };
   if (type === "text") {
     return {
       ok: true,
@@ -254,6 +278,9 @@ export const convertFrontmatterPropertyValue = (
   }
   if (type === "date") {
     return { ok: true, value: isDateValue(value) ? value : fallbackDate };
+  }
+  if (type === "datetime") {
+    return { ok: true, value: isDateTimeValue(value) ? value : fallbackDateTime };
   }
   if (type === "list") {
     if (Array.isArray(value)) return { ok: true, value };

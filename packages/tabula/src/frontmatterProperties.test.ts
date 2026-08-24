@@ -66,6 +66,25 @@ Body`);
   it("recognizes date values without imposing field names", () => {
     expect(getFrontmatterProperties("---\nreview_on: 2026-08-24\n---\nBody").properties[0])
       .toMatchObject({ kind: "date", type: "date", value: "2026-08-24" });
+    expect(getFrontmatterProperties(
+      "---\nstale_after: 2026-08-24T09:30:00+09:00\n---\nBody",
+    ).properties[0]).toMatchObject({
+      kind: "datetime",
+      type: "datetime",
+      value: "2026-08-24T09:30:00+09:00",
+    });
+    expect(getFrontmatterProperties("---\nreviewed_at: 2026-08-24T09:30:00\n---\nBody")
+      .properties[0]).toMatchObject({ kind: "text", type: "text" });
+  });
+
+  it("preserves null as an explicit YAML value kind", () => {
+    expect(getFrontmatterProperties("---\nowner: null\n---\nBody").properties[0])
+      .toMatchObject({ kind: "empty", type: "empty", value: null });
+    expect(parseFrontmatterPropertyDraft("", "empty")).toEqual({ ok: true, value: null });
+    expect(convertFrontmatterPropertyValue("owner", "empty")).toEqual({
+      ok: true,
+      value: null,
+    });
   });
 
   it("round-trips structured list and object drafts", () => {
@@ -93,6 +112,12 @@ Body`);
       ok: true,
       value: "2026-08-24",
     });
+    expect(convertFrontmatterPropertyValue(
+      "draft",
+      "datetime",
+      "2026-08-24",
+      "2026-08-24T09:30:00+09:00",
+    )).toEqual({ ok: true, value: "2026-08-24T09:30:00+09:00" });
   });
 
   it("updates and removes nested values without mutating the original value", () => {
@@ -138,6 +163,8 @@ Body`);
 
   it("infers types for values at every nesting level", () => {
     expect(getFrontmatterValueType("2026-08-24")).toBe("date");
+    expect(getFrontmatterValueType("2026-08-24T09:30:00Z")).toBe("datetime");
+    expect(getFrontmatterValueType(null)).toBe("empty");
     expect(getFrontmatterValueType([{ id: "source" }])).toBe("list");
     expect(getFrontmatterValueType({ id: "source" })).toBe("object");
   });

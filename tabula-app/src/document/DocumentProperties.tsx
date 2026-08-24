@@ -1,5 +1,6 @@
 import {
   Braces,
+  CalendarClock,
   CalendarDays,
   Check,
   CheckSquare2,
@@ -8,13 +9,14 @@ import {
   Code2,
   Hash,
   List,
+  Minus,
   MoreHorizontal,
   Plus,
   Trash2,
   Type,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   addFrontmatterValue,
   convertFrontmatterPropertyValue,
@@ -47,6 +49,10 @@ import {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
+import {
+  frontmatterPropertySuggestions,
+  getFrontmatterPropertySuggestion,
+} from "./frontmatterPropertySuggestions";
 
 const DEFAULT_VISIBLE_PROPERTY_COUNT = 5;
 
@@ -59,6 +65,7 @@ const propertyCopy = {
     changeType: (key: string) => `Change type for ${key}`,
     checkbox: "Checkbox",
     date: "Date",
+    datetime: "Date & time",
     duplicateKey: "A property with this name already exists.",
     editInSource: "Edit in Source",
     empty: "Empty",
@@ -79,6 +86,7 @@ const propertyCopy = {
     showLess: "Show less",
     showMore: (count: number) => `Show ${count} more`,
     text: "Text",
+    timestampPlaceholder: "YYYY-MM-DDTHH:mm:ssZ",
     updateFailed: "Could not update this property. Open Source to repair the YAML.",
   },
   ko: {
@@ -89,6 +97,7 @@ const propertyCopy = {
     changeType: (key: string) => `${key} 타입 변경`,
     checkbox: "체크박스",
     date: "날짜",
+    datetime: "날짜 및 시간",
     duplicateKey: "같은 이름의 속성이 이미 있습니다.",
     editInSource: "Source에서 편집",
     empty: "비어 있음",
@@ -109,6 +118,7 @@ const propertyCopy = {
     showLess: "접기",
     showMore: (count: number) => `${count}개 더 보기`,
     text: "텍스트",
+    timestampPlaceholder: "YYYY-MM-DDTHH:mm:ssZ",
     updateFailed: "속성을 수정하지 못했습니다. Source에서 YAML을 확인하세요.",
   },
 };
@@ -121,8 +131,10 @@ const propertyTypes: FrontmatterPropertyType[] = [
   "number",
   "checkbox",
   "date",
+  "datetime",
   "list",
   "object",
+  "empty",
 ];
 
 const getTypeIcon = (type: FrontmatterPropertyType, size = 16) => {
@@ -134,10 +146,14 @@ const getTypeIcon = (type: FrontmatterPropertyType, size = 16) => {
       return <CheckSquare2 {...props} />;
     case "date":
       return <CalendarDays {...props} />;
+    case "datetime":
+      return <CalendarClock {...props} />;
     case "list":
       return <List {...props} />;
     case "object":
       return <Braces {...props} />;
+    case "empty":
+      return <Minus {...props} />;
     default:
       return <Type {...props} />;
   }
@@ -442,9 +458,10 @@ function StructuredPropertyValue({
                       <input
                         ref={editorRef as React.RefObject<HTMLInputElement>}
                         className="document-property-value-input"
-                        type={type === "date" && !activeEditor.draft.includes("T") ? "date" : "text"}
+                        type={type === "date" ? "date" : "text"}
                         inputMode={type === "number" ? "decimal" : undefined}
                         value={activeEditor.draft}
+                        placeholder={type === "datetime" ? copy.timestampPlaceholder : undefined}
                         aria-label={`${String(key)} value`}
                         onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
                         onBlur={commitEditor}
@@ -455,6 +472,7 @@ function StructuredPropertyValue({
                     <button
                       className="document-property-value-button"
                       type="button"
+                      disabled={type === "empty"}
                       title={String(value ?? "")}
                       onClick={() => setEditor({
                         draft: formatFrontmatterPropertyDraft(value, type),
@@ -551,17 +569,19 @@ export function DocumentProperties({
   const [newKey, setNewKey] = useState("");
   const [newType, setNewType] = useState<FrontmatterPropertyType>("text");
   const [newDraft, setNewDraft] = useState("");
+  const [newTypeWasChosen, setNewTypeWasChosen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const addKeyRef = useRef<HTMLInputElement | null>(null);
+  const propertySuggestionsId = useId();
 
   useEffect(() => {
-    setExpanded(true);
     setShowAll(false);
     setEditingKey(null);
     setRenamingKey(null);
     setListItemEditor(null);
     setAdding(false);
+    setNewTypeWasChosen(false);
     setError(null);
   }, [documentId]);
 
@@ -576,6 +596,7 @@ export function DocumentProperties({
     setNewKey("");
     setNewType("text");
     setNewDraft("");
+    setNewTypeWasChosen(false);
     setError(null);
     onPropertyAddRequestHandled?.();
   }, [addPropertyRequestId, onPropertyAddRequestHandled]);
@@ -638,6 +659,7 @@ export function DocumentProperties({
 
   const beginValueEdit = (property: FrontmatterProperty) => {
     if (
+      property.type === "empty" ||
       property.type === "checkbox" ||
       property.type === "object" ||
       (property.type === "list" && !isScalarList(property))
@@ -702,14 +724,26 @@ export function DocumentProperties({
     setNewKey("");
     setNewType("text");
     setNewDraft("");
+    setNewTypeWasChosen(false);
     setError(null);
   };
 
   const changeNewType = (type: FrontmatterPropertyType) => {
     const converted = convertFrontmatterPropertyValue(undefined, type);
     if (!converted.ok) return;
+    setNewTypeWasChosen(true);
     setNewType(type);
     setNewDraft(formatFrontmatterPropertyDraft(converted.value, type));
+  };
+
+  const changeNewKey = (key: string) => {
+    setNewKey(key);
+    if (newTypeWasChosen) return;
+    const suggestion = getFrontmatterPropertySuggestion(key);
+    if (!suggestion) return;
+    setNewType(suggestion.type);
+    setNewDraft(suggestion.draft);
+    setError(null);
   };
 
   const commitAdd = () => {
@@ -774,6 +808,11 @@ export function DocumentProperties({
     : model.properties.slice(0, DEFAULT_VISIBLE_PROPERTY_COUNT);
   const hiddenCount = model.properties.length - visibleProperties.length;
   const hasFrontmatter = model.status === "valid";
+  const availablePropertySuggestions = frontmatterPropertySuggestions.filter(
+    (suggestion) => !model.properties.some(
+      (property) => property.key.toLowerCase() === suggestion.key,
+    ),
+  );
 
   return (
     <section
@@ -967,9 +1006,12 @@ export function DocumentProperties({
                         <input
                           ref={editorInputRef as React.RefObject<HTMLInputElement>}
                           className="document-property-value-input"
-                          type={property.type === "date" && !draft.includes("T") ? "date" : "text"}
+                          type={property.type === "date" ? "date" : "text"}
                           inputMode={property.type === "number" ? "decimal" : undefined}
                           value={draft}
+                          placeholder={property.type === "datetime"
+                            ? copy.timestampPlaceholder
+                            : undefined}
                           aria-label={`${property.key} value`}
                           onChange={(event) => setDraft(event.target.value)}
                           onBlur={() => commitValueEdit(property)}
@@ -983,6 +1025,7 @@ export function DocumentProperties({
                       <button
                         className={`document-property-value-button${isStructured ? " structured" : ""}`}
                         type="button"
+                        disabled={property.type === "empty"}
                         onClick={() => beginValueEdit(property)}
                       >
                         {isStructured
@@ -1050,9 +1093,10 @@ export function DocumentProperties({
                 ref={addKeyRef}
                 className="document-property-add-key"
                 value={newKey}
+                list={propertySuggestionsId}
                 placeholder={copy.newPropertyName}
                 aria-label={copy.newPropertyName}
-                onChange={(event) => setNewKey(event.target.value)}
+                onChange={(event) => changeNewKey(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.preventDefault();
@@ -1060,6 +1104,11 @@ export function DocumentProperties({
                   }
                 }}
               />
+              <datalist id={propertySuggestionsId}>
+                {availablePropertySuggestions.map((suggestion) => (
+                  <option key={suggestion.key} value={suggestion.key} />
+                ))}
+              </datalist>
               <div className="document-property-add-value">
                 {newType === "checkbox" ? (
                   <label className="document-property-boolean">
@@ -1070,6 +1119,8 @@ export function DocumentProperties({
                     />
                     <span>{newDraft}</span>
                   </label>
+                ) : newType === "empty" ? (
+                  <span className="document-property-add-collection">{copy.empty}</span>
                 ) : newType === "list" || newType === "object" ? (
                   <span className="document-property-add-collection">
                     {newType === "list" ? copy.items(0) : copy.fields(0)}
@@ -1079,7 +1130,7 @@ export function DocumentProperties({
                     value={newDraft}
                     type={newType === "date" ? "date" : "text"}
                     inputMode={newType === "number" ? "decimal" : undefined}
-                    placeholder={copy.empty}
+                    placeholder={newType === "datetime" ? copy.timestampPlaceholder : copy.empty}
                     aria-label={copy.propertyValue}
                     onChange={(event) => setNewDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -1121,6 +1172,7 @@ export function DocumentProperties({
                 setNewKey("");
                 setNewType("text");
                 setNewDraft("");
+                setNewTypeWasChosen(false);
                 setError(null);
               }}
             >
