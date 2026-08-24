@@ -111,7 +111,9 @@
 }
 
 .center-workbench.line-numbers-off,
+.center-workbench.view-visual,
 .file-shell.line-numbers-off,
+.file-shell.view-visual,
 .editor-surface.line-numbers-off {
   --editor-line-number-rail: 0px;
   --editor-left-rail: var(--editor-bookmark-rail);
@@ -317,7 +319,8 @@
     width: var(--document-body-width);
   }
 
-  .workspace.edit:not(.split) .markdown-editor .cm-content {
+  .workspace.edit:not(.split) .markdown-editor .cm-content,
+  .workspace.visual:not(.split) .markdown-editor .cm-content {
     flex: auto;
     width: auto;
   }

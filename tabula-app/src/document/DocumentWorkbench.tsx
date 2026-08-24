@@ -2,7 +2,9 @@ import {
   type CSSProperties,
   type RefObject,
   memo,
+  useEffect,
   useMemo,
+  useState,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import type {
@@ -240,6 +242,31 @@ export function DocumentWorkbench({
   resolveWorkspaceLink,
 }: DocumentWorkbenchProps) {
   const copy = getWorkspaceSurfaceCopy(language);
+  const [metadataEditorOpen, setMetadataEditorOpen] = useState(false);
+
+  useEffect(() => {
+    setMetadataEditorOpen(false);
+  }, [activeFile.id]);
+
+  useEffect(() => {
+    if (addPropertyRequestId === undefined) return;
+    setMetadataEditorOpen(true);
+  }, [addPropertyRequestId]);
+
+  useEffect(() => {
+    if (documentSurface.documentControls.activeViewMode !== "visual") {
+      setMetadataEditorOpen(false);
+    }
+  }, [documentSurface.documentControls.activeViewMode]);
+
+  const toggleMetadataEditor = () => {
+    if (documentSurface.documentControls.activeViewMode !== "visual") {
+      onSetViewMode("visual");
+      setMetadataEditorOpen(true);
+      return;
+    }
+    setMetadataEditorOpen((open) => !open);
+  };
   const activeFormats = useMemo(
     () =>
       documentSurface.documentControls.activeViewMode === "preview" || !activeSelection
@@ -275,6 +302,7 @@ export function DocumentWorkbench({
           activeSyncScrolling={activeSyncScrolling}
           centerPopover={centerPopover}
           language={language}
+          metadataOpen={metadataEditorOpen}
           searchOpen={searchOpen}
           onSetViewMode={onSetViewMode}
           onPreparePreview={prepareMarkdownPreview}
@@ -283,6 +311,7 @@ export function DocumentWorkbench({
           onToggleSyncScrolling={onToggleSyncScrolling}
           onToggleLineWrapping={onToggleLineWrapping}
           onToggleLineNumbers={onToggleLineNumbers}
+          onToggleMetadata={toggleMetadataEditor}
           onToggleSearch={onToggleSearch}
         />
       </section>
@@ -309,6 +338,7 @@ export function DocumentWorkbench({
         isLive={isLive}
         language={language}
         largeDocumentMode={largeDocumentMode}
+        metadataEditorOpen={metadataEditorOpen}
         previewBody={previewBody}
         previewBodyStartOffset={previewBodyStartOffset}
         previewBodyTextChange={previewBodyTextChange}

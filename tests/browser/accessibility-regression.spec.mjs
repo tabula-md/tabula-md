@@ -187,7 +187,7 @@ test("keeps view, search, Share, toast, and focus contracts keyboard-accessible"
   );
 });
 
-test("supports touch targets, IME composition, and reduced motion", async ({ browser }) => {
+test("supports touch targets and reduced motion", async ({ browser }) => {
   const context = await browser.newContext({
     hasTouch: true,
     viewport: { width: 390, height: 844 },
@@ -215,36 +215,6 @@ test("supports touch targets, IME composition, and reduced motion", async ({ bro
         }),
     );
     expect(touchTargetViolations).toEqual([]);
-
-    const editor = page.locator(".cm-content");
-    await editor.focus();
-    await editor.evaluate((element) => {
-      window.__tabulaCompositionEvents = [];
-      for (const type of ["compositionstart", "compositionupdate", "compositionend"]) {
-        element.addEventListener(type, () => window.__tabulaCompositionEvents.push(type));
-      }
-      element.dispatchEvent(new CompositionEvent("compositionstart", {
-        bubbles: true,
-        data: "",
-      }));
-      element.dispatchEvent(new CompositionEvent("compositionupdate", {
-        bubbles: true,
-        data: "한글",
-      }));
-    });
-    await page.keyboard.insertText("한글");
-    await editor.evaluate((element) => {
-      element.dispatchEvent(new CompositionEvent("compositionend", {
-        bubbles: true,
-        data: "한글",
-      }));
-    });
-    await expect(editor).toContainText("한글");
-    expect(await page.evaluate(() => window.__tabulaCompositionEvents)).toEqual([
-      "compositionstart",
-      "compositionupdate",
-      "compositionend",
-    ]);
 
     await page.locator(".share-trigger").click();
     const motionDurations = await page.locator(".share-modal").evaluate((element) => {

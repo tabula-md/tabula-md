@@ -170,6 +170,7 @@ export type TabulaDocumentSurfaceProps = {
   isLive: boolean;
   language: WorkspaceLanguage;
   largeDocumentMode: boolean;
+  metadataEditorOpen?: boolean;
   previewBody: string;
   previewBodyStartOffset: number;
   previewBodyTextChange?: TextChange | null;
@@ -234,6 +235,7 @@ export function TabulaDocumentSurface({
   isLive,
   language,
   largeDocumentMode,
+  metadataEditorOpen = false,
   previewBody,
   previewBodyStartOffset,
   previewBodyTextChange,
@@ -338,12 +340,8 @@ export function TabulaDocumentSurface({
       ref={workspaceRef}
       style={splitWorkspaceStyle}
     >
-      <article
-        className={editorSurfaceClassName}
-        ref={editorSurfaceRef}
-        onScroll={onEditorScroll}
-      >
-        {documentSurface.documentControls.activeViewMode === "visual" && (
+      {metadataEditorOpen && documentSurface.documentControls.activeViewMode === "visual" && (
+        <div className="document-metadata-drawer">
           <Suspense fallback={null}>
             <DocumentProperties
               addPropertyRequestId={addPropertyRequestId}
@@ -354,10 +352,17 @@ export function TabulaDocumentSurface({
               onChange={onTextChange}
               onOpenSource={onOpenSource}
               onPropertyAddRequestHandled={onPropertyAddRequestHandled}
+              variant="drawer"
               workspaceMarkdownDocuments={workspaceMarkdownDocuments}
             />
           </Suspense>
-        )}
+        </div>
+      )}
+      <article
+        className={editorSurfaceClassName}
+        ref={editorSurfaceRef}
+        onScroll={onEditorScroll}
+      >
         <MarkdownEditor
           ref={editorRef}
           ariaLabel={copy.editor}

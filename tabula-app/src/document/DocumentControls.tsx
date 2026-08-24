@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import {
+  Braces,
   Check,
   Code2,
   ChevronLeft,
@@ -43,6 +44,7 @@ type DocumentControlsProps = {
   activeSyncScrolling: boolean;
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
+  metadataOpen?: boolean;
   searchOpen: boolean;
   showSearch?: boolean;
   showSyncScrolling?: boolean;
@@ -53,6 +55,7 @@ type DocumentControlsProps = {
   onToggleSyncScrolling: () => void;
   onToggleLineWrapping: () => void;
   onToggleLineNumbers: () => void;
+  onToggleMetadata?: () => void;
   onToggleSearch: () => void;
 };
 
@@ -94,6 +97,7 @@ export function DocumentControls({
   activeSyncScrolling,
   centerPopover,
   language,
+  metadataOpen = false,
   searchOpen,
   showSearch = true,
   showSyncScrolling = true,
@@ -104,9 +108,11 @@ export function DocumentControls({
   onToggleSyncScrolling,
   onToggleLineWrapping,
   onToggleLineNumbers,
+  onToggleMetadata,
   onToggleSearch,
 }: DocumentControlsProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
+  const surfaceCopy = getWorkspaceSurfaceCopy(language);
   const controls = buildDocumentControlsModel({
     activeEditingMode,
     activeLineNumbers,
@@ -121,8 +127,6 @@ export function DocumentControls({
       <nav className="document-controls" aria-label={controls.documentControlsLabel}>
         <div className="document-view-mode-control" role="group" aria-label={controls.viewModeLabel}>
           {controls.viewModeOptions.map((option) => {
-            const nextViewMode = option.active ? activeViewMode : option.viewMode;
-
             return (
               <button
                 key={option.viewMode}
@@ -142,7 +146,7 @@ export function DocumentControls({
                     ? onPreparePreview
                     : undefined
                 }
-                onClick={() => onSetViewMode(nextViewMode)}
+                onClick={() => onSetViewMode(option.viewMode)}
               >
                 {viewModeIcons[option.icon]}
               </button>
@@ -150,6 +154,18 @@ export function DocumentControls({
           })}
         </div>
         <div className="document-utility-controls">
+          {onToggleMetadata && (
+            <button
+              className={`ui-icon-button tool-button document-metadata-toggle ${metadataOpen ? "active" : ""}`}
+              type="button"
+              aria-label={surfaceCopy.frontmatter}
+              data-tooltip={surfaceCopy.frontmatter}
+              aria-pressed={metadataOpen}
+              onClick={onToggleMetadata}
+            >
+              <Braces size={16} />
+            </button>
+          )}
           {showSearch && (
             <button
               className={`ui-icon-button tool-button document-search-toggle ${searchOpen ? "active" : ""}`}

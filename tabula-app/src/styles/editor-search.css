@@ -5,7 +5,7 @@
   grid-row: 2;
   display: grid;
   align-items: start;
-  width: var(--document-chrome-width);
+  width: var(--document-body-width);
   min-width: 0;
   min-height: 50px;
   margin-left: var(--document-lane-margin-left);
@@ -38,11 +38,16 @@
 
 .document-search-line {
   display: grid;
+  box-sizing: border-box;
   grid-template-columns: minmax(160px, 1fr) auto;
   align-items: center;
   gap: 6px;
+  width: 100%;
   min-width: 0;
   min-height: var(--control-size-row);
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
 }
 
 .document-replace-line {
@@ -59,7 +64,7 @@
   padding: 0 8px;
   border-radius: var(--radius-control);
   color: var(--text-soft);
-  background: var(--surface-muted);
+  background: transparent;
 }
 
 .document-search-field input {
@@ -156,7 +161,7 @@
 
 .file-shell.view-edit .document-search-row,
 .file-shell.view-visual .document-search-row {
-  width: var(--editor-frame-width);
+  width: var(--document-body-width);
 }
 
 .file-shell.view-split .document-search-row {

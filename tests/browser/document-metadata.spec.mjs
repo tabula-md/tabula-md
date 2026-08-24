@@ -4,10 +4,136 @@ const openFreshDocument = async (page) => {
   await page.goto("/");
   await page.waitForSelector(".tabbar");
   await page.getByRole("button", { name: "New document", exact: true }).click();
+  await page.locator(".document-metadata-toggle").click();
   await expect(page.getByRole("button", { name: "Add metadata" })).toBeVisible();
 };
 
 test.describe("document metadata", () => {
+  test("keeps Write focused on the body until metadata is opened", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(".tabbar");
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await page.getByRole("button", { name: "Write" }).click();
+
+    await expect(page.locator(".document-metadata-drawer")).toHaveCount(0);
+    await expect(page.locator(".document-properties")).toHaveCount(0);
+    await expect(page.locator(".cm-content")).toBeVisible();
+
+    await page.locator(".document-metadata-toggle").click();
+    await expect(page.locator(".document-metadata-drawer")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add metadata" })).toBeVisible();
+    await expect(page.locator(".document-properties-count")).toHaveCount(0);
+    const metadataSurface = await page.locator(".document-metadata-drawer").evaluate((drawer) => {
+      const body = document.querySelector(".cm-content");
+      if (!(body instanceof HTMLElement)) throw new Error("Editor body is missing");
+      const drawerStyle = getComputedStyle(drawer);
+      const mutedSurfaceProbe = document.createElement("div");
+      mutedSurfaceProbe.style.backgroundColor = "var(--surface-muted)";
+      document.body.append(mutedSurfaceProbe);
+      const mutedSurface = getComputedStyle(mutedSurfaceProbe).backgroundColor;
+      mutedSurfaceProbe.remove();
+      return {
+        bodyWidth: body.getBoundingClientRect().width,
+        drawerWidth: drawer.getBoundingClientRect().width,
+        background: drawerStyle.backgroundColor,
+        maxHeight: drawerStyle.maxHeight,
+        mutedSurface,
+        overflowY: drawerStyle.overflowY,
+      };
+    });
+    expect(Math.abs(metadataSurface.drawerWidth - metadataSurface.bodyWidth)).toBeLessThanOrEqual(1);
+    expect(metadataSurface.background).toBe(metadataSurface.mutedSurface);
+    expect(metadataSurface.maxHeight).toBe("none");
+    expect(metadataSurface.overflowY).toBe("visible");
+
+    const addMetadata = page.getByRole("button", { name: "Add metadata" });
+    const idleBackground = await addMetadata.evaluate(
+      (button) => getComputedStyle(button).backgroundColor,
+    );
+    await addMetadata.hover();
+    const hoverBackground = await addMetadata.evaluate(
+      (button) => getComputedStyle(button).backgroundColor,
+    );
+    expect(hoverBackground).toBe(idleBackground);
+
+    await page.locator(".document-metadata-toggle").click();
+    await expect(page.locator(".document-metadata-drawer")).toHaveCount(0);
+    await expect(page.locator(".document-properties")).toHaveCount(0);
+    await expect(page.locator(".cm-content")).toBeVisible();
+  });
+
+  test("keeps the drawer rhythm stable from an empty state to one field", async ({ page }) => {
+    await openFreshDocument(page);
+    const emptyHeight = await page.locator(".document-metadata-drawer").evaluate(
+      (drawer) => drawer.getBoundingClientRect().height,
+    );
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const editor = page.locator(".cm-content");
+    await editor.click();
+    await page.keyboard.insertText("---\ntype: Runbook\n---");
+    await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
+
+    const populatedHeight = await page.locator(".document-metadata-drawer").evaluate(
+      (drawer) => drawer.getBoundingClientRect().height,
+    );
+    expect(Math.abs(populatedHeight - emptyHeight)).toBeLessThanOrEqual(1);
+    await expect(page.getByRole("button", { name: "Add metadata" })).toBeVisible();
+  });
+
+  test("aligns search, metadata, and document content to one lane", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openFreshDocument(page);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    const readLaneMetrics = () => page.evaluate(() => {
+      const selectors = [
+        ".document-search-line",
+        ".document-metadata-drawer",
+        ".markdown-editor .cm-content",
+      ];
+      return selectors.map((selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) throw new Error(`${selector} is missing`);
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width };
+      });
+    });
+
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 700, height: 800 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const metrics = await readLaneMetrics();
+      const widths = metrics.map(({ width }) => width);
+      const leftEdges = metrics.map(({ left }) => left);
+      const rightEdges = metrics.map(({ right }) => right);
+      expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
+      expect(Math.max(...leftEdges) - Math.min(...leftEdges)).toBeLessThanOrEqual(1);
+      expect(Math.max(...rightEdges) - Math.min(...rightEdges)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test("shows every top-level field without a second disclosure", async ({ page }) => {
+    await openFreshDocument(page);
+    await page.getByRole("button", { name: "Source" }).click();
+    const editor = page.locator(".cm-content");
+    await editor.click();
+    await page.keyboard.insertText(
+      "---\ntype: Runbook\ntitle: Incident response\ndescription: Recovery guide\ntags: [incident]\nstatus: stable\nstale_after: 2026-12-31\nowner: team:operations\n---",
+    );
+    await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
+
+    await expect(page.getByText("Metadata", { exact: true })).toHaveCount(0);
+    await expect(page.locator(".document-properties")).toHaveAttribute("aria-label", "Metadata");
+    await expect(page.getByRole("button", { name: "owner", exact: true })).toBeVisible();
+    await expect(page.locator(".document-properties-count")).toHaveCount(0);
+    await expect(page.locator(".document-properties-show-more")).toHaveCount(0);
+  });
+
   test("selects new scalar types and resets inferred types for arbitrary keys", async ({ page }) => {
     await openFreshDocument(page);
     await page.getByRole("button", { name: "Add metadata" }).click();
@@ -15,7 +141,7 @@ test.describe("document metadata", () => {
     await page.getByRole("menuitemradio", { name: "Number" }).click();
     await expect(page.getByRole("textbox", { name: "Field value" })).toHaveValue("0");
 
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.getByRole("button", { name: "Add metadata" }).click();
     const keyInput = page.getByRole("combobox", { name: "Field name" });
     await keyInput.fill("sources");
@@ -114,6 +240,7 @@ test.describe("document metadata", () => {
     await editor.click();
     await page.keyboard.insertText("---\ntype: Runbook\n---");
     await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
 
     await page.getByRole("button", { name: "type", exact: true }).click();
     const keyInput = page.getByRole("textbox", { name: "Field name" });
@@ -133,6 +260,7 @@ test.describe("document metadata", () => {
       "---\ndescription: This deliberately long metadata value wraps across multiple lines without moving when editing begins.\n---",
     );
     await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
 
     const row = page.locator(".document-property-row").filter({
       has: page.getByRole("button", { name: "description", exact: true }),
@@ -157,8 +285,7 @@ test.describe("document metadata", () => {
     await page.keyboard.insertText("---\n---");
 
     await page.getByRole("button", { name: "Write" }).click();
-    await expect(page.getByRole("button", { name: "Add metadata" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Metadata/ })).toHaveCount(0);
+    await expect(page.locator(".document-metadata-drawer")).toHaveCount(0);
     await expect(page.locator(".cm-visual-body-placeholder")).toHaveText("Start writing...");
 
     await editor.click();
@@ -216,6 +343,7 @@ test.describe("document metadata", () => {
     await page.keyboard.insertText("---\nowner: team:platform\n---\nWorkspace source");
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
 
     await page.getByRole("button", { name: "Add metadata" }).click();
     const keyInput = page.getByRole("combobox", { name: "Field name" });
@@ -238,6 +366,7 @@ test.describe("document metadata", () => {
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("---\ntitle: [\n---\nBody");
     await page.getByRole("button", { name: "Write" }).click();
+    await page.locator(".document-metadata-toggle").click();
 
     await expect(page.getByText("Metadata couldn’t be read.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Edit in Source" })).toBeVisible();
