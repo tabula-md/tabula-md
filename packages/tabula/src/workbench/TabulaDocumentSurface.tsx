@@ -1,6 +1,8 @@
 import {
   type CSSProperties,
   type RefObject,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -37,7 +39,6 @@ import {
   type MarkdownPreviewCommentAnchor,
   type MarkdownPreviewLineActionRequest,
   type MarkdownPreviewLineAnnotation,
-  type MarkdownPreviewMetadata,
   type MarkdownPreviewProps,
 } from "../../../../tabula-app/src/preview/markdownPreviewTypes";
 import {
@@ -50,6 +51,12 @@ import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspace/wo
 const LONG_LINE_RECHECK_DELAY_MS = 240;
 const WORKSPACE_FADE_REVEAL_DISTANCE_PX = 64;
 const WORKSPACE_FADE_TRAVEL_PX = 108;
+
+const DocumentProperties = lazy(() =>
+  import("../../../../tabula-app/src/document/DocumentProperties").then((module) => ({
+    default: module.DocumentProperties,
+  })),
+);
 
 const useWorkspaceScrollFade = (workspaceRef: RefObject<HTMLElement | null>) => {
   useEffect(() => {
@@ -139,6 +146,7 @@ const useLongLineWrappingSuspension = (
  * without inheriting the browser workspace runtime.
  */
 export type TabulaDocumentSurfaceProps = {
+  addPropertyRequestId?: number;
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: Pick<WorkspaceFile, "id">;
@@ -165,7 +173,6 @@ export type TabulaDocumentSurfaceProps = {
   previewBody: string;
   previewBodyStartOffset: number;
   previewBodyTextChange?: TextChange | null;
-  previewMetadata: MarkdownPreviewMetadata[];
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchMatches: SearchMatch[];
@@ -180,6 +187,7 @@ export type TabulaDocumentSurfaceProps = {
   splitWorkspaceStyle?: CSSProperties;
   text: string;
   workspaceRef: RefObject<HTMLElement | null>;
+  workspaceMarkdownDocuments?: readonly string[];
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
@@ -188,6 +196,8 @@ export type TabulaDocumentSurfaceProps = {
   onEditorSelectionChange: (selection?: CollaborationLiveSelection) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onOpenSource?: () => void;
+  onPropertyAddRequestHandled?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -206,6 +216,7 @@ export type TabulaDocumentSurfaceProps = {
 };
 
 export function TabulaDocumentSurface({
+  addPropertyRequestId,
   activeBookmarks,
   activeCommentAnchors,
   activeFile,
@@ -226,7 +237,6 @@ export function TabulaDocumentSurface({
   previewBody,
   previewBodyStartOffset,
   previewBodyTextChange,
-  previewMetadata,
   previewRef,
   previewSurfaceRef,
   searchMatches,
@@ -241,6 +251,7 @@ export function TabulaDocumentSurface({
   splitWorkspaceStyle,
   text,
   workspaceRef,
+  workspaceMarkdownDocuments,
   onBookmarksChange,
   onEditorHistoryStateChange,
   onEditorScroll,
@@ -249,6 +260,8 @@ export function TabulaDocumentSurface({
   onEditorSelectionChange,
   onLineAction,
   onOpenComment,
+  onOpenSource,
+  onPropertyAddRequestHandled,
   onOpenWorkspaceLink,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -330,6 +343,21 @@ export function TabulaDocumentSurface({
         ref={editorSurfaceRef}
         onScroll={onEditorScroll}
       >
+        {documentSurface.documentControls.activeViewMode === "visual" && (
+          <Suspense fallback={null}>
+            <DocumentProperties
+              addPropertyRequestId={addPropertyRequestId}
+              documentId={activeFile.id}
+              editorRef={editorRef}
+              language={language}
+              markdown={text}
+              onChange={onTextChange}
+              onOpenSource={onOpenSource}
+              onPropertyAddRequestHandled={onPropertyAddRequestHandled}
+              workspaceMarkdownDocuments={workspaceMarkdownDocuments}
+            />
+          </Suspense>
+        )}
         <MarkdownEditor
           ref={editorRef}
           ariaLabel={copy.editor}
@@ -392,7 +420,6 @@ export function TabulaDocumentSurface({
             <ResolvedMarkdownPreview
               ref={previewRef}
               uiLanguage={language}
-              metadata={previewMetadata}
               body={previewBody}
               sourceLineOffset={previewBodySourceLineOffset}
               bodyTextChange={previewBodyTextChange}

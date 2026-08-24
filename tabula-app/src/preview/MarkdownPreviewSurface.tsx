@@ -49,7 +49,6 @@ import {
 import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineAnnotation,
-  MarkdownPreviewMetadata,
   MarkdownPreviewProps,
 } from "./markdownPreviewTypes";
 import type { MarkdownPreviewHandle } from "./previewSyncTypes";
@@ -61,7 +60,6 @@ import {
   requestPreviewIdleTask,
 } from "./PreviewAsyncBlocks";
 import {
-  getElementOuterHeight,
   getInlinePreviewBlockMeasurements,
   getPreviewMeasurementsAreEqual,
 } from "./previewMeasurements";
@@ -76,7 +74,6 @@ import {
   usePreviewVirtualizationController,
 } from "./usePreviewVirtualizationController";
 
-const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
 const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];
 
@@ -84,7 +81,6 @@ const VIRTUAL_GLOBAL_MARKDOWN_CONTEXT_DELAY_MS = 6_000;
 const VIRTUAL_LINE_MEASUREMENT_SCROLL_IDLE_MS = 140;
 
 function MarkdownPreviewComponent({
-  metadata = EMPTY_MARKDOWN_PREVIEW_METADATA,
   body,
   sourceLineOffset = 0,
   bodyTextChange,
@@ -110,7 +106,6 @@ function MarkdownPreviewComponent({
   const uiCopy = getWorkspaceSurfaceCopy(uiLanguage);
   const documentRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const frontmatterRef = useRef<HTMLElement | null>(null);
   const wasLineMeasurementSuspendedRef = useRef(suspendLineMeasurement);
   const hoverLineFrameRef = useRef<number | null>(null);
   const pendingHoverLineRef = useRef<{ clientY: number; target: EventTarget | null } | null>(null);
@@ -123,7 +118,6 @@ function MarkdownPreviewComponent({
     scrollTop: 0,
     viewportHeight: PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
   }));
-  const [frontmatterPreviewHeight, setFrontmatterPreviewHeight] = useState(0);
   const [inlinePreviewBlockMeasurements, setInlinePreviewBlockMeasurements] = useState<PreviewBlockMeasurements>({});
   const showLineGutters = Boolean(onLineAction);
   const stableCommentAnchors = commentAnchors.length > 0 ? commentAnchors : EMPTY_PREVIEW_COMMENT_ANCHORS;
@@ -132,7 +126,6 @@ function MarkdownPreviewComponent({
   const previewSearchActive = Boolean(searchQuery.trim()) && !getSearchQueryError(searchQuery, searchOptions);
   const renderableBodyTextChange = renderableBody === body ? bodyTextChange : null;
   const normalizedSourceLineOffset = Math.max(0, Math.floor(sourceLineOffset));
-  const frontmatterEndLine = Math.max(1, normalizedSourceLineOffset);
   const previewSourceLineCount = useMemo(
     () => Math.max(1, normalizedSourceLineOffset + getMarkdownLineCount(renderableBody)),
     [normalizedSourceLineOffset, renderableBody],
@@ -182,40 +175,6 @@ function MarkdownPreviewComponent({
     previewBlockIndex,
   });
   useLayoutEffect(() => {
-    const element = frontmatterRef.current;
-    if (!element) {
-      setFrontmatterPreviewHeight(0);
-      return undefined;
-    }
-
-    let frameId: number | null = null;
-    const measureFrontmatter = () => {
-      frameId = null;
-      const nextHeight = getElementOuterHeight(element);
-      setFrontmatterPreviewHeight((currentHeight) =>
-        Math.abs(currentHeight - nextHeight) < 1 ? currentHeight : nextHeight,
-      );
-    };
-    const scheduleMeasure = () => {
-      if (frameId !== null) {
-        return;
-      }
-      frameId = window.requestAnimationFrame(measureFrontmatter);
-    };
-
-    scheduleMeasure();
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
-    resizeObserver?.observe(element);
-
-    return () => {
-      resizeObserver?.disconnect();
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, [metadata.length]);
-  useLayoutEffect(() => {
     const contentElement = contentRef.current;
     if (shouldVirtualizePreview || !contentElement || !inlinePreviewBlockIndex) {
       setInlinePreviewBlockMeasurements((currentMeasurements) =>
@@ -264,7 +223,7 @@ function MarkdownPreviewComponent({
     handlePreviewScrollEvent,
   } = usePreviewFollowController({
     documentRef,
-    frontmatterPreviewHeight,
+    frontmatterPreviewHeight: 0,
     onPreviewViewportChange: setPreviewViewport,
     previewBlockIndex: shouldVirtualizePreview ? virtualPreviewBlockIndex : measuredInlinePreviewBlockIndex,
     renderableBody,
@@ -667,25 +626,6 @@ function MarkdownPreviewComponent({
           )}
 
           <div ref={contentRef} className="preview-document-content">
-            {metadata.length > 0 && (
-              <section
-                ref={frontmatterRef}
-                className="frontmatter-view"
-                aria-label={uiCopy.frontmatter}
-                data-preview-block-start-line={1}
-                data-preview-block-end-line={frontmatterEndLine}
-                data-preview-line-start={1}
-                data-preview-line-end={frontmatterEndLine}
-              >
-                {metadata.map((attribute) => (
-                  <div className="frontmatter-row" key={attribute.key}>
-                    <span>{attribute.key}</span>
-                    <strong>{attribute.value}</strong>
-                  </div>
-                ))}
-              </section>
-            )}
-
             {renderableBody.trim().length > 0 ? (
               shouldVirtualizePreview ? (
                 virtualPreviewBlockIndex ? (

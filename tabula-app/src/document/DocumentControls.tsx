@@ -24,7 +24,6 @@ import type { CenterPopover } from "../ui/uiTypes";
 import type { SearchOptions } from "../editor/editorSearchModel";
 import {
   buildDocumentControlsModel,
-  getEditingModeViewMode,
   type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
@@ -122,12 +121,7 @@ export function DocumentControls({
       <nav className="document-controls" aria-label={controls.documentControlsLabel}>
         <div className="document-view-mode-control" role="group" aria-label={controls.viewModeLabel}>
           {controls.viewModeOptions.map((option) => {
-            const nextViewMode =
-              option.active && option.viewMode === "preview"
-                ? getEditingModeViewMode(activeEditingMode)
-                : option.active && option.viewMode === "split"
-                  ? "edit"
-                  : option.viewMode;
+            const nextViewMode = option.active ? activeViewMode : option.viewMode;
 
             return (
               <button
@@ -190,63 +184,25 @@ export function DocumentControls({
               aria-label={controls.controlsLabel}
               onOpenAutoFocus={(event) => event.preventDefault()}
             >
-              <section className="editor-controls-section">
-                <h3 className="editor-controls-heading">{controls.editingModeLabel}</h3>
-                <div
-                  className="editing-mode-options"
-                  role="group"
-                  aria-label={controls.editingModeLabel}
-                >
-                  {controls.editingModeOptions.map((option) => (
-                    <button
-                      key={option.editingMode}
-                      className={`editor-controls-row editing-mode-option ${option.active ? "active" : ""}`}
-                      type="button"
-                      aria-label={option.label}
-                      aria-pressed={option.active}
-                      data-editing-mode={option.editingMode}
-                      onClick={() => onSetViewMode(option.viewMode)}
-                    >
-                      <span className="editing-mode-option-icon">
-                        {viewModeIcons[option.icon]}
-                      </span>
-                      <span>{option.label}</span>
-                      <span className="editor-controls-check">
-                        {option.active && <Check size={14} />}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <div className="editor-controls-divider" role="separator" />
-              <section className="editor-controls-section">
-                <h3 className="editor-controls-heading">{controls.viewModeLabel}</h3>
-                <div role="group" aria-label={controls.viewModeLabel}>
-                  {controls.viewModeOptions.map((option) => (
-                    <button
-                      key={option.viewMode}
-                      className={`editor-controls-row editor-view-option ${option.active ? "active" : ""}`}
-                      type="button"
-                      aria-pressed={option.active}
-                      data-view-mode-option={option.viewMode}
-                      onClick={() => onSetViewMode(option.viewMode)}
-                    >
-                      <span className="editing-mode-option-icon">
-                        {viewModeIcons[option.icon]}
-                      </span>
-                      <span>{option.label}</span>
-                      <span className="editor-controls-check">
-                        {option.active && <Check size={14} />}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
               {controls.showEditorToggles && (
                 <>
                   <div className="editor-controls-divider" role="separator" />
                   <section className="editor-controls-section view-controls-settings">
                     <h3 className="editor-controls-heading">{controls.sourceOptionsLabel}</h3>
+                    <button
+                      className={`editor-controls-row ${controls.sourcePreview.active ? "active" : ""}`}
+                      type="button"
+                      data-view-mode="split"
+                      aria-pressed={controls.sourcePreview.active}
+                      onFocus={onPreparePreview}
+                      onPointerEnter={onPreparePreview}
+                      onClick={() => onSetViewMode(controls.sourcePreview.active ? "edit" : "split")}
+                    >
+                      <span className="editor-controls-check">
+                        {controls.sourcePreview.active && <Check size={14} />}
+                      </span>
+                      <span>{controls.sourcePreview.label}</span>
+                    </button>
                     <button
                       className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
                       type="button"

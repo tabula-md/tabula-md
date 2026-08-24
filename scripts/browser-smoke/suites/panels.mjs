@@ -1868,7 +1868,7 @@ export async function run(ctx) {
         hoveredHeadingLinkStyles.decoration.includes("underline"),
       `Same-document heading links should gain a stronger color and underline on hover (${JSON.stringify(hoveredHeadingLinkStyles)}).`,
     );
-    await page.getByRole("button", { name: "Visual edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Write");
     await waitForEditorReady(page, { mode: "visual" });
     await page.evaluate(() => {
       const content = document.querySelector(".cm-content");
@@ -1936,7 +1936,7 @@ export async function run(ctx) {
       visualWorkspaceLinkStyles.externalLinkSemantic,
       "Visual should distinguish external destinations with outbound-link semantics.",
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Read");
     await waitForEditorReady(page, { mode: "preview" });
     const wikiGuideLinkCount = await page.getByRole("link", {
       name: "Wiki guide",

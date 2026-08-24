@@ -311,9 +311,11 @@ export function RightPanel({
         {effectiveView === "properties" && (
           <RightPanelProperties
             activeFileId={activeFileId}
-            index={knowledgeIndex}
+            markdown={activeFile?.text ?? ""}
             noDocumentCopy={copy.noDocumentOpen}
             emptyCopy={knowledgeCopy.notSet}
+            invalidCopy={knowledgeCopy.invalidMetadata}
+            label={knowledgeCopy.properties}
           />
         )}
       </div>

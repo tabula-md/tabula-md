@@ -1,21 +1,15 @@
 const requestedModes = {
-  Edit: { editingMode: "source", label: "Source edit", viewMode: "edit" },
-  Preview: { label: "Preview", viewMode: "preview" },
-  Source: { editingMode: "source", label: "Source edit", viewMode: "edit" },
-  Split: { editingMode: "source", label: "Split", viewMode: "split" },
-  Visual: { editingMode: "visual", label: "Visual edit", viewMode: "visual" },
+  Edit: { viewMode: "edit" },
+  Preview: { viewMode: "preview" },
+  Read: { viewMode: "preview" },
+  Source: { viewMode: "edit" },
+  Split: { sourcePreview: true, viewMode: "split" },
+  Visual: { viewMode: "visual" },
+  Write: { viewMode: "visual" },
 };
 
 const getActiveViewMode = (page) =>
   page.locator(".tab-item.active").getAttribute("data-view-mode");
-
-const selectEditingMode = async (page, editingMode) => {
-  await page.getByRole("button", { name: "Editor controls", exact: true }).click();
-  await page
-    .locator(".document-controls-popover")
-    .locator(`[data-editing-mode="${editingMode}"]`)
-    .click();
-};
 
 export const selectDocumentViewMode = async (page, label) => {
   const requested = requestedModes[label] ?? {
@@ -27,18 +21,15 @@ export const selectDocumentViewMode = async (page, label) => {
     return;
   }
 
-  let button = page.locator(
+  const button = page.locator(
     `.document-view-mode-control [data-view-mode="${requested.viewMode}"]`,
   );
 
-  if ((await button.count()) === 0 && requested.editingMode) {
-    await selectEditingMode(page, requested.editingMode);
-    if ((await getActiveViewMode(page)) === requested.viewMode) {
-      return;
-    }
-    button = page.locator(
-      `.document-view-mode-control [data-view-mode="${requested.viewMode}"]`,
-    );
+  if (requested.sourcePreview) {
+    await page.locator('.document-view-mode-control [data-view-mode="edit"]').click();
+    await page.locator(".document-options-button").click();
+    await page.locator('.document-controls-popover [data-view-mode="split"]').click();
+    return;
   }
 
   await button.click();

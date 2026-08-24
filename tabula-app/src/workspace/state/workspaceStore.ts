@@ -248,12 +248,34 @@ const updateFileInState = (
   };
 };
 
+const getWorkspaceViewState = (
+  files: readonly WorkspaceFile[],
+  activeFileId: string,
+) => {
+  const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
+  const viewMode = activeFile?.viewMode ?? "visual";
+  return activeFile
+    ? {
+        editingMode: viewMode === "split" ? "source" as const : getFileEditingMode(activeFile),
+        viewMode,
+      }
+    : { editingMode: "visual" as const, viewMode: "visual" as const };
+};
+
+const applyWorkspaceViewState = (
+  files: readonly WorkspaceFile[],
+  viewState: ReturnType<typeof getWorkspaceViewState>,
+) => files.map((file) => ({ ...file, ...viewState }));
+
 export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
   initializeWorkspace: ({ createFile, folders, readmeFileId, ...workspace }) => {
+    const nextWorkspace = createWorkspaceModelState(workspace);
+    const viewState = getWorkspaceViewState(nextWorkspace.files, nextWorkspace.activeFileId);
     set({
-      ...createWorkspaceModelState(workspace),
+      ...nextWorkspace,
+      files: applyWorkspaceViewState(nextWorkspace.files, viewState),
       createFile,
       folders,
       initialized: true,
@@ -264,14 +286,19 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   replaceWorkspace: (workspace) => {
     const nextWorkspace = createWorkspaceModelState(workspace);
+    const viewState = getWorkspaceViewState(nextWorkspace.files, nextWorkspace.activeFileId);
+    const normalizedWorkspace = {
+      ...nextWorkspace,
+      files: applyWorkspaceViewState(nextWorkspace.files, viewState),
+    };
     set((state) => ({
       ...state,
-      ...nextWorkspace,
+      ...normalizedWorkspace,
       folders: workspace.folders ?? state.folders,
       lastClosedTab: null,
     }));
 
-    return getActiveWorkspaceFile(nextWorkspace);
+    return getActiveWorkspaceFile(normalizedWorkspace);
   },
 
   selectFile: (fileId) => {
@@ -291,10 +318,12 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFile: (overrides) => {
     const state = get();
+    const viewState = getWorkspaceViewState(state.files, state.activeFileId);
     const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const requestedTitle = overrides?.title?.trim();
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
+      ...viewState,
       parentId,
       title: getAvailableFileTitle(state.files, requestedTitle || "Untitled.md", parentId),
     });
@@ -307,13 +336,15 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFileFromContent: (title, text, viewMode = "visual", overrides) => {
     const state = get();
+    const viewState = getWorkspaceViewState(state.files, state.activeFileId);
     const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
       parentId,
       title: getAvailableFileTitle(state.files, title, parentId),
       text,
-      viewMode: overrides?.viewMode ?? viewMode,
+      editingMode: viewState.editingMode,
+      viewMode: state.files.length > 0 ? viewState.viewMode : overrides?.viewMode ?? viewMode,
     });
     set((currentState) => ({
       ...currentState,
@@ -544,7 +575,21 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
   },
 
   setActiveFileViewMode: (viewMode) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileViewMode", viewMode }));
+    set((state) => {
+      const activeFile = state.files.find((file) => file.id === state.activeFileId);
+      const editingMode =
+        viewMode === "visual"
+          ? "visual"
+          : viewMode === "edit" || viewMode === "split"
+            ? "source"
+            : activeFile
+              ? getFileEditingMode(activeFile)
+              : "visual";
+      return {
+        ...state,
+        files: applyWorkspaceViewState(state.files, { editingMode, viewMode }),
+      };
+    });
   },
 
   setActiveFileReadingWidth: (readingWidth) => {

@@ -15,6 +15,8 @@ const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   title: overrides.title ?? `Untitled ${index}.md`,
   text: overrides.text ?? "",
   viewMode: overrides.viewMode ?? "edit",
+  editingMode:
+    overrides.editingMode ?? (overrides.viewMode === "visual" ? "visual" : "source"),
   readingWidth: overrides.readingWidth ?? "wide",
   splitRatio: overrides.splitRatio,
   lineWrapping: overrides.lineWrapping ?? true,
@@ -46,7 +48,8 @@ const initializeWorkspaceStore = () => {
     createFile: createTestFile,
   });
 
-  return { readme, draft };
+  const [normalizedReadme, normalizedDraft] = useWorkspaceStore.getState().files;
+  return { readme: normalizedReadme!, draft: normalizedDraft! };
 };
 
 describe("workspace store", () => {
@@ -111,6 +114,20 @@ describe("workspace store", () => {
       lineNumbers: false,
       splitRatio: 0.72,
     });
+  });
+
+  it("keeps the selected workspace view when switching documents", () => {
+    const { readme, draft } = initializeWorkspaceStore();
+
+    useWorkspaceStore.getState().setActiveFileViewMode("visual");
+    useWorkspaceStore.getState().selectFile(readme.id);
+
+    expect(useWorkspaceStore.getState().files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: readme.id, viewMode: "visual", editingMode: "visual" }),
+        expect.objectContaining({ id: draft.id, viewMode: "visual", editingMode: "visual" }),
+      ]),
+    );
   });
 
   it("adds, opens, and activates new files in one store action", () => {

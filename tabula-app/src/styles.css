@@ -10,11 +10,13 @@
 @import "./styles/editor-controls.css";
 @import "./styles/editor-code.css";
 @import "./styles/editor-visual.css";
+@import "./styles/document-properties.css";
 @import "./styles/editor-search.css";
 @import "./styles/split-view.css";
 @import "./styles/editor-selection.css";
 @import "./styles/preview.css";
 @import "./styles/right-panel.css";
+@import "./styles/panel-layout.css";
 @import "./styles/status-bar.css";
 @import "./styles/toast.css";
 @import "./styles/ui-primitives.css";

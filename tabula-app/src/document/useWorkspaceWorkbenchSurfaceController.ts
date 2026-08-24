@@ -21,6 +21,7 @@ type RoomController = ReturnType<typeof useWorkspaceRoomController>;
 type WorkspacePersistence = ReturnType<typeof useWorkspacePersistenceRuntime>;
 
 type UseWorkspaceWorkbenchSurfaceControllerOptions = {
+  addPropertyRequestId?: number;
   activeFile?: WorkspaceFile;
   activeSyncScrolling: boolean;
   centerPopover: CenterPopover;
@@ -32,6 +33,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   language: WorkspaceLanguage;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
+  onPropertyAddRequestHandled?: () => void;
   persistence: Pick<WorkspacePersistence, "persistedRevision">;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   room: Pick<
@@ -45,11 +47,13 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   >;
   surface: DocumentSurfaceController;
   toolbarLabel: string;
+  workspaceMarkdownDocuments: readonly string[];
   resolveWorkspaceDocument: NonNullable<MarkdownPreviewProps["resolveWorkspaceDocument"]>;
   resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
 
 export function useWorkspaceWorkbenchSurfaceController({
+  addPropertyRequestId,
   activeFile,
   activeSyncScrolling,
   centerPopover,
@@ -60,12 +64,14 @@ export function useWorkspaceWorkbenchSurfaceController({
   focusedCommentId,
   language,
   onOpenWorkspaceLink,
+  onPropertyAddRequestHandled,
   onSetViewMode,
   persistence,
   previewRef,
   room,
   surface,
   toolbarLabel,
+  workspaceMarkdownDocuments,
   resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
@@ -74,6 +80,7 @@ export function useWorkspaceWorkbenchSurfaceController({
 
   return {
     workbenchProps: {
+      addPropertyRequestId,
       activeBookmarks: document.activeBookmarks,
       activeCommentAnchors: comments.activeCommentAnchors,
       activeFile,
@@ -120,7 +127,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       previewBody: document.renderedPreview.body,
       previewBodyStartOffset: document.previewBodyStartOffset,
       previewBodyTextChange: document.previewBodyTextChange,
-      previewMetadata: document.parsedMarkdown.attributes,
       previewRef,
       previewSurfaceRef: document.previewSurfaceRef,
       largeDocumentMode: document.activeDocument.largeDocumentMode,
@@ -142,6 +148,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       text: document.text,
       toolbarLabel,
       workspaceRef: document.workspaceRef,
+      workspaceMarkdownDocuments,
       onBookmarksChange: editor.updateActiveFileBookmarks,
       onEditorHistoryStateChange: editor.handleEditorHistoryStateChange,
       onEditorScroll: () => {
@@ -167,6 +174,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,
+      onPropertyAddRequestHandled,
       onOpenSelectionComment: comments.openSelectionComment,
       onPreviewKeyUp: document.syncPreviewSelection,
       onPreviewMouseUp: document.syncPreviewSelection,

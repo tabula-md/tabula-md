@@ -15,6 +15,7 @@ import {
   EDITOR_VISUAL_CURSOR_SAFE_MARGIN,
   editorVisualViewportPlugin,
 } from "./editorVisualViewport";
+import { createVisualFrontmatterProtectionExtension } from "./editorVisualFrontmatter";
 import {
   getMarkdownPresentationDocument,
   type MarkdownPresentationChange,
@@ -118,6 +119,7 @@ export const createEditorVisualModeExtension = (
 
   return [
     EditorView.editorAttributes.of({ class: "cm-visual-editor" }),
+    createVisualFrontmatterProtectionExtension(),
     EditorView.cursorScrollMargin.of({
       x: 5,
       y: EDITOR_VISUAL_CURSOR_SAFE_MARGIN,

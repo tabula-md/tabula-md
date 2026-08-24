@@ -392,12 +392,12 @@ export async function run(ctx) {
     };
 
     const closedLayout = await page.evaluate(readStableDocumentLayout);
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone .left-panel-trigger").click();
     await waitForLeftPanel(page, "Files");
     const workspacePanelLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".left-panel .left-panel-close").click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
     await ensureSidePanelOpen(page);
     const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
@@ -494,11 +494,11 @@ export async function run(ctx) {
         content:
           "---\ntitle: Split layout\ndescription: Frontmatter should remain readable beside the editor.\n---\n\n## Start here\n\nSplit layout smoke content.",
       });
-      await ensureSidePanelOpen(page);
       await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
+      await ensureSidePanelOpen(page);
 
       const splitLayout = await page.evaluate(() => {
         const readRect = (selector) => {
@@ -528,7 +528,6 @@ export async function run(ctx) {
           workspace: readRect(".workspace.split"),
           editor: readRect(".workspace.split .editor-surface"),
           preview: readRect(".workspace.split .preview-surface"),
-          frontmatterRow: readRect(".workspace.split .frontmatter-row"),
         };
       });
 
@@ -570,11 +569,7 @@ export async function run(ctx) {
       );
       expect(
         splitLayout.preview && splitLayout.preview.width >= 360,
-        "Split preview should keep enough width for readable frontmatter.",
-      );
-      expect(
-        splitLayout.frontmatterRow && splitLayout.frontmatterRow.height <= 28,
-        `Split frontmatter should not wrap into tall one-character columns (measured ${splitLayout.frontmatterRow?.height ?? "missing"}px).`,
+        "Split preview should keep enough width for readable body content.",
       );
     },
     { viewport: { width: 1100, height: 800 } },

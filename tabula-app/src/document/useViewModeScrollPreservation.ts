@@ -1,3 +1,4 @@
+import { inspectFrontmatterData } from "@tabula-md/tabula";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
@@ -201,11 +202,24 @@ export function useViewModeScrollPreservation({
     }
 
     const shouldPreserveScroll = options.preserveScroll ?? true;
+    const editor = editorRef.current;
+    const sourceSelection = editor?.getSelectionRange();
+    const frontmatter = editor
+      ? inspectFrontmatterData(editor.getValue())
+      : null;
+    const entersVisualFromFrontmatter =
+      nextViewMode === "visual" &&
+      activeViewMode !== "visual" &&
+      frontmatter?.status === "valid" &&
+      frontmatter.bodyOffset > 0 &&
+      Boolean(sourceSelection && sourceSelection.from < frontmatter.bodyOffset);
     const shouldFocusEditor =
       options.focusEditor ??
       ((nextViewMode === "edit" || nextViewMode === "visual") && !shouldPreserveScroll);
     if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
-      const anchor = getCurrentModeScrollAnchor();
+      const anchor = entersVisualFromFrontmatter
+        ? { surface: "editor" as const, position: null, ratio: 0 }
+        : getCurrentModeScrollAnchor();
       pendingModeScrollRef.current = {
         fileId: activeFileId,
         toMode: nextViewMode,

@@ -300,10 +300,10 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
 
     const frontmatterEntryState = await readSplitPreviewState(page);
-    const frontmatterAnchor = frontmatterEntryState.visiblePreviewAnchors.find((anchor) => anchor.start === 1);
+    const frontmatterAnchor = frontmatterEntryState.visiblePreviewAnchors.find((anchor) => anchor.text.includes("Body Start"));
     expect(
-      Boolean(frontmatterAnchor) && frontmatterAnchor.text.includes("status") && frontmatterAnchor.top <= 96,
-      `Split preview should map source line 1 to the rendered frontmatter block. state=${JSON.stringify(frontmatterEntryState)}`,
+      Boolean(frontmatterAnchor) && frontmatterAnchor.top <= 96,
+      `Split preview should map the hidden frontmatter range to the first body block. state=${JSON.stringify(frontmatterEntryState)}`,
     );
 
     await setEditorScrollTop(page, 10_000);
@@ -317,10 +317,10 @@ export async function run(ctx) {
     await setEditorScrollTop(page, 0);
     await waitForRenderFrame(page);
     const frontmatterReturnState = await readSplitPreviewState(page);
-    const returnedFrontmatterAnchor = frontmatterReturnState.visiblePreviewAnchors.find((anchor) => anchor.start === 1);
+    const returnedFrontmatterAnchor = frontmatterReturnState.visiblePreviewAnchors.find((anchor) => anchor.text.includes("Body Start"));
     expect(
       Boolean(returnedFrontmatterAnchor) && returnedFrontmatterAnchor.top <= 96,
-      "Split preview should return to the rendered frontmatter block when the editor scrolls back to the top.",
+      "Split preview should return to the first body block when the editor scrolls back to the hidden frontmatter.",
     );
   });
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFrontmatterMarkdownValueAtPath,
+  addFrontmatterValue,
+  removeFrontmatterMarkdownValueAtPath,
+  removeFrontmatterValue,
+  renameFrontmatterMarkdownKeyAtPath,
+  renameFrontmatterKey,
   getMarkdownDocumentTitle,
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
@@ -7,6 +13,8 @@ import {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  updateFrontmatterMarkdownValueAtPath,
+  updateFrontmatterValue,
 } from "./parse";
 
 describe("markdown document model", () => {
@@ -59,6 +67,259 @@ Body`);
     expect(parsed.bodyOffset).toBe(markdown.indexOf("\r\nBody"));
   });
 
+  it("updates one frontmatter value without dropping comments or extension fields", () => {
+    const markdown = [
+      "---",
+      "title: Guide # visible title",
+      "status: draft",
+      "extension: { owner: taeha }",
+      "---",
+      "",
+      "# Body",
+    ].join("\n");
+    const result = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("title: Guide # visible title");
+    expect(result.markdown).toContain("status: stable");
+    expect(result.markdown).toContain("extension: { owner: taeha }");
+    expect(result.markdown.endsWith("\n# Body")).toBe(true);
+  });
+
+  it("does not reformat sibling frontmatter values", () => {
+    const markdown = "---\ntags: [incident, operations]\nstatus: draft\n---\nBody";
+    const result = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(result).toEqual({
+      ok: true,
+      markdown: "---\ntags: [incident, operations]\nstatus: stable\n---\nBody",
+    });
+  });
+
+  it("keeps comments attached to the value being edited", () => {
+    const markdown = "---\nstatus: draft # lifecycle state\ntags: [docs, help] # search labels\n---\nBody";
+    const statusResult = updateFrontmatterValue(markdown, "status", "stable");
+
+    expect(statusResult).toEqual({
+      ok: true,
+      markdown: "---\nstatus: stable # lifecycle state\ntags: [docs, help] # search labels\n---\nBody",
+    });
+    if (!statusResult.ok) return;
+    expect(updateFrontmatterValue(statusResult.markdown, "tags", ["docs", "reference"]))
+      .toEqual({
+        ok: true,
+        markdown: "---\nstatus: stable # lifecycle state\ntags: [ docs, reference ] # search labels\n---\nBody",
+      });
+  });
+
+  it("keeps the next key on a new line when replacing a block collection", () => {
+    const markdown = [
+      "---",
+      "generated:",
+      "  by: human:taeha",
+      "  at: 2026-01-10T00:00:00Z",
+      "verified:",
+      "  - by: human:taeha",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(updateFrontmatterValue(markdown, "generated", {
+      by: "human:taeha",
+      at: "2026-01-11T00:00:00Z",
+    })).toEqual({
+      ok: true,
+      markdown: [
+        "---",
+        "generated:",
+        "  { by: human:taeha, at: 2026-01-11T00:00:00Z }",
+        "verified:",
+        "  - by: human:taeha",
+        "---",
+        "Body",
+      ].join("\n"),
+    });
+  });
+
+  it("updates a nested scalar without reformatting comments or sibling YAML", () => {
+    const markdown = [
+      "---",
+      "title: \"Guide\" # visible title",
+      "tags: [docs,help]",
+      "generated:",
+      "  by: human:old # generator",
+      "  at: 2026-01-10T00:00:00Z",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(updateFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["generated", "by"],
+      "human:new",
+    )).toEqual({
+      ok: true,
+      markdown: markdown.replace("human:old", "human:new"),
+    });
+  });
+
+  it("renames a nested extension key without serializing its value", () => {
+    const markdown = [
+      "---",
+      "extension:",
+      "  team: Platform # custom extension",
+      "  settings: {compact: true}",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(renameFrontmatterMarkdownKeyAtPath(
+      markdown,
+      ["extension", "team"],
+      "owner team",
+    )).toEqual({
+      ok: true,
+      markdown: markdown.replace("  team:", "  owner team:"),
+    });
+  });
+
+  it("adds a structured list item without reformatting unrelated properties", () => {
+    const markdown = [
+      "---",
+      "tags: [docs,help]",
+      "sources:",
+      "  - id: handbook # canonical",
+      "    resource: https://example.com/handbook",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+    const result = addFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["sources"],
+      1,
+      { id: "runbook", resource: "https://example.com/runbook" },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("tags: [docs,help]");
+    expect(result.markdown).toContain("extension: {owner: taeha}");
+    expect(result.markdown).toContain("  - id: handbook # canonical");
+    expect(result.markdown).toContain("  - id: runbook\n    resource: https://example.com/runbook");
+  });
+
+  it("removes one nested field without touching data outside its parent", () => {
+    const markdown = [
+      "---",
+      "title: Guide",
+      "generated: {by: human:taeha, at: 2026-01-10T00:00:00Z}",
+      "extension: {owner: taeha}",
+      "---",
+      "Body",
+    ].join("\n");
+    const result = removeFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["generated", "at"],
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).toContain("generated: { by: human:taeha }");
+    expect(result.markdown).toContain("extension: {owner: taeha}");
+  });
+
+  it("keeps CRLF endings when a nested collection grows", () => {
+    const markdown = "---\r\nsources:\r\n  - id: one\r\next: {owner: taeha}\r\n---\r\nBody";
+    const result = addFrontmatterMarkdownValueAtPath(
+      markdown,
+      ["sources"],
+      1,
+      { id: "two" },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.markdown).not.toMatch(/(?<!\r)\n/);
+    expect(result.markdown).toContain("  - id: one\r\n  - id: two\r\n");
+    expect(result.markdown).toContain("ext: {owner: taeha}");
+  });
+
+  it("adds a property immediately before the closing delimiter", () => {
+    expect(addFrontmatterValue("---\ntitle: Guide\n---\nBody", "owner", "team:docs"))
+      .toEqual({
+        ok: true,
+        markdown: "---\ntitle: Guide\nowner: team:docs\n---\nBody",
+      });
+  });
+
+  it("adds the first property to an empty frontmatter block", () => {
+    expect(addFrontmatterValue("---\n---\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n---\nBody",
+    });
+  });
+
+  it("creates frontmatter when adding the first property to a plain document", () => {
+    expect(addFrontmatterValue("# Guide\n\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n---\n\n# Guide\n\nBody",
+    });
+  });
+
+  it("creates frontmatter in an empty document without adding a visible body", () => {
+    expect(addFrontmatterValue("", "draft", true)).toEqual({
+      ok: true,
+      markdown: "---\ndraft: true\n---\n",
+    });
+  });
+
+  it("preserves CRLF line endings when creating frontmatter", () => {
+    expect(addFrontmatterValue("# Guide\r\n\r\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\r\ntitle: Guide\r\n---\r\n\r\n# Guide\r\n\r\nBody",
+    });
+  });
+
+  it("does not hide malformed frontmatter by prepending another block", () => {
+    expect(addFrontmatterValue("---\ntitle: [\nBody", "owner", "team:docs")).toEqual({
+      ok: false,
+      reason: "invalid_frontmatter",
+    });
+  });
+
+  it("supports human-readable and quoted YAML property names", () => {
+    const added = addFrontmatterValue(
+      "---\ntitle: Guide\n---\nBody",
+      "검토 상태",
+      "draft",
+    );
+    expect(added).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n검토 상태: draft\n---\nBody",
+    });
+    if (!added.ok) return;
+    expect(renameFrontmatterKey(added.markdown, "검토 상태", "#review state"))
+      .toEqual({
+        ok: true,
+        markdown: "---\ntitle: Guide\n\"#review state\": draft\n---\nBody",
+      });
+  });
+
+  it("renames and removes properties without reformatting their siblings", () => {
+    const markdown = "---\ntitle: Guide\ntags: [docs, help]\nowner: team:docs\n---\nBody";
+    expect(renameFrontmatterKey(markdown, "owner", "maintainer")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\ntags: [docs, help]\nmaintainer: team:docs\n---\nBody",
+    });
+    expect(removeFrontmatterValue(markdown, "tags")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\nowner: team:docs\n---\nBody",
+    });
+  });
+
   it("treats invalid frontmatter as normal markdown text", () => {
     const markdown = `---\ntitle: HELP\na\n---\n\n# HELP`;
 
@@ -77,6 +338,28 @@ Body`);
     });
     expect(inspectFrontmatterData("---\ntype: [\n---\n\nBody").status).toBe("invalid");
     expect(inspectFrontmatterData("---\ntype: Note").status).toBe("invalid");
+  });
+
+  it("always removes valid frontmatter from the preview body, including an empty mapping", () => {
+    expect(parseFrontmatter("---\n---\n\nBody")).toEqual({
+      attributes: [],
+      body: "\nBody",
+    });
+    expect(parseFrontmatter("---\n---")).toEqual({
+      attributes: [],
+      body: "",
+    });
+  });
+
+  it("removes the frontmatter block when its last property is removed", () => {
+    expect(removeFrontmatterValue("---\ntype: Note\n---\nBody", "type")).toEqual({
+      ok: true,
+      markdown: "Body",
+    });
+    expect(removeFrontmatterValue("---\ntype: Note\n---\n", "type")).toEqual({
+      ok: true,
+      markdown: "",
+    });
   });
 
   it("does not treat top horizontal rules as frontmatter without metadata key-values", () => {

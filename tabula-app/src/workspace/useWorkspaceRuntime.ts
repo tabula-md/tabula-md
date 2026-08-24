@@ -30,6 +30,7 @@ import {
   type FileViewMode,
   type WorkspaceState,
 } from "./workspaceStorage";
+
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
@@ -93,6 +94,12 @@ import {
   resolveMarkdownPreviewWorkspaceLink,
 } from "../preview/workspacePreviewLinks";
 import { getAmbiguousWorkspaceLinkResolutionEdit } from "./workspaceLinkResolution";
+
+const FRONTMATTER_SNAPSHOT_PATTERN =
+  /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/;
+
+const getFrontmatterSnapshot = (markdown: string) =>
+  FRONTMATTER_SNAPSHOT_PATTERN.exec(markdown)?.[0] ?? "";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -183,6 +190,11 @@ export function useWorkspaceRuntime() {
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
+  const propertyAddRequestIdRef = useRef(0);
+  const [propertyAddRequest, setPropertyAddRequest] = useState<{
+    documentId: string;
+    requestId: number;
+  } | null>(null);
   const [pendingPreviewNavigation, setPendingPreviewNavigation] = useState<{
     documentId: string;
     fragment: string;
@@ -1090,7 +1102,49 @@ export function useWorkspaceRuntime() {
     }
     void loadMarkdownPreview().then(applyViewMode).catch(() => undefined);
   });
+  const canAddPropertyToActiveFile = Boolean(
+    activeFile &&
+    activeFile.artifact?.editable !== false &&
+    (!activeFile.artifact ||
+      activeFile.artifact.kind === "document" ||
+      activeFile.artifact.kind === "instruction"),
+  );
+  const requestAddProperty = useEventCallback(() => {
+    const latestActiveFile = getActiveFileSnapshot();
+    if (
+      !latestActiveFile ||
+      latestActiveFile.artifact?.editable === false ||
+      (latestActiveFile.artifact &&
+        latestActiveFile.artifact.kind !== "document" &&
+        latestActiveFile.artifact.kind !== "instruction")
+    ) {
+      return;
+    }
+    propertyAddRequestIdRef.current += 1;
+    setViewModeWithPendingCommit("visual");
+    setPropertyAddRequest({
+      documentId: latestActiveFile.id,
+      requestId: propertyAddRequestIdRef.current,
+    });
+  });
+  const handlePropertyAddRequest = useEventCallback(() => {
+    setPropertyAddRequest(null);
+  });
+  // Keep the suggestion input stable while document bodies change. Metadata
+  // recommendations only need frontmatter, so body typing must not re-parse
+  // every document in a large workspace.
+  const workspaceFrontmatterSignature = JSON.stringify(
+    files.map(({ text: markdown }) => getFrontmatterSnapshot(markdown)),
+  );
+  const workspaceMarkdownDocuments = useMemo(
+    () => JSON.parse(workspaceFrontmatterSignature) as string[],
+    [workspaceFrontmatterSignature],
+  );
   const { workbenchProps } = useWorkspaceWorkbenchSurfaceController({
+    addPropertyRequestId:
+      propertyAddRequest && propertyAddRequest.documentId === activeFile?.id
+        ? propertyAddRequest.requestId
+        : undefined,
     activeFile,
     activeSyncScrolling: workspacePreferences.syncScrolling,
     centerPopover,
@@ -1101,12 +1155,14 @@ export function useWorkspaceRuntime() {
     focusedCommentId,
     language: workspacePreferences.language,
     onOpenWorkspaceLink: openPreviewWorkspaceLink,
+    onPropertyAddRequestHandled: handlePropertyAddRequest,
     onSetViewMode: setViewModeWithPendingCommit,
     persistence: localWorkspacePersistence,
     previewRef,
     room: roomController,
     surface: documentSurfaceController,
     toolbarLabel: workspaceChromeCopy.documentControls.documentToolbar,
+    workspaceMarkdownDocuments,
     resolveWorkspaceDocument,
     resolveWorkspaceLink,
   });
@@ -1184,6 +1240,7 @@ export function useWorkspaceRuntime() {
           onNewFolder: () => { addWorkspaceFolder(); },
           onImportFile: () => importInputRef.current?.click(),
           onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onAddProperty: canAddPropertyToActiveFile ? requestAddProperty : undefined,
           onOpenFiles: () => {
             setLeftPanelView("files");
             setLeftPanelOpen(true);

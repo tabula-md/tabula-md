@@ -1396,7 +1396,6 @@ export async function run(ctx) {
 
     await enterVisualMode(page, waitForEditorReady);
     for (const label of [
-      "Edit frontmatter Markdown",
       "Edit code block Markdown",
       "Edit table Markdown",
       "Edit image Markdown",

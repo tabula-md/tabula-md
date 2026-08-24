@@ -7,22 +7,24 @@ import {
 const copy: DocumentControlsCopy = {
   documentControlsLabel: "Document controls",
   editingMode: "Editing mode",
+  editor: "Editor",
   editorControls: "Editor controls",
   fillWidth: "Fill",
   focusWidth: "Focus",
   lineNumbers: "Line Numbers",
   lineWrapping: "Line Wrapping",
   layoutControls: "Layout",
-  preview: "Preview",
+  preview: "Read",
   search: "Search",
-  source: "Source edit",
+  source: "Source",
   split: "Split",
   standardWidth: "Standard",
   syncScrolling: "Sync Scrolling",
   sourceOptions: "Source options",
+  sourcePreview: "Preview alongside source",
   textWidth: "Text Width",
   viewControls: "View",
-  visual: "Visual edit",
+  visual: "Write",
 };
 
 const buildModel = (
@@ -40,77 +42,70 @@ const buildModel = (
   });
 
 describe("document controls model", () => {
-  it("offers Visual edit and Preview for visual editing", () => {
+  it("offers Write, Source, and Read as task-level modes", () => {
     const model = buildModel("visual", "visual");
 
     expect(model.controlsLabel).toBe("Editor controls");
-    expect(model.editingModeLabel).toBe("Editing mode");
     expect(model.viewModeLabel).toBe("View");
     expect(model.sourceOptionsLabel).toBe("Source options");
     expect(model.layoutLabel).toBe("Layout");
-    expect(model.editingModeOptions).toEqual([
-      {
-        active: true,
-        editingMode: "visual",
-        icon: "visual",
-        label: "Visual edit",
-        viewMode: "visual",
-      },
-      {
-        active: false,
-        editingMode: "source",
-        icon: "edit",
-        label: "Source edit",
-        viewMode: "edit",
-      },
-    ]);
     expect(model.viewModeOptions).toEqual([
       {
         active: true,
         icon: "visual",
-        label: "Visual edit",
+        label: "Write",
         viewMode: "visual",
       },
       {
         active: false,
+        icon: "edit",
+        label: "Source",
+        viewMode: "edit",
+      },
+      {
+        active: false,
         icon: "preview",
-        label: "Preview",
+        label: "Read",
         viewMode: "preview",
       },
     ]);
     expect(model.showEditorToggles).toBe(false);
   });
 
-  it("keeps Visual as the return editor while Preview is active", () => {
+  it("marks Read as the active task without exposing a split mode", () => {
     const model = buildModel("visual", "preview");
 
-    expect(model.editingModeOptions[0]?.active).toBe(true);
     expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
       { active: false, viewMode: "visual" },
+      { active: false, viewMode: "edit" },
       { active: true, viewMode: "preview" },
     ]);
     expect(model.showEditorToggles).toBe(false);
   });
 
-  it("offers Source edit, Split, and Preview for source editing", () => {
+  it("marks Source as the active task", () => {
     const model = buildModel("source", "edit");
 
     expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
+      { active: false, viewMode: "visual" },
       { active: true, viewMode: "edit" },
-      { active: false, viewMode: "split" },
       { active: false, viewMode: "preview" },
     ]);
   });
 
-  it("marks Split active and exposes sync scrolling", () => {
+  it("keeps Source active while its alongside preview is enabled", () => {
     const model = buildModel("source", "split");
 
     expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
-      { active: false, viewMode: "edit" },
-      { active: true, viewMode: "split" },
+      { active: false, viewMode: "visual" },
+      { active: true, viewMode: "edit" },
       { active: false, viewMode: "preview" },
     ]);
     expect(model.showSplitToggles).toBe(true);
+    expect(model.sourcePreview).toEqual({
+      active: true,
+      label: "Preview alongside source",
+    });
   });
 
   it("marks exactly one reading width option as active", () => {

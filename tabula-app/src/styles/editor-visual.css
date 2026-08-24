@@ -32,6 +32,11 @@
   line-height: var(--preview-text-line-height);
 }
 
+.markdown-editor .cm-visual-editor .cm-visual-body-placeholder {
+  color: var(--editor-placeholder-text);
+  cursor: text;
+}
+
 .markdown-editor
   .cm-editor.cm-visual-editor.cm-focused
   .cm-activeLine:not(.cm-visual-source-block) {
@@ -338,35 +343,6 @@
   padding-bottom: var(--space-3);
   cursor: text;
   transition: background-color var(--motion-hover) ease;
-}
-
-.markdown-editor .cm-visual-editor .cm-visual-frontmatter {
-  display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: var(--surface-muted);
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-}
-
-.markdown-editor .cm-visual-editor .cm-visual-frontmatter-row {
-  display: grid;
-  grid-template-columns: minmax(88px, 150px) minmax(0, 1fr);
-  gap: 18px;
-  min-height: var(--control-size-compact);
-  align-items: center;
-  color: var(--text-muted);
-  font-size: 0.875em;
-  line-height: 1.5;
-}
-
-.markdown-editor .cm-visual-editor .cm-visual-frontmatter-row strong {
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--text-primary);
-  font: inherit;
-  font-weight: var(--preview-supporting-font-weight);
 }
 
 .markdown-editor .cm-visual-editor .cm-visual-image-block {

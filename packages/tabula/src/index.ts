@@ -76,7 +76,6 @@ export type {
   DocumentControlsCopy,
   DocumentControlsModel,
   DocumentControlsModelInput,
-  DocumentEditingModeOption,
   DocumentReadingWidthOption,
   DocumentToggleControl,
   DocumentViewModeIcon,
@@ -215,13 +214,17 @@ export {
 } from "./lineSurfaceModel";
 
 export type {
+  FrontmatterMarkdownPath,
   FrontmatterInspection,
+  FrontmatterValueUpdate,
   MarkdownHeading,
   ParsedFrontmatter,
   ParsedFrontmatterData,
   PreviewBody,
 } from "./markdown/parse";
 export {
+  addFrontmatterMarkdownValueAtPath,
+  addFrontmatterValue,
   getLineNumberForOffset,
   getLineStartOffset,
   getMarkdownDocumentTitle,
@@ -231,7 +234,35 @@ export {
   inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
+  removeFrontmatterMarkdownValueAtPath,
+  removeFrontmatterValue,
+  renameFrontmatterMarkdownKeyAtPath,
+  renameFrontmatterKey,
+  updateFrontmatterMarkdownValueAtPath,
+  updateFrontmatterValue,
 } from "./markdown/parse";
+
+export type {
+  FrontmatterPropertiesModel,
+  FrontmatterProperty,
+  FrontmatterPropertyKind,
+  FrontmatterPropertyType,
+  FrontmatterPropertyValueResult,
+  FrontmatterScalar,
+  FrontmatterValueMutationResult,
+  FrontmatterValuePath,
+} from "./frontmatterProperties";
+export {
+  convertFrontmatterPropertyValue,
+  formatFrontmatterPropertyDraft,
+  getFrontmatterProperties,
+  getFrontmatterValueAtPath,
+  getFrontmatterValueType,
+  parseFrontmatterPropertyDraft,
+  removeFrontmatterValueAtPath,
+  renameFrontmatterValuePathKey,
+  updateFrontmatterValueAtPath,
+} from "./frontmatterProperties";
 
 export type {
   BlockInteractionPolicy,

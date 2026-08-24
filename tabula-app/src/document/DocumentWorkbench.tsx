@@ -39,7 +39,6 @@ import { FormattingToolbar } from "./FormattingToolbar";
 import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineAnnotation,
-  MarkdownPreviewMetadata,
   MarkdownPreviewProps,
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
@@ -50,6 +49,7 @@ import { TabulaDocumentSurface } from "../workbench/index";
 const MemoStatusBar = memo(StatusBar);
 
 export type DocumentWorkbenchProps = {
+  addPropertyRequestId?: number;
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: WorkspaceFile;
@@ -79,7 +79,6 @@ export type DocumentWorkbenchProps = {
   previewBodyTextChange?: TextChange | null;
   largeDocumentMode: boolean;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
-  previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchMatches: SearchMatch[];
   searchOpen: boolean;
@@ -99,6 +98,7 @@ export type DocumentWorkbenchProps = {
   text: string;
   toolbarLabel: string;
   workspaceRef: RefObject<HTMLElement | null>;
+  workspaceMarkdownDocuments?: readonly string[];
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
@@ -108,6 +108,7 @@ export type DocumentWorkbenchProps = {
   onFormat: (command: MarkdownFormatCommand) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onPropertyAddRequestHandled?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
@@ -152,6 +153,7 @@ const getFloatingPopoverStyle = (
 };
 
 export function DocumentWorkbench({
+  addPropertyRequestId,
   activeBookmarks,
   activeCommentAnchors,
   activeFile,
@@ -181,7 +183,6 @@ export function DocumentWorkbench({
   previewBodyTextChange,
   largeDocumentMode,
   previewRef,
-  previewMetadata,
   previewSurfaceRef,
   searchMatches,
   searchOpen,
@@ -201,6 +202,7 @@ export function DocumentWorkbench({
   text,
   toolbarLabel,
   workspaceRef,
+  workspaceMarkdownDocuments,
   onBookmarksChange,
   onEditorHistoryStateChange,
   onEditorScroll,
@@ -210,6 +212,7 @@ export function DocumentWorkbench({
   onFormat,
   onLineAction,
   onOpenComment,
+  onPropertyAddRequestHandled,
   onOpenWorkspaceLink,
   onOpenSelectionComment,
   onPreviewKeyUp,
@@ -289,6 +292,7 @@ export function DocumentWorkbench({
       )}
 
       <TabulaDocumentSurface
+        addPropertyRequestId={addPropertyRequestId}
         activeBookmarks={activeBookmarks}
         activeCommentAnchors={activeCommentAnchors}
         activeFile={activeFile}
@@ -308,7 +312,6 @@ export function DocumentWorkbench({
         previewBody={previewBody}
         previewBodyStartOffset={previewBodyStartOffset}
         previewBodyTextChange={previewBodyTextChange}
-        previewMetadata={previewMetadata}
         previewRef={previewRef}
         previewSurfaceRef={previewSurfaceRef}
         searchMatches={searchMatches}
@@ -323,6 +326,7 @@ export function DocumentWorkbench({
         splitWorkspaceStyle={splitWorkspaceStyle}
         text={text}
         workspaceRef={workspaceRef}
+        workspaceMarkdownDocuments={workspaceMarkdownDocuments}
         onBookmarksChange={onBookmarksChange}
         onEditorHistoryStateChange={onEditorHistoryStateChange}
         onEditorScroll={onEditorScroll}
@@ -331,6 +335,13 @@ export function DocumentWorkbench({
         onEditorSelectionChange={onEditorSelectionChange}
         onLineAction={onLineAction}
         onOpenComment={onOpenComment}
+        onPropertyAddRequestHandled={onPropertyAddRequestHandled}
+        onOpenSource={() => {
+          onSetViewMode("edit");
+          window.requestAnimationFrame(() => {
+            editorRef.current?.revealRange(0);
+          });
+        }}
         onOpenWorkspaceLink={onOpenWorkspaceLink}
         onPreviewKeyUp={onPreviewKeyUp}
         onPreviewMouseUp={onPreviewMouseUp}

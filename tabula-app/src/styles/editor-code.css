@@ -5,6 +5,10 @@
   min-height: 100%;
 }
 
+.markdown-editor-shell.loading-visual-mode .markdown-editor {
+  visibility: hidden;
+}
+
 .markdown-editor {
   display: block;
   width: 100%;

@@ -42,7 +42,11 @@ export type MarkdownEditorHandle = {
   applyLocalTextPatches: (
     patches: readonly TextPatch[],
     selection?: { from: number; to: number },
-    options?: { focus?: boolean; isolateHistory?: boolean },
+    options?: {
+      allowFrontmatterChanges?: boolean;
+      focus?: boolean;
+      isolateHistory?: boolean;
+    },
   ) => boolean;
   applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;

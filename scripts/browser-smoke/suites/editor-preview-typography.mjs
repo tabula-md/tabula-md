@@ -150,8 +150,6 @@ export async function run(ctx) {
           root: readTypography(rootSelector),
           headings: headingMetrics,
           paragraph,
-          frontmatterKey: readTypography(".frontmatter-row span"),
-          frontmatterValue: readTypography(".frontmatter-row strong"),
           blockquoteParagraph: readTypography(".preview-surface blockquote p"),
           alertTitle: readTypography(".markdown-alert-title"),
           alertParagraph: readTypography(".markdown-alert p"),
@@ -234,8 +232,6 @@ export async function run(ctx) {
     expectTypographyAtLeastBase(previewTypography.codeBlock, "Preview code blocks");
     expectTypographyAtLeastBase(previewTypography.cardTitle, "Preview Card titles");
     expectTypographyAtLeastBase(previewTypography.footnotes, "Preview footnotes");
-    expectSupportingText(previewTypography.frontmatterKey, previewTypography.paragraph, "Preview frontmatter keys");
-    expectSupportingText(previewTypography.frontmatterValue, previewTypography.paragraph, "Preview frontmatter values");
     expectSupportingText(previewTypography.blockquoteParagraph, previewTypography.paragraph, "Preview blockquotes");
     expectSupportingText(previewTypography.frameHint, previewTypography.paragraph, "Preview Frame hints");
     expectSupportingText(previewTypography.frameCaption, previewTypography.paragraph, "Preview Frame captions");

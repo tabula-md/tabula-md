@@ -3,7 +3,6 @@ import type { EditorState } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 import {
   inspectFrontmatterData,
-  parseFrontmatter,
   type MarkdownPresentationDocument,
   type PresentationBlock,
   type PresentationNode,
@@ -26,15 +25,12 @@ export type EditorVisualLine = {
 };
 
 type EditorVisualReplacementPayload =
+  | { kind: "frontmatter"; bodyEmpty: boolean }
   | { kind: "bullet"; label: string }
   | { kind: "task"; checked: boolean }
   | { kind: "horizontal-rule" }
   | { kind: "image"; alt: string; source: string; block: boolean }
   | { kind: "footnote-reference"; index: number; label: string }
-  | {
-      kind: "frontmatter";
-      attributes: Array<{ key: string; value: string }>;
-    }
   | {
       kind: "footnote-definition";
       body: string;
@@ -114,7 +110,10 @@ const getLineClass = (nodeName: string) => {
   return "";
 };
 
-const frontmatterByDocument = new WeakMap<object, EditorVisualReplacement | null>();
+const frontmatterByDocument = new WeakMap<
+  object,
+  (EditorVisualBlockRange & { bodyEmpty: boolean }) | null
+>();
 const presentationByDocument =
   new WeakMap<object, MarkdownPresentationDocument>();
 const presentationNodesByDocument =
@@ -371,9 +370,8 @@ const getFrontmatter = (state: EditorState) => {
   const inspection = inspectFrontmatterData(source);
   const replacement = inspection.status === "valid" && inspection.bodyOffset > 0
     ? {
-        attributes: parseFrontmatter(source).attributes,
+        bodyEmpty: inspection.body.length === 0,
         from: 0,
-        kind: "frontmatter" as const,
         to: inspection.bodyOffset,
       }
     : null;
@@ -431,7 +429,7 @@ const getInlineMath = (state: EditorState) => {
 
 const isInsideReplacement = (
   node: SyntaxNode,
-  replacements: readonly EditorVisualReplacement[],
+  replacements: readonly EditorVisualBlockRange[],
 ) => replacements.some((replacement) =>
   node.from >= replacement.from && node.to <= replacement.to);
 
@@ -516,7 +514,7 @@ const walkVisualTree = (
   node: SyntaxNode,
   visibleRanges: readonly VisibleRange[],
   editingBlock: EditorVisualBlockRange | null,
-  parsedReplacements: readonly EditorVisualReplacement[],
+  parsedReplacements: readonly EditorVisualBlockRange[],
   revealActiveSource: boolean,
 ): void => {
   if (!isVisible(node.from, node.to, visibleRanges)) return;
@@ -629,22 +627,25 @@ export const buildEditorVisualModel = (
   revealActiveSource = true,
 ): EditorVisualModel => {
   const model: EditorVisualModel = { hiddenRanges: [], lines: [], replacements: [] };
-  const parsedReplacements = addPresentationBlockReplacements(
-    model,
-    state,
-    visibleRanges,
-    editingBlock,
-    revealActiveSource,
-  );
+  const parsedReplacements: EditorVisualBlockRange[] = [
+    ...addPresentationBlockReplacements(
+      model,
+      state,
+      visibleRanges,
+      editingBlock,
+      revealActiveSource,
+    ),
+  ];
   const frontmatter = getFrontmatter(state);
   if (frontmatter) {
     parsedReplacements.push(frontmatter);
-    if (
-      isVisible(frontmatter.from, frontmatter.to, visibleRanges) &&
-      !isEditingBlock(editingBlock, frontmatter.from, frontmatter.to) &&
-      !(revealActiveSource && hasSelectedSource(state, frontmatter.from, frontmatter.to))
-    ) {
-      model.replacements.push(frontmatter);
+    if (isVisible(frontmatter.from, frontmatter.to, visibleRanges)) {
+      model.replacements.push({
+        bodyEmpty: frontmatter.bodyEmpty,
+        from: frontmatter.from,
+        kind: "frontmatter",
+        to: frontmatter.to,
+      });
     }
   }
   for (const replacement of getFootnotes(state)) {
@@ -701,6 +702,7 @@ export const buildEditorVisualModel = (
 export const isEditorVisualNavigableReplacement = (
   replacement: EditorVisualReplacement,
 ) =>
+  replacement.kind !== "frontmatter" &&
   replacement.kind !== "bullet" &&
   replacement.kind !== "task" &&
   replacement.kind !== "footnote-reference" &&
@@ -709,6 +711,7 @@ export const isEditorVisualNavigableReplacement = (
 const isEditorVisualEditableReplacement = (
   replacement: EditorVisualReplacement,
 ) =>
+  replacement.kind !== "frontmatter" &&
   replacement.kind !== "bullet" &&
   replacement.kind !== "task" &&
   replacement.kind !== "footnote-reference";

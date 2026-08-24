@@ -7,6 +7,7 @@ export type EditorVisualModeCopy = {
   imageFailed: string;
   markTaskComplete: string;
   markTaskIncomplete: string;
+  startWriting: string;
 };
 
 export type EditorVisualModeOptions = {

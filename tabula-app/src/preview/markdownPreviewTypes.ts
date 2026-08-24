@@ -8,11 +8,6 @@ import type {
 import type { SearchOptions } from "../editor/editorSearchModel";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 
-export type MarkdownPreviewMetadata = {
-  key: string;
-  value: string;
-};
-
 export type MarkdownPreviewCommentAnchor = {
   id: string;
   start: number;
@@ -50,7 +45,6 @@ export type MarkdownPreviewWorkspaceDocument = {
 };
 
 export type MarkdownPreviewProps = {
-  metadata: MarkdownPreviewMetadata[];
   body: string;
   sourceLineOffset?: number;
   bodyTextChange?: TextChange | null;

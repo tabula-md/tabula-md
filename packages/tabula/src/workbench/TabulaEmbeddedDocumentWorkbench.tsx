@@ -207,7 +207,6 @@ export function TabulaEmbeddedDocumentWorkbench({
           largeDocumentMode={activeDocument.largeDocumentMode}
           previewBody={activeDocument.renderedPreview.body}
           previewBodyStartOffset={activeDocument.previewBodyStartOffset}
-          previewMetadata={activeDocument.parsedMarkdown.attributes}
           previewRef={previewRef}
           previewSurfaceRef={previewSurfaceRef}
           searchMatches={[]}
@@ -244,6 +243,10 @@ export function TabulaEmbeddedDocumentWorkbench({
             );
           }}
           onOpenComment={() => undefined}
+          onOpenSource={() => {
+            setDocumentViewMode("edit");
+            window.requestAnimationFrame(() => editorRef.current?.revealRange(0));
+          }}
           onPreviewKeyUp={() => undefined}
           onPreviewMouseUp={() => undefined}
           onPreviewScroll={previewFollow.handlePreviewScroll}
