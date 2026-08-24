@@ -241,9 +241,16 @@ export type {
   FrontmatterPropertiesModel,
   FrontmatterProperty,
   FrontmatterPropertyKind,
+  FrontmatterPropertyType,
+  FrontmatterPropertyValueResult,
   FrontmatterScalar,
 } from "./frontmatterProperties";
-export { getFrontmatterProperties } from "./frontmatterProperties";
+export {
+  convertFrontmatterPropertyValue,
+  formatFrontmatterPropertyDraft,
+  getFrontmatterProperties,
+  parseFrontmatterPropertyDraft,
+} from "./frontmatterProperties";
 
 export type {
   BlockInteractionPolicy,

@@ -1,13 +1,14 @@
 import {
   Braces,
+  CalendarDays,
   Check,
+  CheckSquare2,
   ChevronDown,
   Code2,
   Hash,
   List,
   MoreHorizontal,
   Plus,
-  ToggleLeft,
   Trash2,
   Type,
   X,
@@ -15,15 +16,27 @@ import {
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   addFrontmatterValue,
+  convertFrontmatterPropertyValue,
   diffTextPatch,
+  formatFrontmatterPropertyDraft,
   getFrontmatterProperties,
+  parseFrontmatterPropertyDraft,
   removeFrontmatterValue,
   renameFrontmatterKey,
   updateFrontmatterValue,
   type FrontmatterProperty,
+  type FrontmatterPropertyType,
   type FrontmatterValueUpdate,
   type TextChange,
 } from "@tabula-md/tabula";
+import {
+  MenuContent,
+  MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRoot,
+  MenuTrigger,
+} from "../ui/Menu";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
@@ -34,39 +47,57 @@ const propertyCopy = {
   en: {
     addProperty: "Add property",
     cancel: "Cancel",
+    changeType: (key: string) => `Change type for ${key}`,
+    checkbox: "Checkbox",
+    date: "Date",
+    duplicateKey: "A property with this name already exists.",
     editInSource: "Edit in Source",
     empty: "Empty",
     fields: (count: number) => `${count} ${count === 1 ? "field" : "fields"}`,
-    invalidKey: "Use letters, numbers, dots, dashes, or underscores.",
-    items: (count: number) => `${count} ${count === 1 ? "item" : "items"}`,
+    invalidKey: "Use a non-empty, single-line property name.",
+    invalidValue: "Enter a value that matches the selected type.",
+    list: "List",
     moreActions: (key: string) => `More actions for ${key}`,
     newItem: "New item",
     newPropertyName: "Property name",
+    number: "Number",
+    object: "Object",
+    items: (count: number) => `${count} ${count === 1 ? "item" : "items"}`,
+    propertyValue: "Property value",
     remove: "Remove property",
     removeItem: (value: string) => `Remove ${value}`,
-    rename: "Rename property",
     save: "Save",
     showLess: "Show less",
     showMore: (count: number) => `Show ${count} more`,
+    text: "Text",
     updateFailed: "Could not update this property. Open Source to repair the YAML.",
   },
   ko: {
     addProperty: "속성 추가",
     cancel: "취소",
+    changeType: (key: string) => `${key} 타입 변경`,
+    checkbox: "체크박스",
+    date: "날짜",
+    duplicateKey: "같은 이름의 속성이 이미 있습니다.",
     editInSource: "Source에서 편집",
     empty: "비어 있음",
     fields: (count: number) => `${count}개 필드`,
-    invalidKey: "영문, 숫자, 점, 대시, 밑줄만 사용할 수 있습니다.",
-    items: (count: number) => `${count}개 항목`,
+    invalidKey: "비어 있지 않은 한 줄 이름을 입력하세요.",
+    invalidValue: "선택한 타입에 맞는 값을 입력하세요.",
+    list: "목록",
     moreActions: (key: string) => `${key} 추가 작업`,
     newItem: "새 항목",
     newPropertyName: "속성 이름",
+    number: "숫자",
+    object: "객체",
+    items: (count: number) => `${count}개 항목`,
+    propertyValue: "속성 값",
     remove: "속성 삭제",
     removeItem: (value: string) => `${value} 삭제`,
-    rename: "속성 이름 변경",
     save: "저장",
     showLess: "접기",
     showMore: (count: number) => `${count}개 더 보기`,
+    text: "텍스트",
     updateFailed: "속성을 수정하지 못했습니다. Source에서 YAML을 확인하세요.",
   },
 };
@@ -74,43 +105,96 @@ const propertyCopy = {
 const getCopy = (language: WorkspaceLanguage) =>
   language === "ko" ? propertyCopy.ko : propertyCopy.en;
 
-const getPropertyIcon = (property: FrontmatterProperty) => {
-  const props = { "aria-hidden": true, size: 16 } as const;
-  switch (property.kind) {
+const propertyTypes: FrontmatterPropertyType[] = [
+  "text",
+  "number",
+  "checkbox",
+  "date",
+  "list",
+  "object",
+];
+
+const getTypeIcon = (type: FrontmatterPropertyType, size = 16) => {
+  const props = { "aria-hidden": true, size } as const;
+  switch (type) {
     case "number":
       return <Hash {...props} />;
-    case "boolean":
-      return <ToggleLeft {...props} />;
-    case "scalar-list":
-    case "structured-list":
+    case "checkbox":
+      return <CheckSquare2 {...props} />;
+    case "date":
+      return <CalendarDays {...props} />;
+    case "list":
       return <List {...props} />;
-    case "mapping":
+    case "object":
       return <Braces {...props} />;
     default:
       return <Type {...props} />;
   }
 };
 
-const isStringList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((item) => typeof item === "string");
+const getTypeLabel = (
+  type: FrontmatterPropertyType,
+  copy: ReturnType<typeof getCopy>,
+) => copy[type];
 
-const getListItemFromInput = (items: unknown[], input: string) => {
-  if (items.every((item) => typeof item === "string")) return input;
-  if (items.every((item) => typeof item === "number")) {
+const isScalarList = (
+  property: FrontmatterProperty,
+): property is FrontmatterProperty & { value: Array<string | number | boolean> } =>
+  property.kind === "scalar-list" && Array.isArray(property.value);
+
+const getListItemFromInput = (
+  items: Array<string | number | boolean>,
+  index: number | null,
+  input: string,
+) => {
+  const template = index === null ? items[0] : items[index];
+  if (typeof template === "number") {
     const next = Number(input);
     return Number.isFinite(next) ? next : undefined;
   }
-  if (items.every((item) => typeof item === "boolean")) {
+  if (typeof template === "boolean") {
     if (input === "true") return true;
     if (input === "false") return false;
+    return undefined;
   }
-  return undefined;
+  return input;
 };
 
-const closeActionMenu = (target: EventTarget | null) => {
-  if (!(target instanceof Element)) return;
-  target.closest<HTMLDetailsElement>("details")?.removeAttribute("open");
-};
+function PropertyTypeMenu({
+  copy,
+  label,
+  onChange,
+  value,
+}: {
+  copy: ReturnType<typeof getCopy>;
+  label: string;
+  onChange: (type: FrontmatterPropertyType) => void;
+  value: FrontmatterPropertyType;
+}) {
+  return (
+    <MenuRoot>
+      <MenuTrigger asChild>
+        <button className="document-property-type-trigger" type="button" aria-label={label}>
+          {getTypeIcon(value)}
+        </button>
+      </MenuTrigger>
+      <MenuContent align="start" ariaLabel={label} className="document-property-type-menu">
+        <MenuRadioGroup
+          value={value}
+          onValueChange={(nextValue) => onChange(nextValue as FrontmatterPropertyType)}
+        >
+          {propertyTypes.map((type) => (
+            <MenuRadioItem
+              key={type}
+              value={type}
+              label={getTypeLabel(type, copy)}
+            />
+          ))}
+        </MenuRadioGroup>
+      </MenuContent>
+    </MenuRoot>
+  );
+}
 
 export type DocumentPropertiesProps = {
   documentId: string;
@@ -137,32 +221,51 @@ export function DocumentProperties({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [listItemEditor, setListItemEditor] = useState<{
+    key: string;
+    index: number | null;
+    draft: string;
+  } | null>(null);
   const [adding, setAdding] = useState(false);
   const [newKey, setNewKey] = useState("");
+  const [newType, setNewType] = useState<FrontmatterPropertyType>("text");
+  const [newDraft, setNewDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const addKeyRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setExpanded(true);
     setShowAll(false);
     setEditingKey(null);
     setRenamingKey(null);
+    setListItemEditor(null);
     setAdding(false);
     setError(null);
   }, [documentId]);
 
   useEffect(() => {
+    if (adding) {
+      addKeyRef.current?.focus();
+      return;
+    }
     editorInputRef.current?.focus();
     if (editorInputRef.current instanceof HTMLInputElement) {
       editorInputRef.current.select();
     }
-  }, [adding, editingKey, renamingKey]);
+  }, [adding, editingKey, listItemEditor, renamingKey]);
 
   if (model.status !== "valid") return null;
 
   const applyResult = (result: FrontmatterValueUpdate) => {
     if (!result.ok) {
-      setError(result.reason === "invalid_key" ? copy.invalidKey : copy.updateFailed);
+      setError(
+        result.reason === "invalid_key"
+          ? copy.invalidKey
+          : result.reason === "duplicate_key"
+            ? copy.duplicateKey
+            : copy.updateFailed,
+      );
       return false;
     }
     if (result.markdown === markdown) return true;
@@ -176,41 +279,145 @@ export function DocumentProperties({
     return true;
   };
 
+  const beginKeyEdit = (property: FrontmatterProperty) => {
+    setRenamingKey(property.key);
+    setEditingKey(null);
+    setListItemEditor(null);
+    setDraft(property.key);
+    setError(null);
+  };
+
+  const commitKeyEdit = (property: FrontmatterProperty) => {
+    if (renamingKey !== property.key) return;
+    if (!draft.trim() || draft.trim() === property.key) {
+      setRenamingKey(null);
+      return;
+    }
+    if (applyResult(renameFrontmatterKey(markdown, property.key, draft))) {
+      setRenamingKey(null);
+    }
+  };
+
   const beginValueEdit = (property: FrontmatterProperty) => {
-    if (property.kind !== "text" && property.kind !== "number") return;
+    if (property.type === "checkbox") return;
     setEditingKey(property.key);
     setRenamingKey(null);
-    setDraft(String(property.value ?? ""));
+    setListItemEditor(null);
+    setDraft(formatFrontmatterPropertyDraft(property.value, property.type));
     setError(null);
   };
 
   const commitValueEdit = (property: FrontmatterProperty) => {
     if (editingKey !== property.key) return;
-    let value: string | number = draft;
-    if (property.kind === "number") {
-      const number = Number(draft);
-      if (!draft.trim() || !Number.isFinite(number)) {
-        setError(copy.updateFailed);
-        return;
-      }
-      value = number;
+    const result = parseFrontmatterPropertyDraft(draft, property.type);
+    if (!result.ok) {
+      setError(copy.invalidValue);
+      return;
     }
-    if (applyResult(updateFrontmatterValue(markdown, property.key, value))) {
+    if (applyResult(updateFrontmatterValue(markdown, property.key, result.value))) {
       setEditingKey(null);
     }
   };
 
-  const handleEditorKeyDown = (
-    event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+  const changePropertyType = (
+    property: FrontmatterProperty,
+    type: FrontmatterPropertyType,
+  ) => {
+    if (type === property.type) return;
+    const result = convertFrontmatterPropertyValue(property.value, type);
+    if (!result.ok) {
+      setError(copy.invalidValue);
+      return;
+    }
+    setEditingKey(null);
+    setListItemEditor(null);
+    applyResult(updateFrontmatterValue(markdown, property.key, result.value));
+  };
+
+  const commitListItem = (
+    property: FrontmatterProperty & { value: Array<string | number | boolean> },
+  ) => {
+    if (!listItemEditor || listItemEditor.key !== property.key) return;
+    const nextItem = getListItemFromInput(
+      property.value,
+      listItemEditor.index,
+      listItemEditor.draft.trim(),
+    );
+    if (typeof nextItem === "undefined" || !listItemEditor.draft.trim()) {
+      setError(copy.invalidValue);
+      return;
+    }
+    const nextItems = [...property.value];
+    if (listItemEditor.index === null) nextItems.push(nextItem);
+    else nextItems[listItemEditor.index] = nextItem;
+    if (applyResult(updateFrontmatterValue(markdown, property.key, nextItems))) {
+      setListItemEditor(null);
+    }
+  };
+
+  const resetAddForm = () => {
+    setAdding(false);
+    setNewKey("");
+    setNewType("text");
+    setNewDraft("");
+    setError(null);
+  };
+
+  const changeNewType = (type: FrontmatterPropertyType) => {
+    const converted = convertFrontmatterPropertyValue(undefined, type);
+    if (!converted.ok) return;
+    setNewType(type);
+    setNewDraft(formatFrontmatterPropertyDraft(converted.value, type));
+  };
+
+  const commitAdd = () => {
+    if (!newKey.trim()) return;
+    const value = parseFrontmatterPropertyDraft(newDraft, newType);
+    if (!value.ok) {
+      setError(copy.invalidValue);
+      return;
+    }
+    if (applyResult(addFrontmatterValue(markdown, newKey, value.value))) {
+      const normalizedKey = newKey.trim();
+      resetAddForm();
+      setShowAll(true);
+      setEditingKey(newType === "checkbox" ? null : normalizedKey);
+      setDraft(formatFrontmatterPropertyDraft(value.value, newType));
+    }
+  };
+
+  const cancelEditors = () => {
+    setEditingKey(null);
+    setRenamingKey(null);
+    setListItemEditor(null);
+    setError(null);
+  };
+
+  const handleKeyEditorKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
     commit: () => void,
   ) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      setEditingKey(null);
-      setRenamingKey(null);
-      setAdding(false);
-      setError(null);
-    } else if (event.key === "Enter" && !event.shiftKey) {
+      cancelEditors();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      commit();
+    }
+  };
+
+  const handleValueEditorKeyDown = (
+    event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    commit: () => void,
+    multiline = false,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEditors();
+    } else if (
+      event.key === "Enter" &&
+      (!multiline || event.metaKey || event.ctrlKey)
+    ) {
       event.preventDefault();
       commit();
     }
@@ -242,226 +449,234 @@ export function DocumentProperties({
         <div className="document-properties-body">
           <div className="document-properties-list">
             {visibleProperties.map((property) => {
-              const value = property.value;
-              const isTagList = property.key.toLowerCase() === "tags" && isStringList(value);
+              const scalarList = isScalarList(property);
+              const isTagList = property.key.toLowerCase() === "tags" && scalarList;
+              const isStructured = property.type === "object" ||
+                (property.type === "list" && !scalarList);
               return (
                 <div className="document-property-row" key={property.key}>
-                  <span className="document-property-kind" title={property.kind}>
-                    {getPropertyIcon(property)}
-                  </span>
+                  <PropertyTypeMenu
+                    copy={copy}
+                    label={copy.changeType(property.key)}
+                    value={property.type}
+                    onChange={(type) => changePropertyType(property, type)}
+                  />
 
                   {renamingKey === property.key ? (
                     <input
                       ref={editorInputRef as React.RefObject<HTMLInputElement>}
                       className="document-property-key-input"
                       value={draft}
-                      aria-label={copy.rename}
+                      aria-label={copy.newPropertyName}
                       onChange={(event) => setDraft(event.target.value)}
-                      onBlur={() => {
-                        if (!draft.trim() || draft.trim() === property.key) {
-                          setRenamingKey(null);
-                          return;
-                        }
-                        if (applyResult(renameFrontmatterKey(markdown, property.key, draft))) {
-                          setRenamingKey(null);
-                        }
-                      }}
-                      onKeyDown={(event) => handleEditorKeyDown(event, () => {
-                        if (applyResult(renameFrontmatterKey(markdown, property.key, draft))) {
-                          setRenamingKey(null);
-                        }
-                      })}
+                      onBlur={() => commitKeyEdit(property)}
+                      onKeyDown={(event) => handleKeyEditorKeyDown(
+                        event,
+                        () => commitKeyEdit(property),
+                      )}
                     />
                   ) : (
-                    <span className="document-property-key" title={property.key}>
+                    <button
+                      className="document-property-key"
+                      type="button"
+                      title={property.key}
+                      onClick={() => beginKeyEdit(property)}
+                    >
                       {property.key}
-                    </span>
+                    </button>
                   )}
 
                   <div className="document-property-value">
-                    {property.kind === "boolean" ? (
+                    {property.type === "checkbox" ? (
                       <label className="document-property-boolean">
                         <input
                           type="checkbox"
-                          checked={Boolean(value)}
+                          checked={Boolean(property.value)}
                           onChange={(event) => applyResult(updateFrontmatterValue(
                             markdown,
                             property.key,
                             event.target.checked,
                           ))}
                         />
-                        <span>{String(value)}</span>
+                        <span>{String(property.value)}</span>
                       </label>
-                    ) : property.kind === "text" || property.kind === "number" ? (
-                      editingKey === property.key ? (
-                        property.kind === "text" ? (
-                          <textarea
-                            ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
-                            className="document-property-value-input"
-                            rows={1}
-                            value={draft}
-                            aria-label={`${property.key} value`}
-                            onChange={(event) => setDraft(event.target.value)}
-                            onBlur={() => commitValueEdit(property)}
-                            onKeyDown={(event) => handleEditorKeyDown(
-                              event,
-                              () => commitValueEdit(property),
-                            )}
-                          />
-                        ) : (
-                          <input
-                            ref={editorInputRef as React.RefObject<HTMLInputElement>}
-                            className="document-property-value-input"
-                            inputMode="decimal"
-                            value={draft}
-                            aria-label={`${property.key} value`}
-                            onChange={(event) => setDraft(event.target.value)}
-                            onBlur={() => commitValueEdit(property)}
-                            onKeyDown={(event) => handleEditorKeyDown(
-                              event,
-                              () => commitValueEdit(property),
-                            )}
-                          />
-                        )
-                      ) : (
-                        <button
-                          className="document-property-value-button"
-                          type="button"
-                          onClick={() => beginValueEdit(property)}
-                        >
-                          {String(value) || copy.empty}
-                        </button>
-                      )
-                    ) : property.kind === "scalar-list" && Array.isArray(value) ? (
+                    ) : scalarList ? (
                       <div className="document-property-list-value">
-                        {value.map((item, index) => (
-                          <span
-                            className={`document-property-chip${isTagList ? " tag" : ""}`}
-                            key={`${String(item)}-${index}`}
-                          >
-                            {isTagList ? "#" : ""}{String(item)}
-                            {property.editable && (
+                        {property.value.map((item, index) => (
+                          listItemEditor?.key === property.key &&
+                          listItemEditor.index === index ? (
+                            <input
+                              key={index}
+                              ref={editorInputRef as React.RefObject<HTMLInputElement>}
+                              className="document-property-chip-input"
+                              value={listItemEditor.draft}
+                              aria-label={`${property.key} ${index + 1}`}
+                              onChange={(event) => setListItemEditor({
+                                key: property.key,
+                                index,
+                                draft: event.target.value,
+                              })}
+                              onBlur={() => commitListItem(property)}
+                              onKeyDown={(event) => handleKeyEditorKeyDown(
+                                event,
+                                () => commitListItem(property),
+                              )}
+                            />
+                          ) : (
+                            <span
+                              className={`document-property-chip${isTagList ? " tag" : ""}`}
+                              key={`${String(item)}-${index}`}
+                            >
+                              <button
+                                className="document-property-chip-label"
+                                type="button"
+                                onClick={() => setListItemEditor({
+                                  key: property.key,
+                                  index,
+                                  draft: String(item),
+                                })}
+                              >
+                                {isTagList ? "#" : ""}{String(item)}
+                              </button>
                               <button
                                 type="button"
                                 aria-label={copy.removeItem(String(item))}
                                 onClick={() => applyResult(updateFrontmatterValue(
                                   markdown,
                                   property.key,
-                                  value.filter((_, itemIndex) => itemIndex !== index),
+                                  property.value.filter((_, itemIndex) => itemIndex !== index),
                                 ))}
                               >
                                 <X size={13} aria-hidden="true" />
                               </button>
-                            )}
-                          </span>
+                            </span>
+                          )
                         ))}
-                        {editingKey === property.key ? (
+                        {listItemEditor?.key === property.key &&
+                        listItemEditor.index === null ? (
                           <input
                             ref={editorInputRef as React.RefObject<HTMLInputElement>}
                             className="document-property-chip-input"
-                            value={draft}
+                            value={listItemEditor.draft}
                             placeholder={copy.newItem}
                             aria-label={`${copy.newItem}: ${property.key}`}
-                            onChange={(event) => setDraft(event.target.value)}
-                            onBlur={() => {
-                              if (!draft.trim()) {
-                                setEditingKey(null);
-                                return;
-                              }
-                              const nextItem = getListItemFromInput(value, draft.trim());
-                              if (typeof nextItem === "undefined") {
-                                setError(copy.updateFailed);
-                                return;
-                              }
-                              if (applyResult(updateFrontmatterValue(
-                                markdown,
-                                property.key,
-                                [...value, nextItem],
-                              ))) setEditingKey(null);
-                            }}
-                            onKeyDown={(event) => handleEditorKeyDown(event, () => {
-                              const nextItem = getListItemFromInput(value, draft.trim());
-                              if (typeof nextItem === "undefined") {
-                                setError(copy.updateFailed);
-                                return;
-                              }
-                              if (applyResult(updateFrontmatterValue(
-                                markdown,
-                                property.key,
-                                [...value, nextItem],
-                              ))) setEditingKey(null);
+                            onChange={(event) => setListItemEditor({
+                              key: property.key,
+                              index: null,
+                              draft: event.target.value,
                             })}
+                            onBlur={() => commitListItem(property)}
+                            onKeyDown={(event) => handleKeyEditorKeyDown(
+                              event,
+                              () => commitListItem(property),
+                            )}
                           />
-                        ) : property.editable ? (
+                        ) : (
                           <button
                             className="document-property-add-item"
                             type="button"
                             aria-label={`${copy.newItem}: ${property.key}`}
-                            onClick={() => {
-                              setEditingKey(property.key);
-                              setDraft("");
-                            }}
+                            onClick={() => setListItemEditor({
+                              key: property.key,
+                              index: null,
+                              draft: "",
+                            })}
                           >
                             <Plus size={14} aria-hidden="true" />
                           </button>
-                        ) : null}
+                        )}
                       </div>
-                    ) : property.kind === "empty" ? (
-                      <span className="document-property-empty">{copy.empty}</span>
+                    ) : editingKey === property.key ? (
+                      isStructured ? (
+                        <textarea
+                          ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
+                          className="document-property-value-input structured"
+                          rows={Math.min(8, Math.max(3, draft.split("\n").length))}
+                          value={draft}
+                          aria-label={`${property.key} value`}
+                          onChange={(event) => setDraft(event.target.value)}
+                          onBlur={() => commitValueEdit(property)}
+                          onKeyDown={(event) => handleValueEditorKeyDown(
+                            event,
+                            () => commitValueEdit(property),
+                            true,
+                          )}
+                        />
+                      ) : property.type === "text" ? (
+                        <textarea
+                          ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
+                          className="document-property-value-input"
+                          rows={1}
+                          value={draft}
+                          aria-label={`${property.key} value`}
+                          onChange={(event) => setDraft(event.target.value)}
+                          onBlur={() => commitValueEdit(property)}
+                          onKeyDown={(event) => handleValueEditorKeyDown(
+                            event,
+                            () => commitValueEdit(property),
+                            true,
+                          )}
+                        />
+                      ) : (
+                        <input
+                          ref={editorInputRef as React.RefObject<HTMLInputElement>}
+                          className="document-property-value-input"
+                          type={property.type === "date" && !draft.includes("T") ? "date" : "text"}
+                          inputMode={property.type === "number" ? "decimal" : undefined}
+                          value={draft}
+                          aria-label={`${property.key} value`}
+                          onChange={(event) => setDraft(event.target.value)}
+                          onBlur={() => commitValueEdit(property)}
+                          onKeyDown={(event) => handleValueEditorKeyDown(
+                            event,
+                            () => commitValueEdit(property),
+                          )}
+                        />
+                      )
                     ) : (
-                      <details className="document-property-structured">
-                        <summary>
-                          {property.kind === "mapping"
+                      <button
+                        className={`document-property-value-button${isStructured ? " structured" : ""}`}
+                        type="button"
+                        onClick={() => beginValueEdit(property)}
+                      >
+                        {isStructured
+                          ? property.type === "object"
                             ? copy.fields(property.itemCount ?? 0)
-                            : copy.items(property.itemCount ?? 0)}
-                        </summary>
-                        <pre>{JSON.stringify(value, null, 2)}</pre>
-                      </details>
+                            : copy.items(property.itemCount ?? 0)
+                          : String(property.value ?? "") || copy.empty}
+                      </button>
                     )}
                   </div>
 
-                  <details className="document-property-actions">
-                    <summary role="button" aria-label={copy.moreActions(property.key)}>
-                      <MoreHorizontal size={16} aria-hidden="true" />
-                    </summary>
-                    <div className="document-property-actions-menu">
+                  <MenuRoot>
+                    <MenuTrigger asChild>
                       <button
+                        className="document-property-actions-trigger"
                         type="button"
-                        onClick={(event) => {
-                          closeActionMenu(event.currentTarget);
-                          setRenamingKey(property.key);
-                          setEditingKey(null);
-                          setDraft(property.key);
-                        }}
+                        aria-label={copy.moreActions(property.key)}
                       >
-                        <Type size={15} aria-hidden="true" />
-                        {copy.rename}
+                        <MoreHorizontal size={16} aria-hidden="true" />
                       </button>
+                    </MenuTrigger>
+                    <MenuContent
+                      ariaLabel={copy.moreActions(property.key)}
+                      className="document-property-actions-menu"
+                    >
                       {onOpenSource && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            closeActionMenu(event.currentTarget);
-                            onOpenSource();
-                          }}
-                        >
-                          <Code2 size={15} aria-hidden="true" />
-                          {copy.editInSource}
-                        </button>
+                        <MenuItem
+                          icon={<Code2 size={15} />}
+                          label={copy.editInSource}
+                          onSelect={onOpenSource}
+                        />
                       )}
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={(event) => {
-                          closeActionMenu(event.currentTarget);
-                          applyResult(removeFrontmatterValue(markdown, property.key));
-                        }}
-                      >
-                        <Trash2 size={15} aria-hidden="true" />
-                        {copy.remove}
-                      </button>
-                    </div>
-                  </details>
+                      <MenuItem
+                        danger
+                        icon={<Trash2 size={15} />}
+                        label={copy.remove}
+                        onSelect={() => applyResult(removeFrontmatterValue(markdown, property.key))}
+                      />
+                    </MenuContent>
+                  </MenuRoot>
                 </div>
               );
             })}
@@ -479,40 +694,78 @@ export function DocumentProperties({
 
           {adding ? (
             <div className="document-property-add-form">
-              <Type size={16} aria-hidden="true" />
+              <PropertyTypeMenu
+                copy={copy}
+                label={copy.changeType(newKey || copy.newPropertyName)}
+                value={newType}
+                onChange={changeNewType}
+              />
               <input
-                ref={editorInputRef as React.RefObject<HTMLInputElement>}
+                ref={addKeyRef}
+                className="document-property-add-key"
                 value={newKey}
                 placeholder={copy.newPropertyName}
                 aria-label={copy.newPropertyName}
                 onChange={(event) => setNewKey(event.target.value)}
-                onKeyDown={(event) => handleEditorKeyDown(event, () => {
-                  if (!newKey.trim()) return;
-                  if (applyResult(addFrontmatterValue(markdown, newKey, ""))) {
-                    const normalizedKey = newKey.trim();
-                    setAdding(false);
-                    setNewKey("");
-                    setShowAll(true);
-                    setEditingKey(normalizedKey);
-                    setDraft("");
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    resetAddForm();
                   }
-                })}
+                }}
               />
+              <div className="document-property-add-value">
+                {newType === "checkbox" ? (
+                  <label className="document-property-boolean">
+                    <input
+                      type="checkbox"
+                      checked={newDraft === "true"}
+                      onChange={(event) => setNewDraft(String(event.target.checked))}
+                    />
+                    <span>{newDraft}</span>
+                  </label>
+                ) : newType === "list" || newType === "object" ? (
+                  <textarea
+                    value={newDraft}
+                    rows={3}
+                    aria-label={copy.propertyValue}
+                    onChange={(event) => setNewDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        resetAddForm();
+                      } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        commitAdd();
+                      }
+                    }}
+                  />
+                ) : (
+                  <input
+                    value={newDraft}
+                    type={newType === "date" ? "date" : "text"}
+                    inputMode={newType === "number" ? "decimal" : undefined}
+                    placeholder={copy.empty}
+                    aria-label={copy.propertyValue}
+                    onChange={(event) => setNewDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        resetAddForm();
+                      } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        commitAdd();
+                      }
+                    }}
+                  />
+                )}
+              </div>
               <button
                 className="document-property-add-confirm"
                 type="button"
                 aria-label={copy.save}
                 disabled={!newKey.trim()}
-                onClick={() => {
-                  if (applyResult(addFrontmatterValue(markdown, newKey, ""))) {
-                    const normalizedKey = newKey.trim();
-                    setAdding(false);
-                    setNewKey("");
-                    setShowAll(true);
-                    setEditingKey(normalizedKey);
-                    setDraft("");
-                  }
-                }}
+                onClick={commitAdd}
               >
                 <Check size={16} aria-hidden="true" />
               </button>
@@ -520,11 +773,7 @@ export function DocumentProperties({
                 className="document-property-add-cancel"
                 type="button"
                 aria-label={copy.cancel}
-                onClick={() => {
-                  setAdding(false);
-                  setNewKey("");
-                  setError(null);
-                }}
+                onClick={resetAddForm}
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -536,6 +785,8 @@ export function DocumentProperties({
               onClick={() => {
                 setAdding(true);
                 setNewKey("");
+                setNewType("text");
+                setNewDraft("");
                 setError(null);
               }}
             >

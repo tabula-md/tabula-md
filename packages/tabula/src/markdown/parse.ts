@@ -205,6 +205,16 @@ const stringifyFrontmatterValue = (value: unknown) => stringify(value, {
   lineWidth: 0,
 }).replace(/\n$/, "");
 
+const normalizeFrontmatterKey = (key: string) => {
+  const normalized = key.trim();
+  return normalized && !/[\r\n]/.test(normalized) ? normalized : null;
+};
+
+const stringifyFrontmatterKey = (key: string) => stringify(key, {
+  collectionStyle: "flow",
+  lineWidth: 0,
+}).replace(/\n$/, "");
+
 export const updateFrontmatterValue = (
   markdown: string,
   key: string,
@@ -237,20 +247,25 @@ export const addFrontmatterValue = (
   key: string,
   value: unknown,
 ): FrontmatterValueUpdate => {
-  const normalizedKey = key.trim();
-  if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(normalizedKey)) {
+  const normalizedKey = normalizeFrontmatterKey(key);
+  if (!normalizedKey) {
     return { ok: false, reason: "invalid_key" };
   }
   const frontmatterBlock = getFrontmatterBlock(markdown);
   if (!frontmatterBlock) return { ok: false, reason: "invalid_frontmatter" };
   const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
-  if (document.errors.length > 0 || !isMap(document.contents)) {
+  if (
+    document.errors.length > 0 ||
+    (document.contents !== null && !isMap(document.contents))
+  ) {
     return { ok: false, reason: "invalid_frontmatter" };
   }
-  if (document.has(normalizedKey)) return { ok: false, reason: "duplicate_key" };
+  if (isMap(document.contents) && document.has(normalizedKey)) {
+    return { ok: false, reason: "duplicate_key" };
+  }
 
   const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
-  const inserted = `${normalizedKey}: ${stringifyFrontmatterValue(value)}${lineBreak}`;
+  const inserted = `${stringifyFrontmatterKey(normalizedKey)}: ${stringifyFrontmatterValue(value)}${lineBreak}`;
   return {
     ok: true,
     markdown: `${markdown.slice(0, frontmatterBlock.closingStart)}${inserted}${markdown.slice(frontmatterBlock.closingStart)}`,
@@ -262,8 +277,8 @@ export const renameFrontmatterKey = (
   key: string,
   nextKey: string,
 ): FrontmatterValueUpdate => {
-  const normalizedKey = nextKey.trim();
-  if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(normalizedKey)) {
+  const normalizedKey = normalizeFrontmatterKey(nextKey);
+  if (!normalizedKey) {
     return { ok: false, reason: "invalid_key" };
   }
   const frontmatterBlock = getFrontmatterBlock(markdown);
@@ -280,7 +295,7 @@ export const renameFrontmatterKey = (
     return { ok: false, reason: "missing_key" };
   }
   const [from, to] = pair.key.range;
-  const raw = `${frontmatterBlock.rawFrontmatter.slice(0, from)}${normalizedKey}${frontmatterBlock.rawFrontmatter.slice(to)}`;
+  const raw = `${frontmatterBlock.rawFrontmatter.slice(0, from)}${stringifyFrontmatterKey(normalizedKey)}${frontmatterBlock.rawFrontmatter.slice(to)}`;
   const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
   return {
     ok: true,

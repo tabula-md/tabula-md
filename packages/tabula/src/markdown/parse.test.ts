@@ -117,6 +117,31 @@ Body`);
       });
   });
 
+  it("adds the first property to an empty frontmatter block", () => {
+    expect(addFrontmatterValue("---\n---\nBody", "title", "Guide")).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n---\nBody",
+    });
+  });
+
+  it("supports human-readable and quoted YAML property names", () => {
+    const added = addFrontmatterValue(
+      "---\ntitle: Guide\n---\nBody",
+      "검토 상태",
+      "draft",
+    );
+    expect(added).toEqual({
+      ok: true,
+      markdown: "---\ntitle: Guide\n검토 상태: draft\n---\nBody",
+    });
+    if (!added.ok) return;
+    expect(renameFrontmatterKey(added.markdown, "검토 상태", "#review state"))
+      .toEqual({
+        ok: true,
+        markdown: "---\ntitle: Guide\n\"#review state\": draft\n---\nBody",
+      });
+  });
+
   it("renames and removes properties without reformatting their siblings", () => {
     const markdown = "---\ntitle: Guide\ntags: [docs, help]\nowner: team:docs\n---\nBody";
     expect(renameFrontmatterKey(markdown, "owner", "maintainer")).toEqual({
