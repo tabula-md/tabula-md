@@ -234,8 +234,13 @@ export const updateFrontmatterValue = (
   const valueNode = document.get(key, true) as { range?: readonly number[] } | undefined;
   if (!valueNode || !valueNode.range) return { ok: false, reason: "missing_key" };
   const serializedValue = stringifyFrontmatterValue(value);
-  const serialized = `${frontmatterBlock.rawFrontmatter.slice(0, valueNode.range[0])}${serializedValue}${frontmatterBlock.rawFrontmatter.slice(valueNode.range[1])}`;
   const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const previousValue = frontmatterBlock.rawFrontmatter.slice(
+    valueNode.range[0],
+    valueNode.range[1],
+  );
+  const preservedValueBoundary = /\r?\n$/.test(previousValue) ? lineBreak : "";
+  const serialized = `${frontmatterBlock.rawFrontmatter.slice(0, valueNode.range[0])}${serializedValue}${preservedValueBoundary}${frontmatterBlock.rawFrontmatter.slice(valueNode.range[1])}`;
   return {
     ok: true,
     markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${serialized}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`,

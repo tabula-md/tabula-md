@@ -20,6 +20,11 @@ import { createEditorSearchExtension } from "../editor/editorSearch";
 import { revealEditorVisualSelection } from "../editor/editorVisualEffects";
 import { createEditorVisualModeExtension } from "../editor/editorVisualMode";
 import {
+  getVisualFrontmatterSelectionTransition,
+  restoreFrontmatterSourceSelection,
+  type EditorSourceSelection,
+} from "../editor/editorVisualFrontmatter";
+import {
   createEditorAnnotationGutterExtension,
   createEditorCollaborationExtensions,
   createEditorCommentAnchorExtension,
@@ -265,6 +270,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, LocalEditorCacheEntry>());
     const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
+    const sourceFrontmatterSelectionByFileIdRef = useRef(
+      new Map<string, EditorSourceSelection>(),
+    );
+    const appliedVisualEditingRef = useRef({ fileId, visualEditing });
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
     const lightweightMode =
       !visualEditing &&
@@ -716,6 +725,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       } else {
         restoreLocalEditorViewState(view, cachedEntry?.viewState);
       }
+      if (visualEditing) {
+        const selection = view.state.selection.main;
+        const transition = getVisualFrontmatterSelectionTransition(
+          view.state.doc.toString(),
+          { anchor: selection.anchor, head: selection.head },
+        );
+        if (transition) {
+          sourceFrontmatterSelectionByFileIdRef.current.set(
+            fileId,
+            transition.sourceSelection,
+          );
+          view.dispatch({
+            selection: EditorSelection.single(
+              transition.visualSelection.anchor,
+              transition.visualSelection.head,
+            ),
+          });
+        }
+      }
+      appliedVisualEditingRef.current = { fileId, visualEditing };
       emitHistoryState(view);
       const handleScroll = () => {
         onScrollRatioChangeRef.current?.(getScrollRatio(view.scrollDOM));
@@ -847,11 +876,51 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       const view = viewRef.current;
       if (!view) return;
 
+      const previous = appliedVisualEditingRef.current;
+      const enteringVisual = visualEditing &&
+        (previous.fileId !== fileId || !previous.visualEditing);
+      const leavingVisual = !visualEditing &&
+        previous.fileId === fileId && previous.visualEditing;
+
       if (!visualEditing) {
         view.dispatch({
           effects: compartmentsRef.current.visualMode.reconfigure([]),
         });
+        if (leavingVisual) {
+          const remembered = sourceFrontmatterSelectionByFileIdRef.current.get(fileId);
+          const restored = remembered
+            ? restoreFrontmatterSourceSelection(view.state.doc.toString(), remembered)
+            : null;
+          if (restored) {
+            view.dispatch({
+              selection: EditorSelection.single(restored.anchor, restored.head),
+            });
+          }
+        }
+        appliedVisualEditingRef.current = { fileId, visualEditing };
         return;
+      }
+
+      if (enteringVisual) {
+        const selection = view.state.selection.main;
+        const transition = getVisualFrontmatterSelectionTransition(
+          view.state.doc.toString(),
+          { anchor: selection.anchor, head: selection.head },
+        );
+        if (transition) {
+          sourceFrontmatterSelectionByFileIdRef.current.set(
+            fileId,
+            transition.sourceSelection,
+          );
+          view.dispatch({
+            selection: EditorSelection.single(
+              transition.visualSelection.anchor,
+              transition.visualSelection.head,
+            ),
+          });
+        } else {
+          sourceFrontmatterSelectionByFileIdRef.current.delete(fileId);
+        }
       }
 
       view.dispatch({
@@ -862,6 +931,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           }),
         ),
       });
+      appliedVisualEditingRef.current = { fileId, visualEditing };
     }, [fileId, interfaceCopy, resolveWorkspaceLink, visualEditing]);
 
     useEffect(() => {

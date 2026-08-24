@@ -109,6 +109,35 @@ Body`);
       });
   });
 
+  it("keeps the next key on a new line when replacing a block collection", () => {
+    const markdown = [
+      "---",
+      "generated:",
+      "  by: human:taeha",
+      "  at: 2026-01-10T00:00:00Z",
+      "verified:",
+      "  - by: human:taeha",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(updateFrontmatterValue(markdown, "generated", {
+      by: "human:taeha",
+      at: "2026-01-11T00:00:00Z",
+    })).toEqual({
+      ok: true,
+      markdown: [
+        "---",
+        "generated:",
+        "  { by: human:taeha, at: 2026-01-11T00:00:00Z }",
+        "verified:",
+        "  - by: human:taeha",
+        "---",
+        "Body",
+      ].join("\n"),
+    });
+  });
+
   it("adds a property immediately before the closing delimiter", () => {
     expect(addFrontmatterValue("---\ntitle: Guide\n---\nBody", "owner", "team:docs"))
       .toEqual({
