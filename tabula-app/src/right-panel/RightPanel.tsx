@@ -314,6 +314,8 @@ export function RightPanel({
             markdown={activeFile?.text ?? ""}
             noDocumentCopy={copy.noDocumentOpen}
             emptyCopy={knowledgeCopy.notSet}
+            invalidCopy={knowledgeCopy.invalidMetadata}
+            label={knowledgeCopy.properties}
           />
         )}
       </div>

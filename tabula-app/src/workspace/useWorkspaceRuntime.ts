@@ -30,6 +30,7 @@ import {
   type FileViewMode,
   type WorkspaceState,
 } from "./workspaceStorage";
+
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
@@ -93,6 +94,12 @@ import {
   resolveMarkdownPreviewWorkspaceLink,
 } from "../preview/workspacePreviewLinks";
 import { getAmbiguousWorkspaceLinkResolutionEdit } from "./workspaceLinkResolution";
+
+const FRONTMATTER_SNAPSHOT_PATTERN =
+  /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/;
+
+const getFrontmatterSnapshot = (markdown: string) =>
+  FRONTMATTER_SNAPSHOT_PATTERN.exec(markdown)?.[0] ?? "";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -1123,6 +1130,16 @@ export function useWorkspaceRuntime() {
   const handlePropertyAddRequest = useEventCallback(() => {
     setPropertyAddRequest(null);
   });
+  // Keep the suggestion input stable while document bodies change. Metadata
+  // recommendations only need frontmatter, so body typing must not re-parse
+  // every document in a large workspace.
+  const workspaceFrontmatterSignature = JSON.stringify(
+    files.map(({ text: markdown }) => getFrontmatterSnapshot(markdown)),
+  );
+  const workspaceMarkdownDocuments = useMemo(
+    () => JSON.parse(workspaceFrontmatterSignature) as string[],
+    [workspaceFrontmatterSignature],
+  );
   const { workbenchProps } = useWorkspaceWorkbenchSurfaceController({
     addPropertyRequestId:
       propertyAddRequest && propertyAddRequest.documentId === activeFile?.id
@@ -1145,6 +1162,7 @@ export function useWorkspaceRuntime() {
     room: roomController,
     surface: documentSurfaceController,
     toolbarLabel: workspaceChromeCopy.documentControls.documentToolbar,
+    workspaceMarkdownDocuments,
     resolveWorkspaceDocument,
     resolveWorkspaceLink,
   });

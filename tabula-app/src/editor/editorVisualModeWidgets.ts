@@ -38,6 +38,40 @@ const visualSourceLabels: Partial<Record<EditorVisualReplacement["kind"], string
   tabs: "Edit tabs Markdown",
 };
 
+class VisualBodyPlaceholderWidget extends WidgetType {
+  constructor(
+    private readonly label: string,
+    private readonly position: number,
+  ) {
+    super();
+  }
+
+  eq(other: VisualBodyPlaceholderWidget) {
+    return other.label === this.label && other.position === this.position;
+  }
+
+  toDOM(view: EditorView) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "cm-visual-body-placeholder";
+    placeholder.textContent = this.label;
+    placeholder.setAttribute("aria-hidden", "true");
+    placeholder.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({
+        selection: { anchor: this.position },
+        scrollIntoView: true,
+      });
+      view.focus();
+    });
+    return placeholder;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
 const visualWidgetResizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 abstract class RevealableBlockWidget extends WidgetType {
   constructor(
@@ -665,7 +699,10 @@ export const createEditorVisualReplacementDecoration = (
   switch (replacement.kind) {
     case "frontmatter":
       return Decoration.replace({
-        block: true,
+        block: !replacement.bodyEmpty,
+        widget: replacement.bodyEmpty
+          ? new VisualBodyPlaceholderWidget(copy.startWriting, replacement.to)
+          : undefined,
       });
     case "bullet":
       return Decoration.replace({ widget: new ListMarkerWidget(replacement.label) });

@@ -98,6 +98,14 @@ Body`);
   });
 
   it("uses explicit, reversible value conversions for type changes", () => {
+    expect(convertFrontmatterPropertyValue(undefined, "number")).toEqual({
+      ok: true,
+      value: 0,
+    });
+    expect(convertFrontmatterPropertyValue(undefined, "checkbox")).toEqual({
+      ok: true,
+      value: false,
+    });
     expect(convertFrontmatterPropertyValue("42", "number")).toEqual({ ok: true, value: 42 });
     expect(convertFrontmatterPropertyValue("not-a-number", "number")).toEqual({ ok: false });
     expect(convertFrontmatterPropertyValue("draft", "list")).toEqual({

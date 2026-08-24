@@ -6,6 +6,7 @@ import {
 import type { EditorView } from "@codemirror/view";
 import { getTextPatchesForChange, type TextPatch } from "@tabula-md/tabula";
 import type { MarkdownBookmark } from "../document/markdownEditorTypes";
+import { allowVisualFrontmatterChange } from "./editorVisualFrontmatter";
 
 export const clampEditorPosition = (position: number, docLength: number) =>
   Math.max(0, Math.min(position, docLength));
@@ -58,13 +59,20 @@ export const dispatchLocalTextPatches = (
   view: EditorView,
   patches: readonly TextPatch[],
   selection?: { from: number; to: number },
-  options: { focus?: boolean; isolateHistory?: boolean } = {},
+  options: {
+    allowFrontmatterChanges?: boolean;
+    focus?: boolean;
+    isolateHistory?: boolean;
+  } = {},
 ) => {
   if (patches.length === 0) {
     return false;
   }
 
-  const annotations = options.isolateHistory ? [isolateHistory.of("full")] : undefined;
+  const annotations = [
+    options.isolateHistory ? isolateHistory.of("full") : null,
+    options.allowFrontmatterChanges ? allowVisualFrontmatterChange.of(true) : null,
+  ].filter((annotation): annotation is NonNullable<typeof annotation> => Boolean(annotation));
 
   view.dispatch({
     changes: patches.map((patch) => ({
@@ -74,7 +82,7 @@ export const dispatchLocalTextPatches = (
     })),
     selection: selection ? { anchor: selection.from, head: selection.to } : undefined,
     scrollIntoView: true,
-    annotations,
+    annotations: annotations.length > 0 ? annotations : undefined,
   });
   if (options.focus ?? true) {
     view.focus();

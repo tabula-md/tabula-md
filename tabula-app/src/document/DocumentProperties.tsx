@@ -16,7 +16,7 @@ import {
   Type,
   X,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   addFrontmatterMarkdownValueAtPath,
   addFrontmatterValue,
@@ -28,10 +28,13 @@ import {
   getFrontmatterValueType,
   parseFrontmatterPropertyDraft,
   removeFrontmatterMarkdownValueAtPath,
+  removeFrontmatterValueAtPath,
   removeFrontmatterValue,
   renameFrontmatterMarkdownKeyAtPath,
+  renameFrontmatterValuePathKey,
   renameFrontmatterKey,
   updateFrontmatterMarkdownValueAtPath,
+  updateFrontmatterValueAtPath,
   updateFrontmatterValue,
   type FrontmatterProperty,
   type FrontmatterPropertyType,
@@ -47,85 +50,21 @@ import {
   MenuRoot,
   MenuTrigger,
 } from "../ui/Menu";
+import { Combobox } from "../ui/Combobox";
+import { InlineInput, InlineTextarea } from "../ui/InlineField";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
+import { getDocumentPropertiesCopy, type DocumentPropertiesCopy } from "./documentPropertiesLocale";
 import {
   frontmatterPropertySuggestions,
   getFrontmatterPropertySuggestion,
+  getSuggestedFrontmatterPropertyState,
+  getWorkspaceFrontmatterPropertySuggestions,
+  type FrontmatterPropertyTypeHint,
 } from "./frontmatterPropertySuggestions";
 
 const DEFAULT_VISIBLE_PROPERTY_COUNT = 5;
-
-const propertyCopy = {
-  en: {
-    addProperty: "Add property",
-    addField: "Add field",
-    addItem: "Add item",
-    cancel: "Cancel",
-    changeType: (key: string) => `Change type for ${key}`,
-    checkbox: "Checkbox",
-    date: "Date",
-    datetime: "Date & time",
-    duplicateKey: "A property with this name already exists.",
-    editInSource: "Edit in Source",
-    empty: "Empty",
-    fields: (count: number) => `${count} ${count === 1 ? "field" : "fields"}`,
-    invalidKey: "Use a non-empty, single-line property name.",
-    invalidValue: "Enter a value that matches the selected type.",
-    list: "List",
-    moreActions: (key: string) => `More actions for ${key}`,
-    newItem: "New item",
-    newPropertyName: "Property name",
-    number: "Number",
-    object: "Object",
-    items: (count: number) => `${count} ${count === 1 ? "item" : "items"}`,
-    propertyValue: "Property value",
-    remove: "Remove property",
-    removeItem: (value: string) => `Remove ${value}`,
-    save: "Save",
-    showLess: "Show less",
-    showMore: (count: number) => `Show ${count} more`,
-    text: "Text",
-    timestampPlaceholder: "YYYY-MM-DDTHH:mm:ssZ",
-    updateFailed: "Could not update this property. Open Source to repair the YAML.",
-  },
-  ko: {
-    addProperty: "속성 추가",
-    addField: "필드 추가",
-    addItem: "항목 추가",
-    cancel: "취소",
-    changeType: (key: string) => `${key} 타입 변경`,
-    checkbox: "체크박스",
-    date: "날짜",
-    datetime: "날짜 및 시간",
-    duplicateKey: "같은 이름의 속성이 이미 있습니다.",
-    editInSource: "Source에서 편집",
-    empty: "비어 있음",
-    fields: (count: number) => `${count}개 필드`,
-    invalidKey: "비어 있지 않은 한 줄 이름을 입력하세요.",
-    invalidValue: "선택한 타입에 맞는 값을 입력하세요.",
-    list: "목록",
-    moreActions: (key: string) => `${key} 추가 작업`,
-    newItem: "새 항목",
-    newPropertyName: "속성 이름",
-    number: "숫자",
-    object: "객체",
-    items: (count: number) => `${count}개 항목`,
-    propertyValue: "속성 값",
-    remove: "속성 삭제",
-    removeItem: (value: string) => `${value} 삭제`,
-    save: "저장",
-    showLess: "접기",
-    showMore: (count: number) => `${count}개 더 보기`,
-    text: "텍스트",
-    timestampPlaceholder: "YYYY-MM-DDTHH:mm:ssZ",
-    updateFailed: "속성을 수정하지 못했습니다. Source에서 YAML을 확인하세요.",
-  },
-};
-
-const getCopy = (language: WorkspaceLanguage) =>
-  language === "ko" ? propertyCopy.ko : propertyCopy.en;
 
 const propertyTypes: FrontmatterPropertyType[] = [
   "text",
@@ -162,7 +101,7 @@ const getTypeIcon = (type: FrontmatterPropertyType, size = 16) => {
 
 const getTypeLabel = (
   type: FrontmatterPropertyType,
-  copy: ReturnType<typeof getCopy>,
+  copy: DocumentPropertiesCopy,
 ) => copy[type];
 
 const isScalarList = (
@@ -194,7 +133,7 @@ function PropertyTypeMenu({
   onChange,
   value,
 }: {
-  copy: ReturnType<typeof getCopy>;
+  copy: DocumentPropertiesCopy;
   label: string;
   onChange: (type: FrontmatterPropertyType) => void;
   value: FrontmatterPropertyType;
@@ -215,6 +154,7 @@ function PropertyTypeMenu({
             <MenuRadioItem
               key={type}
               value={type}
+              icon={getTypeIcon(type, 15)}
               label={getTypeLabel(type, copy)}
             />
           ))}
@@ -231,6 +171,8 @@ type StructuredValueEditor = {
   path: FrontmatterValuePath;
 };
 
+type AddPropertyPhase = "idle" | "key" | "value";
+
 const getStructuredPathId = (path: FrontmatterValuePath) => JSON.stringify(path);
 
 const getUniqueNestedKey = (value: Record<string, unknown>) => {
@@ -241,6 +183,7 @@ const getUniqueNestedKey = (value: Record<string, unknown>) => {
 };
 
 function StructuredPropertyValue({
+  autoFocusFirstValue = false,
   copy,
   onAddValue,
   onError,
@@ -248,8 +191,10 @@ function StructuredPropertyValue({
   onRenameKey,
   onUpdateValue,
   property,
+  typeHints,
 }: {
-  copy: ReturnType<typeof getCopy>;
+  autoFocusFirstValue?: boolean;
+  copy: DocumentPropertiesCopy;
   onAddValue: (
     parentPath: FrontmatterValuePath,
     segment: string | number,
@@ -260,11 +205,15 @@ function StructuredPropertyValue({
   onRenameKey: (path: FrontmatterValuePath, nextKey: string) => boolean;
   onUpdateValue: (path: FrontmatterValuePath, value: unknown) => boolean;
   property: FrontmatterProperty;
+  typeHints?: FrontmatterPropertyTypeHint[];
 }) {
   const rootPathId = getStructuredPathId([]);
-  const [expandedPaths, setExpandedPaths] = useState(() => new Set<string>());
+  const [expandedPaths, setExpandedPaths] = useState(() => new Set([rootPathId]));
   const [editor, setEditor] = useState<StructuredValueEditor | null>(null);
+  const [typeOverrides, setTypeOverrides] = useState<Record<string, FrontmatterPropertyType>>({});
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const autoFocusHandledRef = useRef(false);
+  const rootAddRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     editorRef.current?.focus();
@@ -287,24 +236,104 @@ function StructuredPropertyValue({
     return applied;
   };
 
-  const commitEditor = () => {
+  const getNestedType = (path: FrontmatterValuePath, value: unknown) => {
+    const pathId = getStructuredPathId(path);
+    if (typeOverrides[pathId]) return typeOverrides[pathId];
+    const normalizedPath = path.map((segment) => typeof segment === "number" ? 0 : segment);
+    const hint = typeHints?.find(({ path: hintPath }) =>
+      getStructuredPathId(hintPath) === pathId ||
+      getStructuredPathId(hintPath) === getStructuredPathId(normalizedPath));
+    return hint?.type ?? getFrontmatterValueType(value);
+  };
+
+  const getEditableValueEntries = (
+    collection: unknown,
+    parentPath: FrontmatterValuePath = [],
+  ): Array<{ path: FrontmatterValuePath; value: unknown }> => {
+    const entries: Array<[string | number, unknown]> = Array.isArray(collection)
+      ? collection.map((value, index) => [index, value])
+      : collection && typeof collection === "object"
+        ? Object.entries(collection as Record<string, unknown>)
+        : [];
+    return entries.flatMap(([key, value]) => {
+      const path = [...parentPath, key];
+      const type = getNestedType(path, value);
+      if (type === "object" || type === "list") {
+        return getEditableValueEntries(value, path);
+      }
+      return type === "checkbox" || type === "empty" ? [] : [{ path, value }];
+    });
+  };
+
+  useEffect(() => {
+    if (!autoFocusFirstValue) {
+      autoFocusHandledRef.current = false;
+      return;
+    }
+    if (autoFocusHandledRef.current) return;
+    autoFocusHandledRef.current = true;
+
+    const first = getEditableValueEntries(property.value)[0];
+    if (first) {
+      const type = getNestedType(first.path, first.value);
+      setEditor({
+        draft: formatFrontmatterPropertyDraft(first.value, type),
+        mode: "value",
+        path: first.path,
+      });
+      return;
+    }
+    rootAddRef.current?.focus();
+  }, [autoFocusFirstValue, property.value]);
+
+  const commitEditor = (advance = false) => {
     if (!editor) return;
     if (editor.mode === "key") {
       if (onRenameKey(editor.path, editor.draft)) {
-        setEditor(null);
+        if (advance) {
+          const nextPath = [
+            ...editor.path.slice(0, -1),
+            editor.draft.trim(),
+          ];
+          const value = getFrontmatterValueAtPath(property.value, editor.path);
+          const type = getNestedType(editor.path, value);
+          setEditor({
+            draft: formatFrontmatterPropertyDraft(value, type),
+            mode: "value",
+            path: nextPath,
+          });
+        } else {
+          setEditor(null);
+        }
         onError(null);
       }
       return;
     }
 
     const currentValue = getFrontmatterValueAtPath(property.value, editor.path);
-    const type = getFrontmatterValueType(currentValue);
+    const type = getNestedType(editor.path, currentValue);
     const parsed = parseFrontmatterPropertyDraft(editor.draft, type);
     if (!parsed.ok) {
       onError(copy.invalidValue);
       return;
     }
-    if (applyNestedValue(editor.path, parsed.value)) setEditor(null);
+    if (!applyNestedValue(editor.path, parsed.value)) return;
+    if (advance) {
+      const entries = getEditableValueEntries(property.value);
+      const currentIndex = entries.findIndex(({ path }) =>
+        getStructuredPathId(path) === getStructuredPathId(editor.path));
+      const next = currentIndex >= 0 ? entries[currentIndex + 1] : undefined;
+      if (next) {
+        const nextType = getNestedType(next.path, next.value);
+        setEditor({
+          draft: formatFrontmatterPropertyDraft(next.value, nextType),
+          mode: "value",
+          path: next.path,
+        });
+        return;
+      }
+    }
+    setEditor(null);
   };
 
   const removeNestedValue = (path: FrontmatterValuePath) => {
@@ -312,6 +341,9 @@ function StructuredPropertyValue({
       onError(copy.updateFailed);
       return;
     }
+    // Array indexes are part of the YAML path. Resetting nested expansion after
+    // removal prevents an index shift from expanding the wrong sibling.
+    setExpandedPaths(new Set([rootPathId]));
     onError(null);
   };
 
@@ -325,6 +357,10 @@ function StructuredPropertyValue({
       onError(copy.invalidValue);
       return;
     }
+    setTypeOverrides((current) => ({
+      ...current,
+      [getStructuredPathId(path)]: type,
+    }));
     setEditor(null);
   };
 
@@ -354,10 +390,9 @@ function StructuredPropertyValue({
       if (editor?.isNew) removeNestedValue(editor.path);
       setEditor(null);
       onError(null);
-    } else if (event.key === "Enter" &&
-      (!(event.currentTarget instanceof HTMLTextAreaElement) || event.metaKey || event.ctrlKey)) {
+    } else if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      commitEditor();
+      commitEditor(true);
     }
   };
 
@@ -373,7 +408,7 @@ function StructuredPropertyValue({
         {entries.map(([key, value]) => {
           const path = [...parentPath, key];
           const pathId = getStructuredPathId(path);
-          const type = getFrontmatterValueType(value);
+          const type = getNestedType(path, value);
           const isCollection = type === "list" || type === "object";
           const isExpanded = expandedPaths.has(pathId);
           const activeEditor = editor && getStructuredPathId(editor.path) === pathId
@@ -396,13 +431,13 @@ function StructuredPropertyValue({
                 />
 
                 {activeEditor?.mode === "key" ? (
-                  <input
+                  <InlineInput
                     ref={editorRef as React.RefObject<HTMLInputElement>}
                     className="document-property-key-input"
                     value={activeEditor.draft}
                     aria-label={copy.newPropertyName}
                     onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
-                    onBlur={commitEditor}
+                    onBlur={() => commitEditor()}
                     onKeyDown={handleEditorKeyDown}
                   />
                 ) : (
@@ -441,18 +476,18 @@ function StructuredPropertyValue({
                     </button>
                   ) : activeEditor?.mode === "value" ? (
                     type === "text" ? (
-                      <textarea
+                      <InlineTextarea
                         ref={editorRef as React.RefObject<HTMLTextAreaElement>}
                         className="document-property-value-input"
                         rows={1}
                         value={activeEditor.draft}
                         aria-label={`${String(key)} value`}
                         onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
-                        onBlur={commitEditor}
+                        onBlur={() => commitEditor()}
                         onKeyDown={handleEditorKeyDown}
                       />
                     ) : (
-                      <input
+                      <InlineInput
                         ref={editorRef as React.RefObject<HTMLInputElement>}
                         className="document-property-value-input"
                         type={type === "date" ? "date" : "text"}
@@ -461,7 +496,7 @@ function StructuredPropertyValue({
                         placeholder={type === "datetime" ? copy.timestampPlaceholder : undefined}
                         aria-label={`${String(key)} value`}
                         onChange={(event) => setEditor({ ...activeEditor, draft: event.target.value })}
-                        onBlur={commitEditor}
+                        onBlur={() => commitEditor()}
                         onKeyDown={handleEditorKeyDown}
                       />
                     )
@@ -498,6 +533,7 @@ function StructuredPropertyValue({
         })}
 
         <button
+          ref={parentPath.length === 0 ? rootAddRef : undefined}
           className="document-property-nested-add"
           type="button"
           onClick={() => addNestedValue(parentPath, collection)}
@@ -537,6 +573,7 @@ export type DocumentPropertiesProps = {
   onChange: (nextValue: string | null, change?: TextChange) => void;
   onPropertyAddRequestHandled?: () => void;
   onOpenSource?: () => void;
+  workspaceMarkdownDocuments?: readonly string[];
 };
 
 export function DocumentProperties({
@@ -548,10 +585,21 @@ export function DocumentProperties({
   onChange,
   onPropertyAddRequestHandled,
   onOpenSource,
+  workspaceMarkdownDocuments = [],
 }: DocumentPropertiesProps) {
-  const copy = getCopy(language);
+  const copy = getDocumentPropertiesCopy(language);
   const surfaceCopy = getWorkspaceSurfaceCopy(language);
   const model = useMemo(() => getFrontmatterProperties(markdown), [markdown]);
+  const propertySuggestions = useMemo(() => {
+    const workspaceSuggestions = getWorkspaceFrontmatterPropertySuggestions(
+      workspaceMarkdownDocuments,
+    );
+    const workspaceKeys = new Set(workspaceSuggestions.map(({ key }) => key.toLowerCase()));
+    return [
+      ...workspaceSuggestions,
+      ...frontmatterPropertySuggestions.filter(({ key }) => !workspaceKeys.has(key)),
+    ];
+  }, [workspaceMarkdownDocuments]);
   const [expanded, setExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -562,22 +610,25 @@ export function DocumentProperties({
     index: number | null;
     draft: string;
   } | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [addPhase, setAddPhase] = useState<AddPropertyPhase>("idle");
+  const adding = addPhase !== "idle";
   const [newKey, setNewKey] = useState("");
   const [newType, setNewType] = useState<FrontmatterPropertyType>("text");
   const [newDraft, setNewDraft] = useState("");
   const [newTypeWasChosen, setNewTypeWasChosen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const addFormRef = useRef<HTMLDivElement | null>(null);
   const addKeyRef = useRef<HTMLInputElement | null>(null);
-  const propertySuggestionsId = useId();
+  const addValueRef = useRef<HTMLInputElement | null>(null);
+  const addConfirmRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     setShowAll(false);
     setEditingKey(null);
     setRenamingKey(null);
     setListItemEditor(null);
-    setAdding(false);
+    setAddPhase("idle");
     setNewTypeWasChosen(false);
     setError(null);
   }, [documentId]);
@@ -589,7 +640,7 @@ export function DocumentProperties({
     setEditingKey(null);
     setRenamingKey(null);
     setListItemEditor(null);
-    setAdding(true);
+    setAddPhase("key");
     setNewKey("");
     setNewType("text");
     setNewDraft("");
@@ -599,18 +650,52 @@ export function DocumentProperties({
   }, [addPropertyRequestId, onPropertyAddRequestHandled]);
 
   useEffect(() => {
-    if (adding) {
+    if (addPhase === "key") {
       addKeyRef.current?.focus();
+      return;
+    }
+    if (addPhase === "value") {
+      if (newType === "object" || newType === "list") return;
+      const target = newType === "empty" ? addConfirmRef.current : addValueRef.current;
+      target?.focus();
+      if (target instanceof HTMLInputElement && target.type !== "checkbox") target.select();
       return;
     }
     editorInputRef.current?.focus();
     if (editorInputRef.current instanceof HTMLInputElement) {
       editorInputRef.current.select();
     }
-  }, [adding, editingKey, listItemEditor, renamingKey]);
+  }, [addPhase, editingKey, listItemEditor, markdown, newType, renamingKey]);
+
+  useEffect(() => {
+    if (!adding) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (addFormRef.current?.contains(target)) return;
+      if (target.closest(".ui-combobox-popover, .document-property-type-menu")) return;
+      setAddPhase("idle");
+      setNewKey("");
+      setNewType("text");
+      setNewDraft("");
+      setNewTypeWasChosen(false);
+      setError(null);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [adding]);
 
   if (model.status === "invalid") {
-    return null;
+    return (
+      <section className="document-properties document-properties-invalid" aria-label={surfaceCopy.frontmatter}>
+        <div className="document-properties-invalid-state" role="status">
+          <span>{copy.invalidMetadata}</span>
+          {onOpenSource && (
+            <button type="button" onClick={onOpenSource}>{copy.editInSource}</button>
+          )}
+        </div>
+      </section>
+    );
   }
 
   const applyResult = (result: FrontmatterValueUpdate) => {
@@ -627,6 +712,7 @@ export function DocumentProperties({
     if (result.markdown === markdown) return true;
     const patch = diffTextPatch(markdown, result.markdown);
     const applied = editorRef.current?.applyLocalTextPatches([patch], undefined, {
+      allowFrontmatterChanges: true,
       focus: false,
       isolateHistory: true,
     }) ?? false;
@@ -643,14 +729,34 @@ export function DocumentProperties({
     setError(null);
   };
 
-  const commitKeyEdit = (property: FrontmatterProperty) => {
+  const advanceToPropertyValue = (
+    property: FrontmatterProperty,
+    key: string,
+  ) => {
+    if (
+      property.type === "empty" ||
+      property.type === "checkbox" ||
+      property.type === "object" ||
+      property.type === "list"
+    ) return;
+    setEditingKey(key);
+    setDraft(formatFrontmatterPropertyDraft(property.value, property.type));
+  };
+
+  const commitKeyEdit = (
+    property: FrontmatterProperty,
+    advanceToValue = false,
+  ) => {
     if (renamingKey !== property.key) return;
-    if (!draft.trim() || draft.trim() === property.key) {
+    const nextKey = draft.trim();
+    if (!nextKey || nextKey === property.key) {
       setRenamingKey(null);
+      if (advanceToValue) advanceToPropertyValue(property, property.key);
       return;
     }
     if (applyResult(renameFrontmatterKey(markdown, property.key, draft))) {
       setRenamingKey(null);
+      if (advanceToValue) advanceToPropertyValue(property, nextKey);
     }
   };
 
@@ -717,7 +823,7 @@ export function DocumentProperties({
   };
 
   const resetAddForm = () => {
-    setAdding(false);
+    setAddPhase("idle");
     setNewKey("");
     setNewType("text");
     setNewDraft("");
@@ -736,31 +842,98 @@ export function DocumentProperties({
   const changeNewKey = (key: string) => {
     setNewKey(key);
     if (newTypeWasChosen) return;
-    const suggestion = getFrontmatterPropertySuggestion(key);
-    if (!suggestion) return;
-    setNewType(suggestion.type);
-    setNewDraft(suggestion.draft);
+    const suggestion = propertySuggestions.find(
+      ({ key: suggestionKey }) => suggestionKey.toLowerCase() === key.trim().toLowerCase(),
+    );
+    const suggestedState = suggestion ?? getSuggestedFrontmatterPropertyState(key);
+    setNewType(suggestedState.type);
+    setNewDraft(suggestedState.draft);
     setError(null);
+  };
+
+  const getNewStructuredValue = () => {
+    if (newType !== "list" && newType !== "object") return null;
+    const parsed = parseFrontmatterPropertyDraft(newDraft, newType);
+    return parsed.ok ? parsed.value : null;
+  };
+
+  const applyNewStructuredValue = (value: unknown) => {
+    setNewDraft(formatFrontmatterPropertyDraft(value, newType));
+    setError(null);
+    return true;
+  };
+
+  const updateNewStructuredValue = (path: FrontmatterValuePath, value: unknown) => {
+    const currentValue = getNewStructuredValue();
+    if (currentValue === null) return false;
+    const result = updateFrontmatterValueAtPath(currentValue, path, value);
+    return result.ok ? applyNewStructuredValue(result.value) : false;
+  };
+
+  const addNewStructuredValue = (
+    parentPath: FrontmatterValuePath,
+    segment: string | number,
+    value: unknown,
+  ) => {
+    const currentValue = getNewStructuredValue();
+    if (currentValue === null) return false;
+    const parent = getFrontmatterValueAtPath(currentValue, parentPath);
+    if (Array.isArray(parent) && typeof segment === "number") {
+      const nextParent = [...parent];
+      nextParent.splice(segment, 0, value);
+      return updateNewStructuredValue(parentPath, nextParent);
+    }
+    if (parent && typeof parent === "object" && !Array.isArray(parent) &&
+      typeof segment === "string") {
+      return updateNewStructuredValue(parentPath, {
+        ...(parent as Record<string, unknown>),
+        [segment]: value,
+      });
+    }
+    return false;
+  };
+
+  const removeNewStructuredValue = (path: FrontmatterValuePath) => {
+    const currentValue = getNewStructuredValue();
+    if (currentValue === null) return false;
+    const result = removeFrontmatterValueAtPath(currentValue, path);
+    return result.ok ? applyNewStructuredValue(result.value) : false;
+  };
+
+  const renameNewStructuredKey = (path: FrontmatterValuePath, nextKey: string) => {
+    const currentValue = getNewStructuredValue();
+    if (currentValue === null) return false;
+    const result = renameFrontmatterValuePathKey(currentValue, path, nextKey);
+    return result.ok ? applyNewStructuredValue(result.value) : false;
   };
 
   const commitAdd = () => {
     if (!newKey.trim()) return;
+    if (
+      newType !== "empty" &&
+      newType !== "checkbox" &&
+      newType !== "list" &&
+      newType !== "object" &&
+      !newDraft.trim()
+    ) {
+      setError(copy.invalidValue);
+      return;
+    }
     const value = parseFrontmatterPropertyDraft(newDraft, newType);
     if (!value.ok) {
       setError(copy.invalidValue);
       return;
     }
     if (applyResult(addFrontmatterValue(markdown, newKey, value.value))) {
-      const normalizedKey = newKey.trim();
       resetAddForm();
       setShowAll(true);
-      setEditingKey(
-        newType === "checkbox" || newType === "list" || newType === "object"
-          ? null
-          : normalizedKey,
-      );
-      setDraft(formatFrontmatterPropertyDraft(value.value, newType));
     }
+  };
+
+  const advanceAddToValue = (key = newKey) => {
+    if (!key.trim()) return;
+    setAddPhase("value");
+    setError(null);
   };
 
   const cancelEditors = () => {
@@ -793,7 +966,7 @@ export function DocumentProperties({
       cancelEditors();
     } else if (
       event.key === "Enter" &&
-      (!multiline || event.metaKey || event.ctrlKey)
+      (!multiline || !event.shiftKey)
     ) {
       event.preventDefault();
       commit();
@@ -804,12 +977,22 @@ export function DocumentProperties({
     ? model.properties
     : model.properties.slice(0, DEFAULT_VISIBLE_PROPERTY_COUNT);
   const hiddenCount = model.properties.length - visibleProperties.length;
-  const hasFrontmatter = model.status === "valid";
-  const availablePropertySuggestions = frontmatterPropertySuggestions.filter(
+  // An empty YAML envelope has no distinct meaning in Write. Treat it like
+  // absent metadata so imported `--- / ---` documents and new documents share
+  // the same visible empty state.
+  const hasFrontmatter = model.status === "valid" && model.properties.length > 0;
+  const availablePropertySuggestions = propertySuggestions.filter(
     (suggestion) => !model.properties.some(
       (property) => property.key.toLowerCase() === suggestion.key,
     ),
   );
+  const newValueIsPresent =
+    newType === "empty" ||
+    newType === "checkbox" ||
+    newType === "list" ||
+    newType === "object" ||
+    Boolean(newDraft.trim());
+  const canCommitAdd = Boolean(newKey.trim()) && newValueIsPresent;
 
   return (
     <section
@@ -829,7 +1012,9 @@ export function DocumentProperties({
             aria-hidden="true"
           />
           <span>{surfaceCopy.frontmatter}</span>
-          <span className="document-properties-count">{model.properties.length}</span>
+          {model.properties.length > 0 && (
+            <span className="document-properties-count">{model.properties.length}</span>
+          )}
         </button>
       )}
 
@@ -851,7 +1036,7 @@ export function DocumentProperties({
                   />
 
                   {renamingKey === property.key ? (
-                    <input
+                    <InlineInput
                       ref={editorInputRef as React.RefObject<HTMLInputElement>}
                       className="document-property-key-input"
                       value={draft}
@@ -860,7 +1045,7 @@ export function DocumentProperties({
                       onBlur={() => commitKeyEdit(property)}
                       onKeyDown={(event) => handleKeyEditorKeyDown(
                         event,
-                        () => commitKeyEdit(property),
+                        () => commitKeyEdit(property, true),
                       )}
                     />
                   ) : (
@@ -893,7 +1078,7 @@ export function DocumentProperties({
                         {property.value.map((item, index) => (
                           listItemEditor?.key === property.key &&
                           listItemEditor.index === index ? (
-                            <input
+                            <InlineInput
                               key={index}
                               ref={editorInputRef as React.RefObject<HTMLInputElement>}
                               className="document-property-chip-input"
@@ -942,7 +1127,7 @@ export function DocumentProperties({
                         ))}
                         {listItemEditor?.key === property.key &&
                         listItemEditor.index === null ? (
-                          <input
+                          <InlineInput
                             ref={editorInputRef as React.RefObject<HTMLInputElement>}
                             className="document-property-chip-input"
                             value={listItemEditor.draft}
@@ -978,6 +1163,7 @@ export function DocumentProperties({
                       <StructuredPropertyValue
                         copy={copy}
                         property={property}
+                        typeHints={getFrontmatterPropertySuggestion(property.key)?.typeHints}
                         onError={setError}
                         onAddValue={(parentPath, segment, value) => applyResult(
                           addFrontmatterMarkdownValueAtPath(
@@ -1010,7 +1196,7 @@ export function DocumentProperties({
                       />
                     ) : editingKey === property.key ? (
                       property.type === "text" ? (
-                        <textarea
+                        <InlineTextarea
                           ref={editorInputRef as React.RefObject<HTMLTextAreaElement>}
                           className="document-property-value-input"
                           rows={1}
@@ -1025,7 +1211,7 @@ export function DocumentProperties({
                           )}
                         />
                       ) : (
-                        <input
+                        <InlineInput
                           ref={editorInputRef as React.RefObject<HTMLInputElement>}
                           className="document-property-value-input"
                           type={property.type === "date" ? "date" : "text"}
@@ -1104,21 +1290,32 @@ export function DocumentProperties({
           )}
 
           {adding ? (
-            <div className="document-property-add-form">
+            <div className="document-property-add-form" ref={addFormRef}>
               <PropertyTypeMenu
                 copy={copy}
                 label={copy.changeType(newKey || copy.newPropertyName)}
                 value={newType}
                 onChange={changeNewType}
               />
-              <input
+              <Combobox
                 ref={addKeyRef}
-                className="document-property-add-key"
+                className="document-property-add-key-combobox"
+                inputClassName="ui-inline-field document-property-add-key"
                 value={newKey}
-                list={propertySuggestionsId}
+                options={availablePropertySuggestions.map((suggestion) => ({
+                  description: suggestion.usageCount
+                    ? copy.usedInDocuments(suggestion.usageCount)
+                    : suggestion.description,
+                  label: suggestion.key,
+                  value: suggestion.key,
+                }))}
+                emptyLabel={copy.noSuggestions}
+                groupLabel={copy.suggestedFields}
                 placeholder={copy.newPropertyName}
                 aria-label={copy.newPropertyName}
-                onChange={(event) => changeNewKey(event.target.value)}
+                onValueChange={changeNewKey}
+                onCommit={advanceAddToValue}
+                onFocus={() => setAddPhase("key")}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.preventDefault();
@@ -1126,17 +1323,14 @@ export function DocumentProperties({
                   }
                 }}
               />
-              <datalist id={propertySuggestionsId}>
-                {availablePropertySuggestions.map((suggestion) => (
-                  <option key={suggestion.key} value={suggestion.key} />
-                ))}
-              </datalist>
               <div className="document-property-add-value">
                 {newType === "checkbox" ? (
                   <label className="document-property-boolean">
                     <input
+                      ref={addValueRef}
                       type="checkbox"
                       checked={newDraft === "true"}
+                      onFocus={() => setAddPhase("value")}
                       onChange={(event) => setNewDraft(String(event.target.checked))}
                     />
                     <span>{newDraft}</span>
@@ -1144,16 +1338,47 @@ export function DocumentProperties({
                 ) : newType === "empty" ? (
                   <span className="document-property-add-collection">{copy.empty}</span>
                 ) : newType === "list" || newType === "object" ? (
-                  <span className="document-property-add-collection">
-                    {newType === "list" ? copy.items(0) : copy.fields(0)}
-                  </span>
+                  (() => {
+                    const value = getNewStructuredValue();
+                    if (value === null) {
+                      return <span className="document-property-add-collection">{copy.invalidValue}</span>;
+                    }
+                    const property: FrontmatterProperty = {
+                      key: newKey,
+                      kind: newType === "list" ? "structured-list" : "mapping",
+                      type: newType,
+                      value,
+                      itemCount: Array.isArray(value)
+                        ? value.length
+                        : Object.keys(value as Record<string, unknown>).length,
+                    };
+                    return (
+                      <StructuredPropertyValue
+                        key={`${newKey}:${newType}`}
+                        autoFocusFirstValue={addPhase === "value"}
+                        copy={copy}
+                        property={property}
+                        typeHints={newTypeWasChosen
+                          ? undefined
+                          : propertySuggestions.find(({ key }) =>
+                            key.toLowerCase() === newKey.trim().toLowerCase())?.typeHints}
+                        onError={setError}
+                        onAddValue={addNewStructuredValue}
+                        onRemoveValue={removeNewStructuredValue}
+                        onRenameKey={renameNewStructuredKey}
+                        onUpdateValue={updateNewStructuredValue}
+                      />
+                    );
+                  })()
                 ) : (
-                  <input
+                  <InlineInput
+                    ref={addValueRef}
                     value={newDraft}
                     type={newType === "date" ? "date" : "text"}
                     inputMode={newType === "number" ? "decimal" : undefined}
                     placeholder={newType === "datetime" ? copy.timestampPlaceholder : copy.empty}
                     aria-label={copy.propertyValue}
+                    onFocus={() => setAddPhase("value")}
                     onChange={(event) => setNewDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") {
@@ -1168,10 +1393,11 @@ export function DocumentProperties({
                 )}
               </div>
               <button
+                ref={addConfirmRef}
                 className="document-property-add-confirm"
                 type="button"
                 aria-label={copy.save}
-                disabled={!newKey.trim()}
+                disabled={!canCommitAdd}
                 onClick={commitAdd}
               >
                 <Check size={16} aria-hidden="true" />
@@ -1190,7 +1416,7 @@ export function DocumentProperties({
               className="document-properties-add"
               type="button"
               onClick={() => {
-                setAdding(true);
+                setAddPhase("key");
                 setNewKey("");
                 setNewType("text");
                 setNewDraft("");

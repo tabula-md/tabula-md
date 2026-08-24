@@ -63,17 +63,23 @@ export function RightPanelProperties({
   markdown,
   noDocumentCopy,
   emptyCopy,
+  invalidCopy,
+  label,
 }: {
   activeFileId: string;
   markdown: string;
   noDocumentCopy: string;
   emptyCopy: string;
+  invalidCopy: string;
+  label: string;
 }) {
-  const entries = getFrontmatterProperties(markdown).properties;
+  const model = getFrontmatterProperties(markdown);
+  const entries = model.properties;
 
   return (
-    <section className="right-properties" aria-label="Metadata">
+    <section className="right-properties" aria-label={label}>
       {!activeFileId ? <PanelEmptyState>{noDocumentCopy}</PanelEmptyState> :
+        model.status === "invalid" ? <PanelEmptyState>{invalidCopy}</PanelEmptyState> :
         !entries.length ? <PanelEmptyState>{emptyCopy}</PanelEmptyState> : (
           <dl className="right-properties-list">
             {entries.map((property) => (

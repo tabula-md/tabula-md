@@ -98,6 +98,7 @@ export type DocumentWorkbenchProps = {
   text: string;
   toolbarLabel: string;
   workspaceRef: RefObject<HTMLElement | null>;
+  workspaceMarkdownDocuments?: readonly string[];
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
@@ -201,6 +202,7 @@ export function DocumentWorkbench({
   text,
   toolbarLabel,
   workspaceRef,
+  workspaceMarkdownDocuments,
   onBookmarksChange,
   onEditorHistoryStateChange,
   onEditorScroll,
@@ -324,6 +326,7 @@ export function DocumentWorkbench({
         splitWorkspaceStyle={splitWorkspaceStyle}
         text={text}
         workspaceRef={workspaceRef}
+        workspaceMarkdownDocuments={workspaceMarkdownDocuments}
         onBookmarksChange={onBookmarksChange}
         onEditorHistoryStateChange={onEditorHistoryStateChange}
         onEditorScroll={onEditorScroll}

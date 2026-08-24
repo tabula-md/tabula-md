@@ -75,7 +75,12 @@ export const buildEditorVisualDecorationSets = (
   );
   return {
     decorations: Decoration.set(
-      [...lineRanges, ...hiddenRanges, ...replacementRanges, ...workspaceLinkRanges],
+      [
+        ...lineRanges,
+        ...hiddenRanges,
+        ...replacementRanges,
+        ...workspaceLinkRanges,
+      ],
       true,
     ),
     atomicRanges: Decoration.set(

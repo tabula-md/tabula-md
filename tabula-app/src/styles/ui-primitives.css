@@ -219,6 +219,106 @@
   font-weight: var(--weight-ui-regular);
 }
 
+.ui-combobox {
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-combobox-popover {
+  width: min(280px, calc(100vw - 24px));
+  padding: 6px;
+}
+
+.ui-combobox-group-label {
+  padding: 6px var(--space-2) 5px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-regular);
+}
+
+.ui-combobox-options {
+  display: grid;
+  max-height: min(240px, 45vh);
+  overflow-y: auto;
+}
+
+.ui-combobox-option {
+  display: grid;
+  grid-template-columns: var(--icon-size-small) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-size-row);
+  padding: 5px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
+  text-align: left;
+}
+
+.ui-combobox-option:hover,
+.ui-combobox-option[aria-selected="true"] {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.ui-combobox-option-icon {
+  display: grid;
+  width: var(--icon-size-small);
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.ui-combobox-option-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.ui-combobox-option-copy > span,
+.ui-combobox-option-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-combobox-option-copy small,
+.ui-combobox-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.ui-combobox-empty {
+  padding: var(--space-3) var(--space-2);
+}
+
+.ui-inline-field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  margin: 0;
+  padding: 5px 7px;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 20px;
+  vertical-align: top;
+}
+
+.ui-inline-field:hover,
+.ui-inline-field:focus {
+  background: var(--surface-muted);
+}
+
 .ui-modal-layer {
   z-index: var(--layer-modal);
   padding: var(--space-5);

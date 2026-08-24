@@ -121,7 +121,8 @@
 }
 
 .document-property-key:hover,
-.document-property-key-input {
+.document-property-key-input:hover,
+.document-property-key-input:focus {
   background: var(--surface-muted);
   color: var(--text-primary);
 }
@@ -133,10 +134,13 @@
 
 .document-property-value-button,
 .document-property-value-input {
+  display: block;
   box-sizing: border-box;
   width: 100%;
   min-height: 30px;
+  margin: 0;
   padding: 5px 7px;
+  appearance: none;
   border: 0;
   border-radius: var(--radius-control);
   outline: 0;
@@ -145,10 +149,10 @@
   font: inherit;
   line-height: 20px;
   text-align: left;
+  vertical-align: top;
 }
 
 .document-property-value-button {
-  display: block;
   overflow: hidden;
   cursor: text;
   text-overflow: ellipsis;
@@ -161,11 +165,13 @@
 }
 
 .document-property-value-button:hover,
-.document-property-value-input {
+.document-property-value-input:hover,
+.document-property-value-input:focus {
   background: var(--surface-muted);
 }
 
 .document-property-value-input {
+  overflow: hidden;
   resize: none;
   field-sizing: content;
 }
@@ -476,10 +482,23 @@
   border: 0;
   border-radius: var(--radius-control);
   outline: 0;
-  background: var(--surface-muted);
+  background: transparent;
   color: var(--text-primary);
   font: inherit;
   line-height: 20px;
+}
+
+.document-property-add-key-combobox {
+  min-width: 0;
+}
+
+.document-property-add-key:hover,
+.document-property-add-key:focus,
+.document-property-add-value input:hover,
+.document-property-add-value input:focus,
+.document-property-add-value textarea:hover,
+.document-property-add-value textarea:focus {
+  background: var(--surface-muted);
 }
 
 .document-property-add-collection {
@@ -541,6 +560,29 @@
   text-decoration: underline;
 }
 
+.document-properties-invalid-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  color: var(--text-muted);
+}
+
+.document-properties-invalid-state button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.document-properties-invalid-state button:hover,
+.document-properties-invalid-state button:focus-visible {
+  outline: 0;
+  text-decoration: underline;
+}
+
 @media (max-width: 820px) {
   .document-properties {
     width: 100%;
@@ -597,7 +639,7 @@
     grid-row: 1;
   }
 
-  .document-property-add-key {
+  .document-property-add-key-combobox {
     grid-column: 2 / 5;
     grid-row: 1;
   }

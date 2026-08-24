@@ -340,6 +340,28 @@ Body`);
     expect(inspectFrontmatterData("---\ntype: Note").status).toBe("invalid");
   });
 
+  it("always removes valid frontmatter from the preview body, including an empty mapping", () => {
+    expect(parseFrontmatter("---\n---\n\nBody")).toEqual({
+      attributes: [],
+      body: "\nBody",
+    });
+    expect(parseFrontmatter("---\n---")).toEqual({
+      attributes: [],
+      body: "",
+    });
+  });
+
+  it("removes the frontmatter block when its last property is removed", () => {
+    expect(removeFrontmatterValue("---\ntype: Note\n---\nBody", "type")).toEqual({
+      ok: true,
+      markdown: "Body",
+    });
+    expect(removeFrontmatterValue("---\ntype: Note\n---\n", "type")).toEqual({
+      ok: true,
+      markdown: "",
+    });
+  });
+
   it("does not treat top horizontal rules as frontmatter without metadata key-values", () => {
     const markdown = `---
 Intro divider

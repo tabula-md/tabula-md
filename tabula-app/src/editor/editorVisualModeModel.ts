@@ -25,7 +25,7 @@ export type EditorVisualLine = {
 };
 
 type EditorVisualReplacementPayload =
-  | { kind: "frontmatter" }
+  | { kind: "frontmatter"; bodyEmpty: boolean }
   | { kind: "bullet"; label: string }
   | { kind: "task"; checked: boolean }
   | { kind: "horizontal-rule" }
@@ -112,7 +112,7 @@ const getLineClass = (nodeName: string) => {
 
 const frontmatterByDocument = new WeakMap<
   object,
-  EditorVisualBlockRange | null
+  (EditorVisualBlockRange & { bodyEmpty: boolean }) | null
 >();
 const presentationByDocument =
   new WeakMap<object, MarkdownPresentationDocument>();
@@ -370,6 +370,7 @@ const getFrontmatter = (state: EditorState) => {
   const inspection = inspectFrontmatterData(source);
   const replacement = inspection.status === "valid" && inspection.bodyOffset > 0
     ? {
+        bodyEmpty: inspection.body.length === 0,
         from: 0,
         to: inspection.bodyOffset,
       }
@@ -640,6 +641,7 @@ export const buildEditorVisualModel = (
     parsedReplacements.push(frontmatter);
     if (isVisible(frontmatter.from, frontmatter.to, visibleRanges)) {
       model.replacements.push({
+        bodyEmpty: frontmatter.bodyEmpty,
         from: frontmatter.from,
         kind: "frontmatter",
         to: frontmatter.to,

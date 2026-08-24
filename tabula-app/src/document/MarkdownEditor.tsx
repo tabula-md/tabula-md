@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { history } from "@codemirror/commands";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, placeholder as createEditorPlaceholderExtension } from "@codemirror/view";
@@ -18,7 +18,6 @@ import {
 } from "../editor/editorLayout";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import { revealEditorVisualSelection } from "../editor/editorVisualEffects";
-import { createEditorVisualModeExtension } from "../editor/editorVisualMode";
 import {
   getVisualFrontmatterSelectionTransition,
   restoreFrontmatterSourceSelection,
@@ -62,6 +61,18 @@ const MAX_CACHED_LOCAL_EDITOR_STATES = 8;
 const MAX_CACHED_LOCAL_EDITOR_STATE_BYTES = 12 * 1024 * 1024;
 const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
 const LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD = 400_000;
+
+type CreateEditorVisualModeExtension =
+  typeof import("../editor/editorVisualMode").createEditorVisualModeExtension;
+
+let editorVisualModeExtensionPromise: Promise<CreateEditorVisualModeExtension> | null = null;
+
+const loadEditorVisualModeExtension = () => {
+  editorVisualModeExtensionPromise ??= import("../editor/editorVisualMode").then(
+    ({ createEditorVisualModeExtension }) => createEditorVisualModeExtension,
+  );
+  return editorVisualModeExtensionPromise;
+};
 
 type LiveEditorViewState = {
   selectionAnchor: CollabRelativePosition;
@@ -275,10 +286,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     );
     const appliedVisualEditingRef = useRef({ fileId, visualEditing });
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
+    const [createEditorVisualModeExtension, setCreateEditorVisualModeExtension] =
+      useState<CreateEditorVisualModeExtension | null>(null);
     const lightweightMode =
       !visualEditing &&
       largeDocumentMode &&
       value.length >= LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD;
+
+    useEffect(() => {
+      if (!visualEditing || createEditorVisualModeExtension) return undefined;
+
+      let cancelled = false;
+      void loadEditorVisualModeExtension().then((createExtension) => {
+        if (!cancelled) {
+          setCreateEditorVisualModeExtension(() => createExtension);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [createEditorVisualModeExtension, visualEditing]);
 
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -556,7 +583,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }));
 
     useEffect(() => {
-      if (!containerRef.current) {
+      if (
+        !containerRef.current ||
+        (visualEditing && !createEditorVisualModeExtension)
+      ) {
         return;
       }
 
@@ -646,7 +676,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         copy: interfaceCopy,
         updateExtension,
         visualModeExtension: visualEditing
-          ? createEditorVisualModeExtension(interfaceCopy, {
+          ? createEditorVisualModeExtension!(interfaceCopy, {
               resolveWorkspaceLink,
               sourceDocumentId: fileId,
             })
@@ -704,7 +734,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
             ),
             compartmentsRef.current.visualMode.reconfigure(
               visualEditing
-                ? createEditorVisualModeExtension(interfaceCopy, {
+                ? createEditorVisualModeExtension!(interfaceCopy, {
                     resolveWorkspaceLink,
                     sourceDocumentId: fileId,
                   })
@@ -799,7 +829,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         view.destroy();
         viewRef.current = null;
       };
-    }, [fileId]);
+    }, [createEditorVisualModeExtension, fileId]);
 
     useEffect(() => {
       const view = viewRef.current;
@@ -901,6 +931,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
+      if (!createEditorVisualModeExtension) return;
+
       if (enteringVisual) {
         const selection = view.state.selection.main;
         const transition = getVisualFrontmatterSelectionTransition(
@@ -932,7 +964,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
       appliedVisualEditingRef.current = { fileId, visualEditing };
-    }, [fileId, interfaceCopy, resolveWorkspaceLink, visualEditing]);
+    }, [
+      createEditorVisualModeExtension,
+      fileId,
+      interfaceCopy,
+      resolveWorkspaceLink,
+      visualEditing,
+    ]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
@@ -997,7 +1035,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }, [bookmarks, interfaceCopy]);
 
     return (
-      <div className={`markdown-editor-shell ${collaborationBinding ? "collaboration-bound" : ""}`}>
+      <div
+        className={`markdown-editor-shell ${
+          collaborationBinding ? "collaboration-bound" : ""
+        } ${visualEditing && !createEditorVisualModeExtension ? "loading-visual-mode" : ""}`}
+        aria-busy={visualEditing && !createEditorVisualModeExtension}
+      >
         <div ref={containerRef} className="markdown-editor" aria-label={ariaLabel} />
       </div>
     );

@@ -112,17 +112,18 @@ export function MenuCheckboxItem({
   );
 }
 
-type MenuRadioItemProps = ComponentPropsWithoutRef<typeof DropdownMenu.RadioItem> & {
-  label: string;
-};
+type MenuRadioItemProps = ComponentPropsWithoutRef<typeof DropdownMenu.RadioItem> & MenuItemContentProps;
 
-export function MenuRadioItem({ className = "", label, ...props }: MenuRadioItemProps) {
+export function MenuRadioItem({ className = "", icon, label, trailing, ...props }: MenuRadioItemProps) {
   return (
     <DropdownMenu.RadioItem {...props} className={`ui-command-menu-item radio ${className}`.trim()}>
-      <span className="ui-command-menu-icon" aria-hidden="true">
-        <DropdownMenu.ItemIndicator><Check size={14} /></DropdownMenu.ItemIndicator>
-      </span>
-      <span className="ui-command-menu-label">{label}</span>
+      <MenuItemContent
+        icon={icon}
+        label={label}
+        trailing={trailing ?? (
+          <DropdownMenu.ItemIndicator><Check size={14} /></DropdownMenu.ItemIndicator>
+        )}
+      />
     </DropdownMenu.RadioItem>
   );
 }

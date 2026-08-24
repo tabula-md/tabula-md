@@ -176,7 +176,7 @@ export const inspectFrontmatterData = (markdown: string): FrontmatterInspection 
 
 export const parseFrontmatterData = (markdown: string): ParsedFrontmatterData => {
   const inspected = inspectFrontmatterData(markdown);
-  return inspected.status === "valid" && Object.keys(inspected.metadata).length > 0
+  return inspected.status === "valid"
     ? {
         metadata: inspected.metadata,
         body: inspected.body,
@@ -513,7 +513,9 @@ export const removeFrontmatterValue = (
   const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
   return {
     ok: true,
-    markdown: `${markdown.slice(0, frontmatterBlock.rawStart)}${raw}${raw ? lineBreak : ""}${markdown.slice(frontmatterBlock.closingStart)}`,
+    markdown: raw
+      ? `${markdown.slice(0, frontmatterBlock.rawStart)}${raw}${lineBreak}${markdown.slice(frontmatterBlock.closingStart)}`
+      : frontmatterBlock.body,
   };
 };
 

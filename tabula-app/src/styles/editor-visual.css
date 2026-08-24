@@ -32,6 +32,11 @@
   line-height: var(--preview-text-line-height);
 }
 
+.markdown-editor .cm-visual-editor .cm-visual-body-placeholder {
+  color: var(--editor-placeholder-text);
+  cursor: text;
+}
+
 .markdown-editor
   .cm-editor.cm-visual-editor.cm-focused
   .cm-activeLine:not(.cm-visual-source-block) {

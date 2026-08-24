@@ -47,6 +47,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   >;
   surface: DocumentSurfaceController;
   toolbarLabel: string;
+  workspaceMarkdownDocuments: readonly string[];
   resolveWorkspaceDocument: NonNullable<MarkdownPreviewProps["resolveWorkspaceDocument"]>;
   resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
@@ -70,6 +71,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   room,
   surface,
   toolbarLabel,
+  workspaceMarkdownDocuments,
   resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
@@ -146,6 +148,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       text: document.text,
       toolbarLabel,
       workspaceRef: document.workspaceRef,
+      workspaceMarkdownDocuments,
       onBookmarksChange: editor.updateActiveFileBookmarks,
       onEditorHistoryStateChange: editor.handleEditorHistoryStateChange,
       onEditorScroll: () => {

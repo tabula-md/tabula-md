@@ -1,8 +1,7 @@
-import { useMemo, type ComponentProps } from "react";
+import { lazy, Suspense, useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
 import { ShareControlsBoundary } from "../../share/ShareControlsBoundary";
 import { ShareTrigger } from "../../share/ShareTrigger";
-import { ShareControls } from "../../share/ShareControls";
 import { TopChrome } from "./TopChrome";
 import type {
   Collaborator,
@@ -21,6 +20,12 @@ import {
 } from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
+
+const ShareControls = lazy(() =>
+  import("../../share/ShareControls").then((module) => ({
+    default: module.ShareControls,
+  })),
+);
 
 export type WorkspaceTopChromeProps = {
   activeFile?: WorkspaceFile;
@@ -170,25 +175,27 @@ export function WorkspaceTopChrome({
 
       {shareOpen && (
         <ShareControlsBoundary onError={onShareLoadError}>
-          <ShareControls
-            room={room}
-            language={language}
-            currentUserName={currentUserName}
-            connectionStatus={connectionStatus}
-            isStartingLive={isStartingLive}
-            isLive={isLive}
-            shareOpen={shareOpen}
-            copied={copied}
-            jsonShare={jsonShare}
-            onCloseShare={onCloseShare}
-            onCopyFailed={onShareCopyFailed}
-            onStartSession={onStartSession}
-            onRetrySession={onRetrySession}
-            onCopyShareUrl={onCopyShareUrl}
-            onChangeUserName={onChangeUserName}
-            onCommitUserName={onCommitUserName}
-            onStopSession={onStopSession}
-          />
+          <Suspense fallback={null}>
+            <ShareControls
+              room={room}
+              language={language}
+              currentUserName={currentUserName}
+              connectionStatus={connectionStatus}
+              isStartingLive={isStartingLive}
+              isLive={isLive}
+              shareOpen={shareOpen}
+              copied={copied}
+              jsonShare={jsonShare}
+              onCloseShare={onCloseShare}
+              onCopyFailed={onShareCopyFailed}
+              onStartSession={onStartSession}
+              onRetrySession={onRetrySession}
+              onCopyShareUrl={onCopyShareUrl}
+              onChangeUserName={onChangeUserName}
+              onCommitUserName={onCommitUserName}
+              onStopSession={onStopSession}
+            />
+          </Suspense>
         </ShareControlsBoundary>
       )}
     </>

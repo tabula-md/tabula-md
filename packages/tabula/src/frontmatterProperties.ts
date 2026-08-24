@@ -265,12 +265,14 @@ export const convertFrontmatterPropertyValue = (
     };
   }
   if (type === "number") {
+    if (value == null) return { ok: true, value: 0 };
     if (typeof value === "number" && Number.isFinite(value)) return { ok: true, value };
     if (typeof value === "boolean") return { ok: true, value: value ? 1 : 0 };
     const converted = typeof value === "string" ? Number(value) : Number.NaN;
     return Number.isFinite(converted) ? { ok: true, value: converted } : { ok: false };
   }
   if (type === "checkbox") {
+    if (value == null) return { ok: true, value: false };
     if (typeof value === "boolean") return { ok: true, value };
     if (value === "true" || value === 1) return { ok: true, value: true };
     if (value === "false" || value === 0) return { ok: true, value: false };

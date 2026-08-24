@@ -1,6 +1,8 @@
 import {
   type CSSProperties,
   type RefObject,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -32,7 +34,6 @@ import type {
 import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
 import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspace/workspaceStorage";
 import { MarkdownEditor } from "../../../../tabula-app/src/document/MarkdownEditor";
-import { DocumentProperties } from "../../../../tabula-app/src/document/DocumentProperties";
 import { ResizeHandle } from "../../../../tabula-app/src/ui/ResizeHandle";
 import {
   type MarkdownPreviewCommentAnchor,
@@ -50,6 +51,12 @@ import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspace/wo
 const LONG_LINE_RECHECK_DELAY_MS = 240;
 const WORKSPACE_FADE_REVEAL_DISTANCE_PX = 64;
 const WORKSPACE_FADE_TRAVEL_PX = 108;
+
+const DocumentProperties = lazy(() =>
+  import("../../../../tabula-app/src/document/DocumentProperties").then((module) => ({
+    default: module.DocumentProperties,
+  })),
+);
 
 const useWorkspaceScrollFade = (workspaceRef: RefObject<HTMLElement | null>) => {
   useEffect(() => {
@@ -180,6 +187,7 @@ export type TabulaDocumentSurfaceProps = {
   splitWorkspaceStyle?: CSSProperties;
   text: string;
   workspaceRef: RefObject<HTMLElement | null>;
+  workspaceMarkdownDocuments?: readonly string[];
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
@@ -243,6 +251,7 @@ export function TabulaDocumentSurface({
   splitWorkspaceStyle,
   text,
   workspaceRef,
+  workspaceMarkdownDocuments,
   onBookmarksChange,
   onEditorHistoryStateChange,
   onEditorScroll,
@@ -335,16 +344,19 @@ export function TabulaDocumentSurface({
         onScroll={onEditorScroll}
       >
         {documentSurface.documentControls.activeViewMode === "visual" && (
-          <DocumentProperties
-            addPropertyRequestId={addPropertyRequestId}
-            documentId={activeFile.id}
-            editorRef={editorRef}
-            language={language}
-            markdown={text}
-            onChange={onTextChange}
-            onOpenSource={onOpenSource}
-            onPropertyAddRequestHandled={onPropertyAddRequestHandled}
-          />
+          <Suspense fallback={null}>
+            <DocumentProperties
+              addPropertyRequestId={addPropertyRequestId}
+              documentId={activeFile.id}
+              editorRef={editorRef}
+              language={language}
+              markdown={text}
+              onChange={onTextChange}
+              onOpenSource={onOpenSource}
+              onPropertyAddRequestHandled={onPropertyAddRequestHandled}
+              workspaceMarkdownDocuments={workspaceMarkdownDocuments}
+            />
+          </Suspense>
         )}
         <MarkdownEditor
           ref={editorRef}
