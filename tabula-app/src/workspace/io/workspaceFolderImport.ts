@@ -22,8 +22,6 @@ import {
   encodeBinaryWorkspaceSupportFile,
   isMarkdownWorkspacePath,
 } from "./workspaceSupportFile";
-import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
-import type { WorkspaceImportProfile } from "./workspaceImportProfile";
 
 export type WorkspaceFolderImportDefaults = {
   viewMode: FileViewMode;
@@ -39,7 +37,6 @@ type FolderImportEntry = {
 
 export type WorkspaceFolderImportDraft = {
   workspace: WorkspaceState;
-  profile: WorkspaceImportProfile;
 };
 
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -177,29 +174,7 @@ export const parseWorkspaceFolderImport = async (
     folders,
     openFileIds: [],
   });
-  const importedPaths = entries.map(({ segments }) => segments.join("/"));
-  const supportFiles = entries.flatMap(({ segments }, index) => {
-    const path = segments.join("/");
-    const file = files[index];
-    return file && !isMarkdownWorkspacePath(path)
-      ? [{ path, text: file.text }]
-      : [];
-  });
-  const { detectWorkspaceImportProfile } = await import(
-    "./workspaceImportProfile"
-  );
-  return {
-    workspace,
-    profile: detectWorkspaceImportProfile({
-      documents: getWorkspaceKnowledgeDocuments(
-        workspace.files,
-        workspace.folders,
-      ),
-      supportFiles,
-      sourcePaths: normalizedEntries.map(({ segments }) => segments.join("/")),
-      importedPaths,
-    }),
-  };
+  return { workspace };
 };
 
 export const parseWorkspaceFolderFiles = async (

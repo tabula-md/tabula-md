@@ -8,6 +8,7 @@ export async function run(ctx) {
     expect,
     waitForActiveTab,
     waitForEditorReady,
+    waitForLeftPanel,
     waitForPanelTab,
     withPage,
   } = ctx;
@@ -45,17 +46,25 @@ export async function run(ctx) {
       });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Import folder copy" }).waitFor();
-    await page.getByRole("button", { name: "Import copy", exact: true }).click();
+    await page.getByRole("dialog", { name: "Replace workspace?" }).waitFor();
+    await page.getByRole("button", { name: "Import folder", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
 
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForPanelTab(page, "Files");
-    await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
+    if ((await page.locator('.left-panel[aria-label="Files"]').count()) === 0) {
+      await page.locator(".top-left-zone").getByRole("button", {
+        name: "Files",
+        exact: true,
+      }).click();
+    }
+    await waitForLeftPanel(page, "Files");
+    await page.locator('.left-panel[aria-label="Files"]').getByRole("button", {
+      name: "Open Start.md",
+      exact: true,
+    }).click();
     await waitForActiveTab(page, { exact: "Start.md" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
+    await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     expect(

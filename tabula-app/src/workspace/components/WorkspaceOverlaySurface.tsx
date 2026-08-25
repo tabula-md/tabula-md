@@ -7,7 +7,6 @@ import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 import type { WorkspaceInfoDialogKind } from "./WorkspaceInfoDialog";
 import type { ShortcutPlatform } from "../keyboardShortcuts";
-import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
 import type { LiveFolderConflictReview } from "../io/useWorkspaceFileIoController";
 
@@ -24,11 +23,6 @@ const WorkspaceInfoDialog = lazy(() =>
 const JsonShareImportOverlay = lazy(() =>
   import("./JsonShareImportOverlay").then((module) => ({
     default: module.JsonShareImportOverlay,
-  }))
-);
-const WorkspaceExportReviewDialog = lazy(() =>
-  import("./WorkspaceExportReviewDialog").then((module) => ({
-    default: module.WorkspaceExportReviewDialog,
   }))
 );
 const LiveFolderConflictDialog = lazy(() =>
@@ -48,7 +42,6 @@ type JsonShareImportState =
 export type WorkspaceOverlaySurfaceProps = {
   infoDialog: WorkspaceInfoDialogKind | null;
   workspaceFolderImport: WorkspaceFolderImportDraft | null;
-  workspaceExportReview: WorkspaceExportReview | null;
   jsonShareImport: JsonShareImportState | null;
   liveFolderConflict: LiveFolderConflictReview | null;
   language: WorkspaceLanguage;
@@ -74,7 +67,6 @@ export type WorkspaceOverlaySurfaceProps = {
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
-  onCloseWorkspaceExportReview: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
@@ -83,13 +75,11 @@ export type WorkspaceOverlaySurfaceProps = {
   onKeepTabulaLiveFolderVersion: () => void;
   onMergeLiveFolderConflictManually: () => void;
   onUseExternalLiveFolderVersion: () => void;
-  onConfirmWorkspaceExport: () => void;
 };
 
 export function WorkspaceOverlaySurface({
   infoDialog,
   workspaceFolderImport,
-  workspaceExportReview,
   jsonShareImport,
   liveFolderConflict,
   language,
@@ -99,7 +89,6 @@ export function WorkspaceOverlaySurface({
   onDismissToast,
   onCloseInfoDialog,
   onCloseWorkspaceFolderImport,
-  onCloseWorkspaceExportReview,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
@@ -108,7 +97,6 @@ export function WorkspaceOverlaySurface({
   onKeepTabulaLiveFolderVersion,
   onMergeLiveFolderConflictManually,
   onUseExternalLiveFolderVersion,
-  onConfirmWorkspaceExport,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -129,20 +117,8 @@ export function WorkspaceOverlaySurface({
         <Suspense fallback={null}>
           <WorkspaceFolderImportDialog
             language={language}
-            workspace={workspaceFolderImport.workspace}
-            profile={workspaceFolderImport.profile}
             onCancel={onCloseWorkspaceFolderImport}
             onReplace={onReplaceWorkspaceWithFolder}
-          />
-        </Suspense>
-      )}
-      {workspaceExportReview && (
-        <Suspense fallback={null}>
-          <WorkspaceExportReviewDialog
-            language={language}
-            review={workspaceExportReview}
-            onCancel={onCloseWorkspaceExportReview}
-            onExport={onConfirmWorkspaceExport}
           />
         </Suspense>
       )}

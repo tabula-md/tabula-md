@@ -154,13 +154,6 @@ describe("workspace folder import", () => {
     const { workspace } = draft;
 
     expect(workspace.files).toHaveLength(5);
-    expect(draft.profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
-      conventions: ["openwiki"],
-      preservedSupportFileCount: 2,
-      ignoredFileCount: 0,
-    });
     expect(workspace.files.map((file) => file.title)).toEqual(
       expect.arrayContaining([
         ".last-update.json",
