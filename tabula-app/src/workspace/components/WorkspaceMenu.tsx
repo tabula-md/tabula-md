@@ -30,7 +30,10 @@ import {
   getWorkspaceMenuCopy,
   WORKSPACE_LANGUAGE_OPTIONS,
 } from "../workspaceLocale";
-import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
+import {
+  getOrderedWorkspaceContextItems,
+  type WorkspaceContextSummaryViewModel,
+} from "../workspaceContextSummary";
 
 type WorkspaceMenuProps = {
   isOpen: boolean;
@@ -99,6 +102,20 @@ type MenuLinkProps = {
   ariaLabel?: string;
 };
 
+type MenuSectionProps = {
+  label: string;
+  children: ReactNode;
+};
+
+function MenuSection({ label, children }: MenuSectionProps) {
+  return (
+    <section className="workspace-menu-section" aria-label={label}>
+      <h2>{label}</h2>
+      {children}
+    </section>
+  );
+}
+
 function MenuLink({ children, href, icon, ariaLabel }: MenuLinkProps) {
   return (
     <a
@@ -159,7 +176,13 @@ export function WorkspaceMenu({
   }
 
   const copy = getWorkspaceMenuCopy(language);
-  const primaryContext = contextSummary.primary;
+  const contextItems = getOrderedWorkspaceContextItems(contextSummary);
+  const hasFolderActions = Boolean(
+    onOpenLiveWorkspace ||
+    onSaveLiveWorkspace ||
+    onToggleLiveFolderAutoSave ||
+    onDisconnectLiveWorkspace,
+  );
 
   const renderSegment = <Value extends string>(
     currentValue: Value,
@@ -189,74 +212,95 @@ export function WorkspaceMenu({
       role="dialog"
       aria-label={copy.aria.workspaceMenu}
     >
-      <div
-        className={`workspace-menu-context${primaryContext.attention ? " attention" : ""}`}
-      >
-        {primaryContext.kind === "folder" ? (
-          <FolderOpen size={16} />
-        ) : primaryContext.kind === "collaboration" ? (
-          <Users size={16} />
-        ) : (
-          <HardDrive size={16} />
-        )}
-        <span>
-          <strong>{primaryContext.title}</strong>
-          <small>{primaryContext.description}</small>
-        </span>
+      <div className="workspace-menu-contexts">
+        {contextItems.map((contextItem) => (
+          <div
+            className={`workspace-menu-context${contextItem.attention ? " attention" : ""}`}
+            key={contextItem.kind}
+          >
+            {contextItem.kind === "folder" ? (
+              <FolderOpen size={16} />
+            ) : contextItem.kind === "collaboration" ? (
+              <Users size={16} />
+            ) : (
+              <HardDrive size={16} />
+            )}
+            <span>
+              <strong>{contextItem.title}</strong>
+              <small>{contextItem.description}</small>
+            </span>
+          </div>
+        ))}
       </div>
       <div className="workspace-menu-divider" role="separator" />
       <nav className="workspace-menu-list" aria-label={copy.aria.workspaceActions}>
-        <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
-          {copy.actions.newFile}
-        </MenuRow>
-        <MenuRow icon={<FileInput size={16} />} onClick={onImportFile}>
-          {copy.actions.importFile}
-        </MenuRow>
-        {onImportWorkspace && (
-          <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
-            {copy.actions.importWorkspace}
+        <MenuSection label={copy.sections.documents}>
+          <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
+            {copy.actions.newFile}
           </MenuRow>
-        )}
-        {onOpenLiveWorkspace && (
-          <MenuRow icon={<FolderSync size={16} />} onClick={onOpenLiveWorkspace}>
-            {copy.actions.openLiveWorkspace}
+          <MenuRow icon={<FileInput size={16} />} onClick={onImportFile}>
+            {copy.actions.importFile}
           </MenuRow>
-        )}
-        {onSaveLiveWorkspace && (
-          <MenuRow icon={<Save size={16} />} onClick={onSaveLiveWorkspace}>
-            {copy.actions.saveLiveWorkspace}
-          </MenuRow>
-        )}
-        {onToggleLiveFolderAutoSave && (
           <MenuRow
-            icon={<FolderSync size={16} />}
-            onClick={onToggleLiveFolderAutoSave}
-            trailing={liveFolderAutoSave ? "On" : "Off"}
-            pressed={liveFolderAutoSave}
+            icon={<FileOutput size={16} />}
+            disabled={!canExportFile}
+            onClick={onExportFile}
           >
-            {copy.actions.autoSaveLiveWorkspace}
+            {copy.actions.exportFile}
           </MenuRow>
-        )}
-        {onDisconnectLiveWorkspace && (
-          <MenuRow icon={<Unplug size={16} />} onClick={onDisconnectLiveWorkspace}>
-            {copy.actions.disconnectLiveWorkspace}
+        </MenuSection>
+        <MenuSection label={copy.sections.workspace}>
+          {onImportWorkspace && (
+            <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
+              {copy.actions.importWorkspace}
+            </MenuRow>
+          )}
+          <MenuRow
+            icon={<FolderArchive size={16} />}
+            disabled={!canExportWorkspace}
+            onClick={onExportWorkspace}
+          >
+            {copy.actions.exportWorkspace}
           </MenuRow>
+        </MenuSection>
+        {hasFolderActions && (
+          <MenuSection label={copy.sections.localFolder}>
+            {onOpenLiveWorkspace && (
+              <MenuRow
+                icon={<FolderSync size={16} />}
+                onClick={onOpenLiveWorkspace}
+              >
+                {copy.actions.openLiveWorkspace}
+              </MenuRow>
+            )}
+            {onSaveLiveWorkspace && (
+              <MenuRow
+                icon={<Save size={16} />}
+                onClick={onSaveLiveWorkspace}
+              >
+                {copy.actions.saveLiveWorkspace}
+              </MenuRow>
+            )}
+            {onToggleLiveFolderAutoSave && (
+              <MenuRow
+                icon={<FolderSync size={16} />}
+                onClick={onToggleLiveFolderAutoSave}
+                trailing={liveFolderAutoSave ? "On" : "Off"}
+                pressed={liveFolderAutoSave}
+              >
+                {copy.actions.autoSaveLiveWorkspace}
+              </MenuRow>
+            )}
+            {onDisconnectLiveWorkspace && (
+              <MenuRow
+                icon={<Unplug size={16} />}
+                onClick={onDisconnectLiveWorkspace}
+              >
+                {copy.actions.disconnectLiveWorkspace}
+              </MenuRow>
+            )}
+          </MenuSection>
         )}
-        <div className="workspace-menu-divider" role="separator" />
-        <MenuRow
-          icon={<FileOutput size={16} />}
-          disabled={!canExportFile}
-          onClick={onExportFile}
-        >
-          {copy.actions.exportFile}
-        </MenuRow>
-        <MenuRow
-          icon={<FolderArchive size={16} />}
-          disabled={!canExportWorkspace}
-          onClick={onExportWorkspace}
-        >
-          {copy.actions.exportWorkspace}
-        </MenuRow>
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow

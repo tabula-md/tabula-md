@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getOrderedWorkspaceContextItems,
   getWorkspaceContextSummary,
   type WorkspaceContextState,
 } from "./workspaceContextSummary";
@@ -76,6 +77,11 @@ describe("workspace context summary", () => {
       title: "Handbook",
       description: "Saving to this folder is paused.",
     });
+    expect(getOrderedWorkspaceContextItems(summary).map((item) => item.kind)).toEqual([
+      "collaboration",
+      "browser",
+      "folder",
+    ]);
   });
 
   it("marks persistence, folder, and room failures independently", () => {

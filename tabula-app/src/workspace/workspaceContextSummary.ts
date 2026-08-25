@@ -42,6 +42,13 @@ export type WorkspaceContextSummaryViewModel = {
   items: WorkspaceContextSummaryItem[];
 };
 
+export const getOrderedWorkspaceContextItems = (
+  summary: WorkspaceContextSummaryViewModel,
+): WorkspaceContextSummaryItem[] => [
+  summary.primary,
+  ...summary.items.filter((item) => item.kind !== summary.primary.kind),
+];
+
 type ContextSummaryCopy = {
   browserTitle: string;
   browserOnlySaved: string;

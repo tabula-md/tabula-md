@@ -1,6 +1,11 @@
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 type WorkspaceMenuCopy = {
+  sections: {
+    documents: string;
+    workspace: string;
+    localFolder: string;
+  };
   actions: {
     newFile: string;
     importFile: string;
@@ -118,6 +123,11 @@ export const WORKSPACE_LANGUAGE_OPTIONS: Array<{
 
 const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   en: {
+    sections: {
+      documents: "Documents",
+      workspace: "Workspace",
+      localFolder: "Local folder",
+    },
     actions: {
       newFile: "New document",
       importFile: "Import document (.md)…",
@@ -227,6 +237,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   ko: {
+    sections: {
+      documents: "문서",
+      workspace: "워크스페이스",
+      localFolder: "로컬 폴더",
+    },
     actions: {
       newFile: "새 문서",
       importFile: "문서 가져오기 (.md)…",
@@ -336,6 +351,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   ja: {
+    sections: {
+      documents: "ドキュメント",
+      workspace: "ワークスペース",
+      localFolder: "ローカルフォルダー",
+    },
     actions: {
       newFile: "新規ドキュメント",
       importFile: "ドキュメントを読み込む (.md)…",
@@ -447,6 +467,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   zh: {
+    sections: {
+      documents: "文档",
+      workspace: "工作区",
+      localFolder: "本地文件夹",
+    },
     actions: {
       newFile: "新建文档",
       importFile: "导入文档 (.md)…",
@@ -555,6 +580,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   es: {
+    sections: {
+      documents: "Documentos",
+      workspace: "Espacio de trabajo",
+      localFolder: "Carpeta local",
+    },
     actions: {
       newFile: "Nuevo documento",
       importFile: "Importar documento (.md)…",
@@ -666,6 +696,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   fr: {
+    sections: {
+      documents: "Documents",
+      workspace: "Espace de travail",
+      localFolder: "Dossier local",
+    },
     actions: {
       newFile: "Nouveau document",
       importFile: "Importer un document (.md)…",
@@ -777,6 +812,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   de: {
+    sections: {
+      documents: "Dokumente",
+      workspace: "Workspace",
+      localFolder: "Lokaler Ordner",
+    },
     actions: {
       newFile: "Neues Dokument",
       importFile: "Dokument importieren (.md)…",

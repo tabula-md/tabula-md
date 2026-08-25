@@ -23,6 +23,29 @@
   min-width: 0;
 }
 
+.workspace-menu-contexts,
+.workspace-menu-section {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-menu-context + .workspace-menu-context {
+  border-top: 1px solid var(--line-subtle);
+}
+
+.workspace-menu-section + .workspace-menu-section {
+  margin-top: var(--space-2);
+}
+
+.workspace-menu-section > h2 {
+  margin: 0;
+  padding: var(--space-2) var(--space-2) 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-regular);
+  line-height: 1.2;
+}
+
 .workspace-menu-context {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
