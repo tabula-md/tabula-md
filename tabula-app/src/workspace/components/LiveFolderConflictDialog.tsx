@@ -34,20 +34,20 @@ export function LiveFolderConflictDialog({
   const canMerge = review.resolution.local.content.kind === "text" &&
     (!external || external.content.kind === "text");
   return (
-    <ModalSurface ariaLabelledBy="live-folder-conflict-title" className="workspace-export-review-modal" onClose={() => undefined}>
+    <ModalSurface ariaLabelledBy="live-folder-conflict-title" className="live-folder-conflict-modal" onClose={() => undefined}>
       <header className="share-modal-header compact">
         <h2 id="live-folder-conflict-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </header>
-      <div className="workspace-export-review-list">
-        <section className="workspace-export-review-row attention">
+      <div className="live-folder-conflict-list">
+        <section className="live-folder-conflict-row attention">
           <span><strong>{copy.tabula}</strong><small>{review.resolution.local.path}</small><pre>{getText(review.resolution.local.content)}</pre></span>
         </section>
-        <section className="workspace-export-review-row notice">
+        <section className="live-folder-conflict-row notice">
           <span><strong>{copy.external}</strong><small>{external?.path ?? copy.deleted}</small><pre>{external ? getText(external.content) : copy.deleted}</pre></span>
         </section>
       </div>
-      <div className="share-modal-actions workspace-export-review-actions">
+      <div className="share-modal-actions live-folder-conflict-actions">
         <button className="share-modal-secondary" type="button" onClick={onKeepTabula}>{copy.keepTabula}</button>
         <button className="share-modal-secondary" type="button" disabled={!canMerge} onClick={onMergeManually}>{copy.merge}</button>
         <button className="share-modal-primary" data-modal-initial-focus type="button" onClick={onUseExternal}>{copy.useExternal}</button>

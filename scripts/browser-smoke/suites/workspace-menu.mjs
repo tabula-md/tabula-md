@@ -296,25 +296,17 @@ export async function run(ctx) {
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Import folder copy" }).waitFor();
-    const detectedWorkspace = page.getByRole("region", {
-      name: "Detected workspace",
-    });
+    const replaceDialog = page.getByRole("dialog", { name: "Replace workspace?" });
+    await replaceDialog.waitFor();
     expect(
-      await detectedWorkspace.getByText("Plain Markdown", {
-        exact: true,
-      }).isVisible() &&
-        await detectedWorkspace.getByText(
-          "1 support file preserved. 0 unsupported files skipped",
-          { exact: true },
-        ).isVisible(),
-      "Folder import should explain a plain Markdown workspace and preserved support files before replacing local state.",
+      await replaceDialog.getByText(
+        "This replaces the current documents and comments.",
+        { exact: true },
+      ).isVisible() &&
+        (await replaceDialog.getByText("OKF", { exact: false }).count()) === 0,
+      "Folder import should confirm replacement without adding knowledge-format review.",
     );
-    expect(
-      (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
-      "Opening a workspace should preview its logical document paths before replacing local state.",
-    );
-    await page.getByRole("button", { name: "Import copy", exact: true }).click();
+    await replaceDialog.getByRole("button", { name: "Import folder", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".tab-item").count()) === 0,

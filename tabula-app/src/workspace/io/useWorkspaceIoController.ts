@@ -33,7 +33,6 @@ type UseWorkspaceIoControllerOptions = {
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
-  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
@@ -68,7 +67,6 @@ export function useWorkspaceIoController({
   openFileIds,
   onBeforeWorkspaceBoundary,
   preferences,
-  knowledgeBaseline,
   replaceCommentsByFileId,
   replaceKnowledgeBaseline,
   replaceWorkspace,
@@ -90,7 +88,6 @@ export function useWorkspaceIoController({
     openFileIds,
     onBeforeWorkspaceBoundary,
     preferences,
-    knowledgeBaseline,
     replaceCommentsByFileId,
     replaceKnowledgeBaseline,
     replaceWorkspace,

@@ -40,7 +40,6 @@ import {
   type WorkspaceSourceKind,
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
-import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
 import {
   createArtifactSnapshotFromWorkspace,
   createWorkspaceDraftFromArtifactSnapshot,
@@ -92,7 +91,6 @@ type UseWorkspaceFileIoControllerArgs = {
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: WorkspaceState["commentsByFileId"]) => void;
-  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
   replaceWorkspace: (
     workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
@@ -187,7 +185,6 @@ export function useWorkspaceFileIoController({
   onBeforeWorkspaceBoundary,
   preferences,
   replaceCommentsByFileId,
-  knowledgeBaseline,
   replaceKnowledgeBaseline,
   replaceWorkspace,
   showToast,
@@ -196,10 +193,6 @@ export function useWorkspaceFileIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const [workspaceFolderImport, setWorkspaceFolderImport] =
     useState<WorkspaceFolderImportDraft | null>(null);
-  const [pendingWorkspaceExport, setPendingWorkspaceExport] = useState<{
-    review: WorkspaceExportReview;
-    snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
-  } | null>(null);
   const pendingLiveFolderRef = useRef<{
     adapter: WorkspaceSourceAdapter;
   } | null>(null);
@@ -273,26 +266,7 @@ export function useWorkspaceFileIoController({
       onBeforeWorkspaceBoundary,
       openFileIds,
     });
-    const { getWorkspaceExportReview } = await import(
-      "./workspaceExportReviewModel"
-    );
-    const review = getWorkspaceExportReview(
-      workspaceSnapshot.files,
-      workspaceSnapshot.folders,
-      knowledgeBaseline,
-    );
-    if (!review) {
-      void exportWorkspaceSnapshot(workspaceSnapshot);
-      return;
-    }
-    setPendingWorkspaceExport({ review, snapshot: workspaceSnapshot });
-  };
-  const closeWorkspaceExportReview = () => setPendingWorkspaceExport(null);
-  const confirmWorkspaceArchiveExport = () => {
-    if (!pendingWorkspaceExport) return;
-    const { snapshot } = pendingWorkspaceExport;
-    setPendingWorkspaceExport(null);
-    void exportWorkspaceSnapshot(snapshot);
+    void exportWorkspaceSnapshot(workspaceSnapshot);
   };
 
   const importFile = async (file: File) => {
@@ -700,13 +674,10 @@ export function useWorkspaceFileIoController({
     workspaceSourceKind,
     liveFolderAutoSave,
     liveFolderConflict,
-    workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
     disconnectLiveWorkspaceFolder,
-    closeWorkspaceExportReview,
-    confirmWorkspaceArchiveExport,
     handleImportInputChange,
     handleWorkspaceImportInputChange,
     openLiveWorkspaceFolder,
