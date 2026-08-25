@@ -13,6 +13,7 @@ export type FolderBindingStatus =
   | "saving"
   | "conflict"
   | "permission-required"
+  | "error"
   | "suspended";
 
 export type WorkspaceContextState = {
@@ -64,6 +65,7 @@ type ContextSummaryCopy = {
   folderSaving: string;
   folderConflict: string;
   folderPermissionRequired: string;
+  folderError: string;
   folderSuspended: string;
   roomTitle: string;
   roomConnecting: string;
@@ -87,6 +89,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "Saving changes to this folder…",
     folderConflict: "Saving is paused until the folder conflict is resolved.",
     folderPermissionRequired: "Folder permission is required before saving.",
+    folderError: "Couldn’t save to this folder. Your changes remain in this browser.",
     folderSuspended: "Saving to this folder is paused.",
     roomTitle: "Live collaboration",
     roomConnecting: "Connecting this workspace to the live room…",
@@ -108,6 +111,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "폴더에 변경 사항을 저장하는 중입니다…",
     folderConflict: "폴더 충돌을 해결할 때까지 저장이 중지됩니다.",
     folderPermissionRequired: "저장하려면 폴더 권한이 필요합니다.",
+    folderError: "폴더에 저장하지 못했습니다. 변경 사항은 이 브라우저에 남아 있습니다.",
     folderSuspended: "이 폴더에 저장하는 작업이 일시 중지됩니다.",
     roomTitle: "실시간 협업",
     roomConnecting: "워크스페이스를 실시간 룸에 연결하는 중입니다…",
@@ -129,6 +133,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "フォルダーに変更を保存中です…",
     folderConflict: "フォルダーの競合が解決されるまで保存は停止します。",
     folderPermissionRequired: "保存するにはフォルダーの権限が必要です。",
+    folderError: "フォルダーに保存できませんでした。変更はこのブラウザーに残っています。",
     folderSuspended: "このフォルダーへの保存は一時停止中です。",
     roomTitle: "ライブ共同編集",
     roomConnecting: "ワークスペースをライブルームに接続しています…",
@@ -150,6 +155,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "正在将更改保存到文件夹…",
     folderConflict: "解决文件夹冲突前，保存已暂停。",
     folderPermissionRequired: "保存前需要文件夹权限。",
+    folderError: "无法保存到此文件夹。更改仍保留在此浏览器中。",
     folderSuspended: "已暂停保存到此文件夹。",
     roomTitle: "实时协作",
     roomConnecting: "正在将此工作区连接到实时房间…",
@@ -171,6 +177,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "Guardando cambios en esta carpeta…",
     folderConflict: "El guardado está pausado hasta resolver el conflicto de la carpeta.",
     folderPermissionRequired: "Se necesita permiso de la carpeta antes de guardar.",
+    folderError: "No se pudo guardar en esta carpeta. Los cambios permanecen en este navegador.",
     folderSuspended: "El guardado en esta carpeta está pausado.",
     roomTitle: "Colaboración en vivo",
     roomConnecting: "Conectando este espacio a la sala en vivo…",
@@ -192,6 +199,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "Enregistrement des modifications dans ce dossier…",
     folderConflict: "L’enregistrement est suspendu jusqu’à la résolution du conflit de dossier.",
     folderPermissionRequired: "L’autorisation du dossier est requise avant l’enregistrement.",
+    folderError: "Impossible d’enregistrer dans ce dossier. Les modifications restent dans ce navigateur.",
     folderSuspended: "L’enregistrement dans ce dossier est suspendu.",
     roomTitle: "Collaboration en direct",
     roomConnecting: "Connexion de cet espace à la salle en direct…",
@@ -213,6 +221,7 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     folderSaving: "Änderungen werden in diesem Ordner gespeichert…",
     folderConflict: "Das Speichern ist pausiert, bis der Ordnerkonflikt gelöst ist.",
     folderPermissionRequired: "Vor dem Speichern ist eine Ordnerberechtigung erforderlich.",
+    folderError: "Speichern in diesem Ordner fehlgeschlagen. Änderungen bleiben in diesem Browser erhalten.",
     folderSuspended: "Das Speichern in diesem Ordner ist pausiert.",
     roomTitle: "Live-Zusammenarbeit",
     roomConnecting: "Dieser Workspace wird mit dem Live-Raum verbunden…",
@@ -243,6 +252,7 @@ const getFolderDescription = (
   if (folder.status === "permission-required") {
     return copy.folderPermissionRequired;
   }
+  if (folder.status === "error") return copy.folderError;
   if (folder.status === "suspended") return copy.folderSuspended;
   return folder.writeMode === "automatic"
     ? copy.folderAutomatic
@@ -291,7 +301,8 @@ export const getWorkspaceContextSummary = (
         description: getFolderDescription(copy, context.folderBinding),
         state:
           context.folderBinding.status === "conflict" ||
-          context.folderBinding.status === "permission-required"
+          context.folderBinding.status === "permission-required" ||
+          context.folderBinding.status === "error"
             ? "attention"
             : context.folderBinding.status === "saving"
               ? "working"
@@ -302,7 +313,8 @@ export const getWorkspaceContextSummary = (
                   : "steady",
         attention:
           context.folderBinding.status === "conflict" ||
-          context.folderBinding.status === "permission-required",
+          context.folderBinding.status === "permission-required" ||
+          context.folderBinding.status === "error",
       }
     : null;
   const collaboration: WorkspaceContextSummaryItem | null = context.collaboration

@@ -55,6 +55,19 @@ export type LiveFolderConflictReview = {
   localSnapshot: WorkspaceSnapshot;
 };
 
+export type LiveFolderSaveStatus =
+  | "ready"
+  | "dirty"
+  | "saving"
+  | "conflict"
+  | "permission-required"
+  | "error";
+
+type ActiveLiveFolder = {
+  adapter: WorkspaceSourceAdapter;
+  baseline: WorkspaceSnapshot;
+};
+
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
   downloadBlobFile(fileName, blob);
@@ -196,15 +209,14 @@ export function useWorkspaceFileIoController({
   const pendingLiveFolderRef = useRef<{
     adapter: WorkspaceSourceAdapter;
   } | null>(null);
-  const activeLiveFolderRef = useRef<{
-    adapter: WorkspaceSourceAdapter;
-    baseline: WorkspaceSnapshot;
-  } | null>(null);
+  const activeLiveFolderRef = useRef<ActiveLiveFolder | null>(null);
   const liveFolderWriteQueueRef = useRef(Promise.resolve());
   const [workspaceSourceKind, setWorkspaceSourceKind] =
     useState<WorkspaceSourceKind>("browser-copy");
   const [workspaceSourceLabel, setWorkspaceSourceLabel] = useState<string>();
   const [liveFolderAutoSave, setLiveFolderAutoSave] = useState(false);
+  const [liveFolderSaveStatus, setLiveFolderSaveStatus] =
+    useState<LiveFolderSaveStatus>("ready");
   const [liveFolderConflict, setLiveFolderConflict] =
     useState<LiveFolderConflictReview | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
@@ -329,6 +341,7 @@ export function useWorkspaceFileIoController({
     pendingLiveFolderRef.current = null;
     activeLiveFolderRef.current = null;
     setLiveFolderAutoSave(false);
+    setLiveFolderSaveStatus("ready");
     setLiveFolderConflict(null);
     setWorkspaceSourceKind("browser-copy");
     setWorkspaceSourceLabel(undefined);
@@ -411,17 +424,73 @@ export function useWorkspaceFileIoController({
         };
         setWorkspaceSourceKind("live-folder");
         setWorkspaceSourceLabel(pendingLiveFolder.adapter.source.label);
+        setLiveFolderSaveStatus("ready");
       });
     } else {
       activeLiveFolderRef.current = null;
       setWorkspaceSourceKind("browser-copy");
       setWorkspaceSourceLabel(undefined);
+      setLiveFolderSaveStatus("ready");
     }
     pendingLiveFolderRef.current = null;
     setWorkspaceFolderImport(null);
     onCloseChrome();
     syncUrlForLocalWorkspace("replace");
     queueAnimationFrameTask(() => editorRef.current?.focus());
+  };
+
+  const recoverExternalFolderChanges = async ({
+    active,
+    automatic,
+    externalSnapshot,
+    localSnapshot,
+  }: {
+    active: ActiveLiveFolder;
+    automatic: boolean;
+    externalSnapshot: WorkspaceSnapshot;
+    localSnapshot: WorkspaceSnapshot;
+  }) => {
+    const { planExternalChangeResolution } = await import("@tabula-md/tabula");
+    const {
+      applySafeExternalChanges,
+      getConflictReview,
+    } = await import("./workspaceLiveFolderConflict");
+    const resolutions = planExternalChangeResolution(
+      active.baseline,
+      localSnapshot,
+      externalSnapshot,
+    );
+    const conflict = getConflictReview(resolutions);
+    if (conflict) {
+      setLiveFolderConflict({
+        resolution: conflict,
+        externalSnapshot,
+        localSnapshot,
+      });
+      setLiveFolderSaveStatus("conflict");
+      setLiveFolderAutoSave(false);
+      showToast(
+        automatic
+          ? copy.liveFolderAutoSavePausedExternal
+          : copy.liveFolderWriteConflict,
+        "error",
+      );
+      return;
+    }
+
+    const recoveredLocal = applySafeExternalChanges(localSnapshot, resolutions);
+    active.baseline = applySafeExternalChanges(active.baseline, resolutions);
+    await applyArtifactSnapshotToWorkspace(recoveredLocal);
+    const remainingPlan = getLiveFolderWorkspaceWritePlan(
+      active.baseline,
+      recoveredLocal,
+    );
+    setLiveFolderSaveStatus(
+      remainingPlan.changes.length > 0 || remainingPlan.deletes.length > 0
+        ? "dirty"
+        : "ready",
+    );
+    showToast(copy.liveFolderExternalChangesLoaded);
   };
 
   const queueLiveWorkspaceFolderSave = ({ automatic = false } = {}) => {
@@ -439,6 +508,7 @@ export function useWorkspaceFileIoController({
       .then(async () => {
         const active = activeLiveFolderRef.current;
         if (!active) return;
+        setLiveFolderSaveStatus("saving");
         const local = await createArtifactSnapshotFromWorkspace(
           workspaceSnapshot.files,
           workspaceSnapshot.folders,
@@ -456,39 +526,22 @@ export function useWorkspaceFileIoController({
             ? "external-change"
             : null;
         if (autoSaveBlockReason === "external-change") {
-          const { planExternalChangeResolution } = await import("@tabula-md/tabula");
-          const resolutions = planExternalChangeResolution(
-            active.baseline,
-            local,
-            external!.snapshot,
-          );
-          const conflict = resolutions.find(
-            (resolution): resolution is Extract<
-              ExternalChangeResolution,
-              { type: "conflict-review" }
-            > => resolution.type === "conflict-review",
-          );
-          if (conflict) {
-            setLiveFolderConflict({
-              resolution: conflict,
-              externalSnapshot: external!.snapshot,
-              localSnapshot: local,
-            });
-          }
-          if (automatic) {
-            setLiveFolderAutoSave(false);
-            showToast(copy.liveFolderAutoSavePausedExternal, "error");
-          } else {
-            showToast(copy.liveFolderWriteConflict, "error");
-          }
+          await recoverExternalFolderChanges({
+            active,
+            automatic,
+            externalSnapshot: external!.snapshot,
+            localSnapshot: local,
+          });
           return;
         }
         if (plan.changes.length === 0 && plan.deletes.length === 0) {
+          setLiveFolderSaveStatus("ready");
           if (!automatic) showToast(copy.liveFolderNoChanges);
           return;
         }
         if (autoSaveBlockReason === "delete") {
           setLiveFolderAutoSave(false);
+          setLiveFolderSaveStatus("dirty");
           showToast(copy.liveFolderAutoSavePausedDelete);
           return;
         }
@@ -496,6 +549,7 @@ export function useWorkspaceFileIoController({
           plan.deletes.length > 0 &&
           !window.confirm(copy.confirmLiveFolderDelete)
         ) {
+          setLiveFolderSaveStatus("dirty");
           return;
         }
         const result = await active.adapter.writeChanges?.([
@@ -503,15 +557,33 @@ export function useWorkspaceFileIoController({
           ...plan.deletes,
         ]);
         if (!result?.ok) {
+          if (result?.reason === "conflict") {
+            const latest = await active.adapter.readSnapshot();
+            await recoverExternalFolderChanges({
+              active,
+              automatic,
+              externalSnapshot: latest,
+              localSnapshot: local,
+            });
+            return;
+          }
+          const permissionRequired = result?.reason === "permission";
+          setLiveFolderSaveStatus(permissionRequired ? "permission-required" : "error");
+          if (automatic) setLiveFolderAutoSave(false);
           showToast(
-            result?.reason === "permission"
+            permissionRequired
               ? copy.liveFolderPermissionLost
-              : copy.liveFolderWriteConflict,
+              : copy.liveFolderWriteFailed,
             "error",
+            {
+              actionLabel: copy.retryLiveFolderSave,
+              onAction: () => queueLiveWorkspaceFolderSave(),
+            },
           );
           return;
         }
-        active.baseline = result.snapshot ?? local;
+        active.baseline = local;
+        setLiveFolderSaveStatus("ready");
         if (!automatic) showToast(copy.liveFolderSaved);
       })
       .catch((error: unknown) => {
@@ -520,7 +592,12 @@ export function useWorkspaceFileIoController({
           operation: "write-live-folder",
           error,
         });
-        showToast(copy.liveFolderWriteFailed, "error");
+        setLiveFolderSaveStatus("error");
+        setLiveFolderAutoSave(false);
+        showToast(copy.liveFolderWriteFailed, "error", {
+          actionLabel: copy.retryLiveFolderSave,
+          onAction: () => queueLiveWorkspaceFolderSave(),
+        });
       });
   };
 
@@ -562,37 +639,56 @@ export function useWorkspaceFileIoController({
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active) return;
-    const { replaceSnapshotArtifact } = await import("./workspaceLiveFolderConflict");
-    const { local, external } = review.resolution;
-    const resolved = replaceSnapshotArtifact(
-      review.localSnapshot,
-      local.id,
-      external,
-    );
-    active.baseline = replaceSnapshotArtifact(
-      active.baseline,
-      local.id,
-      external,
-    );
+    const { resolveConflictSnapshots } = await import("./workspaceLiveFolderConflict");
+    const resolved = resolveConflictSnapshots({
+      baseline: active.baseline,
+      external: review.externalSnapshot,
+      local: review.localSnapshot,
+      resolution: review.resolution,
+      workspaceReplacement: review.resolution.external,
+    });
+    active.baseline = resolved.baseline;
     setLiveFolderConflict(null);
-    void applyArtifactSnapshotToWorkspace(resolved);
+    const plan = getLiveFolderWorkspaceWritePlan(resolved.baseline, resolved.local);
+    setLiveFolderSaveStatus(
+      plan.changes.length > 0 || plan.deletes.length > 0 ? "dirty" : "ready",
+    );
+    void applyArtifactSnapshotToWorkspace(resolved.local);
   };
 
   const keepTabulaLiveFolderVersion = async () => {
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active?.adapter.writeChanges) return;
-    const { getKeepTabulaChanges } = await import("./workspaceLiveFolderConflict");
+    const { getKeepTabulaChanges, resolveConflictSnapshots } =
+      await import("./workspaceLiveFolderConflict");
     const changes = getKeepTabulaChanges(review.resolution);
     liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
       .then(async () => {
         const result = await active.adapter.writeChanges?.(changes);
         if (!result?.ok) {
-          showToast(copy.liveFolderWriteFailed, "error");
+          const permissionRequired = result?.reason === "permission";
+          setLiveFolderSaveStatus(permissionRequired ? "permission-required" : "error");
+          showToast(
+            permissionRequired ? copy.liveFolderPermissionLost : copy.liveFolderWriteFailed,
+            "error",
+          );
           return;
         }
-        active.baseline = result.snapshot ?? review.localSnapshot;
+        const resolved = resolveConflictSnapshots({
+          baseline: active.baseline,
+          external: review.externalSnapshot,
+          local: review.localSnapshot,
+          resolution: review.resolution,
+          workspaceReplacement: review.resolution.local,
+        });
+        active.baseline = resolved.baseline;
         setLiveFolderConflict(null);
+        const plan = getLiveFolderWorkspaceWritePlan(resolved.baseline, resolved.local);
+        setLiveFolderSaveStatus(
+          plan.changes.length > 0 || plan.deletes.length > 0 ? "dirty" : "ready",
+        );
+        void applyArtifactSnapshotToWorkspace(resolved.local);
       });
   };
 
@@ -600,24 +696,48 @@ export function useWorkspaceFileIoController({
     const review = liveFolderConflict;
     const active = activeLiveFolderRef.current;
     if (!review || !active) return;
-    const { createManualMergeArtifact, replaceSnapshotArtifact } =
+    const { createManualMergeArtifact, resolveConflictSnapshots } =
       await import("./workspaceLiveFolderConflict");
-    const { local, external } = review.resolution;
     const merged = await createManualMergeArtifact(review.resolution);
     if (merged) {
-      active.baseline = replaceSnapshotArtifact(
-        active.baseline,
-        local.id,
-        external,
-      );
+      const resolved = resolveConflictSnapshots({
+        baseline: active.baseline,
+        external: review.externalSnapshot,
+        local: review.localSnapshot,
+        resolution: review.resolution,
+        workspaceReplacement: merged,
+        baselineReplacement: review.resolution.external,
+      });
+      active.baseline = resolved.baseline;
       setLiveFolderConflict(null);
-      void applyArtifactSnapshotToWorkspace(replaceSnapshotArtifact(
-        review.localSnapshot,
-        local.id,
-        merged,
-      ));
+      setLiveFolderSaveStatus("dirty");
+      void applyArtifactSnapshotToWorkspace(resolved.local);
     }
   };
+
+  useEffect(() => {
+    const active = activeLiveFolderRef.current;
+    if (isRoomSession || workspaceSourceKind !== "live-folder" || !active) return;
+    let cancelled = false;
+    void createArtifactSnapshotFromWorkspace(files, folders).then((local) => {
+      if (cancelled) return;
+      const plan = getLiveFolderWorkspaceWritePlan(active.baseline, local);
+      const dirty = plan.changes.length > 0 || plan.deletes.length > 0;
+      setLiveFolderSaveStatus((current) =>
+        current === "saving" ||
+        current === "conflict" ||
+        current === "permission-required" ||
+        current === "error"
+          ? current
+          : dirty
+            ? "dirty"
+            : "ready",
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [files, folders, isRoomSession, workspaceSourceKind]);
 
   useEffect(() => {
     if (
@@ -674,6 +794,7 @@ export function useWorkspaceFileIoController({
     workspaceSourceKind,
     workspaceSourceLabel,
     liveFolderAutoSave,
+    liveFolderSaveStatus,
     liveFolderConflict,
     copyFile,
     downloadCurrentFile,

@@ -56,4 +56,23 @@ describe("workspace status indicator", () => {
       tone: "working",
     });
   });
+
+  it("keeps a failed folder save visible after the toast disappears", () => {
+    const summary = getWorkspaceContextSummary("en", {
+      runtime: { kind: "local" },
+      browserPersistence: { state: "saved" },
+      folderBinding: {
+        label: "Handbook",
+        writeMode: "manual",
+        status: "error",
+      },
+      collaboration: null,
+    });
+
+    expect(getWorkspaceStatusIndicator(summary)).toMatchObject({
+      kind: "folder",
+      label: "Couldn’t save to this folder. Your changes remain in this browser.",
+      tone: "attention",
+    });
+  });
 });

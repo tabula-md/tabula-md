@@ -622,6 +622,7 @@ export function useWorkspaceRuntime() {
     isLiveFolderSupported,
     liveFolderAutoSave,
     liveFolderConflict,
+    liveFolderSaveStatus,
     keepTabulaLiveFolderVersion,
     mergeLiveFolderConflictManually,
     jsonShareImport,
@@ -844,9 +845,7 @@ export function useWorkspaceRuntime() {
             writeMode: liveFolderAutoSave ? "automatic" : "manual",
             status: activeRoom
               ? "suspended"
-              : liveFolderConflict
-                ? "conflict"
-                : "ready",
+              : liveFolderSaveStatus,
           }
         : null,
       collaboration: activeRoom ? { connectionStatus } : null,
