@@ -759,7 +759,7 @@ function wait(ms) {
 
 async function openFilesPanel(page) {
   if ((await page.locator(".left-panel").count()) === 0) {
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await page.locator(".left-panel").waitFor({ state: "visible" });
   }
   const filesTab = page.locator(".left-panel").getByRole("button", { name: "Files", exact: true });

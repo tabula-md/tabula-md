@@ -38,22 +38,14 @@
   margin-bottom: var(--right-section-gap);
 }
 
-.left-panel-menu {
-  display: grid;
-  place-items: center;
-  width: var(--right-control-size);
-  height: var(--right-control-size);
+.left-panel-header .workspace-identity-trigger {
+  flex: 1 1 auto;
+  max-width: none;
   margin-right: 6px;
-  border-radius: var(--right-row-radius);
-  color: var(--text-soft);
-  background: transparent;
 }
 
-.left-panel-menu:hover,
-.left-panel-menu:focus-visible,
-.left-panel-menu.active {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+.left-panel-header .workspace-identity-context {
+  display: none;
 }
 
 .left-panel-header strong {

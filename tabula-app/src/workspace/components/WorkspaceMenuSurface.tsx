@@ -32,8 +32,8 @@ export type WorkspaceMenuSurfaceProps = {
   onToggleLiveFolderAutoSave?: () => void;
   contextSummary: WorkspaceContextSummaryViewModel;
   collaborationActive?: boolean;
-  onOpenCollaboration?: () => void;
   onRetryCollaboration?: () => void;
+  workspaceName: string;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -64,8 +64,8 @@ export function WorkspaceMenuSurface({
   onToggleLiveFolderAutoSave,
   contextSummary,
   collaborationActive,
-  onOpenCollaboration,
   onRetryCollaboration,
+  workspaceName,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -121,14 +121,11 @@ export function WorkspaceMenuSurface({
           : undefined}
         contextSummary={contextSummary}
         collaborationActive={collaborationActive}
-        onOpenCollaboration={onOpenCollaboration ? () => {
-          onCloseChrome();
-          onOpenCollaboration();
-        } : undefined}
         onRetryCollaboration={onRetryCollaboration ? () => {
           onCloseChrome();
           onRetryCollaboration();
         } : undefined}
+        workspaceName={workspaceName}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
         onExportFile={() => {

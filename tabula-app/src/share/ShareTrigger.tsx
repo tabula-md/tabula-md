@@ -1,4 +1,4 @@
-import { Share2 } from "lucide-react";
+import { Radio, Share2 } from "lucide-react";
 import { useEffect } from "react";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
@@ -63,6 +63,10 @@ export function ShareTrigger({
   const statusLabel = liveStatus
     ? `${copy.trigger}: ${copy.live.statusLabel(liveStatus)}`
     : copy.trigger;
+  const TriggerIcon = isLive ? Radio : Share2;
+  const visibleLabel = isLive && liveStatus
+    ? copy.live.statusLabel(liveStatus)
+    : copy.trigger;
 
   return (
     <div className="share-wrap">
@@ -77,8 +81,8 @@ export function ShareTrigger({
         onPointerEnter={prepareCollaboration}
         onClick={onToggleShare}
       >
-        <Share2 size={16} />
-        <span className="share-label-visible">{copy.trigger}</span>
+        <TriggerIcon size={16} />
+        <span className="share-label-visible">{visibleLabel}</span>
       </button>
     </div>
   );

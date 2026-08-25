@@ -1,5 +1,5 @@
 import { type RefObject } from "react";
-import { Files, Menu, PanelLeft } from "lucide-react";
+import { Files, PanelLeft } from "lucide-react";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -8,6 +8,8 @@ import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelFiles } from "../right-panel/RightPanelFiles";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
+import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
+import { WorkspaceIdentityTrigger } from "../workspace/components/WorkspaceIdentityTrigger";
 
 export type LeftPanelProps = {
   isOpen: boolean;
@@ -22,6 +24,8 @@ export type LeftPanelProps = {
   onViewChange: (view: LeftPanelView) => void;
   workspaceMenuOpen?: boolean;
   onToggleWorkspaceMenu?: () => void;
+  workspaceName: string;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -52,6 +56,8 @@ export function LeftPanel({
   onViewChange,
   workspaceMenuOpen,
   onToggleWorkspaceMenu,
+  workspaceName,
+  workspaceContextSummary,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -107,16 +113,13 @@ export function LeftPanel({
         >
           <PanelLeft size={16} />
         </button>
-        <button
-          className={`left-panel-menu ${workspaceMenuOpen ? "active" : ""}`}
-          type="button"
-          aria-label={workspaceMenuLabel}
-          data-tooltip={workspaceMenuLabel}
-          aria-expanded={workspaceMenuOpen}
-          onClick={onToggleWorkspaceMenu}
-        >
-          <Menu size={16} />
-        </button>
+        <WorkspaceIdentityTrigger
+          contextSummary={workspaceContextSummary}
+          isOpen={Boolean(workspaceMenuOpen)}
+          label={workspaceMenuLabel}
+          workspaceName={workspaceName}
+          onToggle={onToggleWorkspaceMenu ?? (() => undefined)}
+        />
         <nav className="left-panel-tabs" aria-label="Workspace sections">
             <button
               type="button"

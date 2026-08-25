@@ -118,7 +118,7 @@ export async function run(ctx) {
     expect((await page.getByLabel("Replace with").count()) === 0, "Toggle replace should collapse the replace input.");
 
     if ((await page.locator(".left-panel").count()) === 0) {
-      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
       await page.locator(".left-panel").waitFor({ state: "visible" });
     }
     const workspaceMenuTrigger = page.locator(".left-panel .left-panel-menu");

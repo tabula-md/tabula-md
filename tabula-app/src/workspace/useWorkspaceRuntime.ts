@@ -23,6 +23,7 @@ import {
 import {
   createStarterWorkspaceState,
   createWorkspaceFile,
+  getWorkspaceName,
   randomId,
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
@@ -426,7 +427,6 @@ export function useWorkspaceRuntime() {
     setLauncherOpen,
     closeFloatingChrome,
     openFilesPanel,
-    openWorkspaceMenu,
     toggleWorkspaceMenu,
     toggleLeftPanel,
     toggleRightPanel,
@@ -859,6 +859,7 @@ export function useWorkspaceRuntime() {
       } : null,
     },
   );
+  const workspaceName = getWorkspaceName(folders);
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
@@ -892,13 +893,11 @@ export function useWorkspaceRuntime() {
       : undefined,
     contextSummary: workspaceContextSummary,
     collaborationActive: Boolean(activeRoom),
-    onOpenCollaboration: activeRoom
-      ? () => setTopPopover("share")
-      : undefined,
     onRetryCollaboration:
       activeRoom && (connectionStatus === "disconnected" || connectionStatus === "failed")
         ? retryCollaborationConnection
         : undefined,
+    workspaceName,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -968,6 +967,8 @@ export function useWorkspaceRuntime() {
       setLeftPanelOpen,
       setLeftPanelView,
       text,
+      workspaceName,
+      workspaceContextSummary,
     });
   const resolveWorkspaceLink = useMemo(
     () => (
@@ -1091,6 +1092,8 @@ export function useWorkspaceRuntime() {
     rightPanelOpen,
     topPopover,
     workspaceMenuOpen,
+    workspaceName,
+    workspaceContextSummary,
     onAddFile: addRootFile,
     onChangeUserName: updateIdentityName,
     onCloseAllFiles: closeAllFiles,
@@ -1224,9 +1227,6 @@ export function useWorkspaceRuntime() {
     onOpenWorkspaceLink: openPreviewWorkspaceLink,
     onPropertyAddRequestHandled: handlePropertyAddRequest,
     onSetViewMode: setViewModeWithPendingCommit,
-    persistence: localWorkspacePersistence,
-    workspaceContextSummary,
-    onOpenWorkspaceMenu: openWorkspaceMenu,
     previewRef,
     room: roomController,
     surface: documentSurfaceController,

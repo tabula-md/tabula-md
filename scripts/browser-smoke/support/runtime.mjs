@@ -150,7 +150,11 @@ const waitForEditorReady = async (page, { mode } = {}) => {
 };
 
 const waitForSavedLocally = async (page) => {
-  await page.waitForFunction(() => document.querySelector(".status-save-state")?.getAttribute("aria-label") === "Saved locally");
+  await page.waitForFunction(() =>
+    Boolean(document.querySelector(
+      '.workspace-identity-trigger[data-workspace-context="browser"][data-workspace-state="steady"]',
+    )),
+  );
 };
 
 const waitForSelectionLayer = async (page, { minSegments = 1, popoverVisible } = {}) => {
@@ -278,7 +282,7 @@ const focusMarkdownEditor = async (page) => {
 const openProjectMenu = async (page) => {
   if ((await page.locator(".workspace-menu-popover").count()) === 0) {
     if ((await page.getByRole("button", { name: "Open Workspace menu", exact: true }).count()) === 0) {
-      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
       await waitForLeftPanel(page, "Files");
     }
     await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();

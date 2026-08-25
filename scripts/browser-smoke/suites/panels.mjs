@@ -35,7 +35,7 @@ export async function run(ctx) {
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
-      menuButtonCount: document.querySelectorAll(".left-panel-menu").length,
+      menuButtonCount: document.querySelectorAll(".workspace-identity-trigger").length,
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
       leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
@@ -156,12 +156,13 @@ export async function run(ctx) {
     expect(focusIndex("Import folder copy…") !== -1, "Keyboard order should include opening a folder.");
     expect(focusIndex("Export document (.md)") !== -1, "Keyboard order should include document export.");
     expect(focusIndex("Export workspace (.zip)") !== -1, "Keyboard order should include workspace export.");
+    expect(focusIndex("Connect local folder…") !== -1, "Keyboard order should include folder connection.");
     expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
-      focusIndex("New document") <
+        focusIndex("New document") <
         focusIndex("Import document (.md)…") &&
         focusIndex("Import document (.md)…") < focusIndex("Export document (.md)") &&
         focusIndex("Export document (.md)") < focusIndex("Import folder copy…") &&
@@ -382,7 +383,7 @@ export async function run(ctx) {
     );
 
     if ((await page.locator(".left-panel").count()) === 0) {
-      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     }
     await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
@@ -616,7 +617,7 @@ export async function run(ctx) {
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
     if ((await page.locator('.left-panel[aria-label="Files"]').count()) === 0) {
-      await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+      await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     }
     await waitForLeftPanel(page, "Files");
 
@@ -1383,7 +1384,7 @@ export async function run(ctx) {
         () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
       );
     }
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     const switcher = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1455,7 +1456,7 @@ export async function run(ctx) {
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await waitForLeftPanel(page, "Files");
     const openRightFileMenu = async (fileTitle) => {
       await page.getByRole("button", { name: `Open ${fileTitle}` }).hover();
@@ -2148,7 +2149,7 @@ export async function run(ctx) {
     await mobilePage.getByRole("navigation", { name: "Document controls" })
       .getByRole("button", { name: "Search", exact: true }).click();
     await mobilePage.locator(".document-search-row").waitFor({ state: "visible" });
-    await mobilePage.getByRole("button", { name: "Files", exact: true }).click();
+    await mobilePage.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await waitForLeftPanel(mobilePage, "Files");
     const mobilePanel = await mobilePage.evaluate(() => {
       const panel = document.querySelector(".left-panel");

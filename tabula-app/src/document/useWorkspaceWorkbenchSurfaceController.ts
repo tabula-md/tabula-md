@@ -7,10 +7,8 @@ import type { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime"
 import type { useDocumentSurfaceController } from "./useDocumentSurfaceController";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { useWorkspaceRoomController } from "../workspace/useWorkspaceRoomController";
-import type { useWorkspacePersistenceRuntime } from "../workspace/persistence/useWorkspacePersistenceRuntime";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
-import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
 import type { CenterPopover } from "../ui/uiTypes";
 import type { MarkdownPreviewProps } from "../preview/markdownPreviewTypes";
 
@@ -19,7 +17,6 @@ type ActiveFileEditor = ReturnType<typeof useWorkspaceActiveFileEditor>;
 type CommentActions = ReturnType<typeof useWorkspaceCommentActions>;
 type DocumentSurfaceController = ReturnType<typeof useDocumentSurfaceController>;
 type RoomController = ReturnType<typeof useWorkspaceRoomController>;
-type WorkspacePersistence = ReturnType<typeof useWorkspacePersistenceRuntime>;
 
 type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   addPropertyRequestId?: number;
@@ -35,7 +32,6 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
   onPropertyAddRequestHandled?: () => void;
-  persistence: Pick<WorkspacePersistence, "persistedRevision">;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   room: Pick<
     RoomController,
@@ -48,8 +44,6 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   surface: DocumentSurfaceController;
   toolbarLabel: string;
   workspaceMarkdownDocuments: readonly string[];
-  workspaceContextSummary: WorkspaceContextSummaryViewModel;
-  onOpenWorkspaceMenu: () => void;
   resolveWorkspaceDocument: NonNullable<MarkdownPreviewProps["resolveWorkspaceDocument"]>;
   resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
@@ -68,14 +62,11 @@ export function useWorkspaceWorkbenchSurfaceController({
   onOpenWorkspaceLink,
   onPropertyAddRequestHandled,
   onSetViewMode,
-  persistence,
   previewRef,
   room,
   surface,
   toolbarLabel,
   workspaceMarkdownDocuments,
-  workspaceContextSummary,
-  onOpenWorkspaceMenu,
   resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
@@ -141,7 +132,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       searchTarget: document.searchTarget,
       selectedCharacterCount: document.selectedCharacterCount,
       selectedLineCount: document.selectedLineCount,
-      saveRevision: persistence.persistedRevision,
       selectionActionPosition: document.selectionActionPosition,
       splitDividerDragging: document.splitDividerDragging,
       splitDividerMaxValue: document.splitDividerMaxValue,
@@ -152,7 +142,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       toolbarLabel,
       workspaceRef: document.workspaceRef,
       workspaceMarkdownDocuments,
-      workspaceContextSummary,
       onBookmarksChange: editor.updateActiveFileBookmarks,
       onEditorHistoryStateChange: editor.handleEditorHistoryStateChange,
       onEditorScroll: () => {
@@ -178,7 +167,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,
-      onOpenWorkspaceMenu,
       onPropertyAddRequestHandled,
       onOpenSelectionComment: comments.openSelectionComment,
       onPreviewKeyUp: document.syncPreviewSelection,

@@ -89,7 +89,7 @@ export async function run(ctx) {
 
     if ((await page.locator(".left-panel").count()) === 0) {
       await page.locator(".top-left-zone").getByRole("button", {
-        name: "Files",
+        name: "Toggle workspace panel",
         exact: true,
       }).click();
     }

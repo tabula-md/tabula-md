@@ -19,6 +19,7 @@ import {
   type WorkspaceFolder,
 } from "../workspaceStorage";
 import type { RoomExitLocalWorkspaceStrategy } from "../workspaceSessionTransition";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
 
@@ -52,6 +53,8 @@ export type WorkspaceTopChromeProps = {
   rightPanelOpen: boolean;
   shareOpen: boolean;
   workspaceMenuOpen: boolean;
+  workspaceName: string;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   onAddFile: FileTabsProps["onAddFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
@@ -102,6 +105,8 @@ export function WorkspaceTopChrome({
   rightPanelOpen,
   shareOpen,
   workspaceMenuOpen,
+  workspaceName,
+  workspaceContextSummary,
   onAddFile,
   onChangeUserName,
   onChromeInteraction,
@@ -211,6 +216,8 @@ export function WorkspaceTopChrome({
   return (
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}
+      workspaceName={workspaceName}
+      workspaceContextSummary={workspaceContextSummary}
       leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}

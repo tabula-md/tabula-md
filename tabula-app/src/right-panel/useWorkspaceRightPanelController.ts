@@ -25,6 +25,7 @@ import type {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
+import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -96,6 +97,8 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setLeftPanelOpen: (isOpen: boolean) => void;
   setLeftPanelView: (view: LeftPanelView) => void;
   text: string;
+  workspaceName: string;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
 };
 
 export function useWorkspaceRightPanelController({
@@ -158,6 +161,8 @@ export function useWorkspaceRightPanelController({
   setLeftPanelOpen,
   setLeftPanelView,
   text,
+  workspaceName,
+  workspaceContextSummary,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
@@ -274,6 +279,8 @@ export function useWorkspaceRightPanelController({
     onMoveFolder,
     onRenameFolder,
     onRenameWorkspace,
+    workspaceName,
+    workspaceContextSummary,
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {

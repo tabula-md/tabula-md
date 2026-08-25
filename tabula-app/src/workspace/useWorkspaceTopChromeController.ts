@@ -12,6 +12,7 @@ import type { LeftPanelView } from "../ui/uiTypes";
 import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
 import type { FollowState } from "../collaboration/followModel";
 import type { RoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
+import type { WorkspaceContextSummaryViewModel } from "./workspaceContextSummary";
 
 type SetTopPopover = (popover: TopPopover) => void;
 type SetCenterPopover = (popover: null) => void;
@@ -43,6 +44,8 @@ type UseWorkspaceTopChromeControllerOptions = {
   rightPanelOpen: boolean;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
+  workspaceName: string;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   onAddFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseAllFiles: () => void;
@@ -97,6 +100,8 @@ export function useWorkspaceTopChromeController({
   rightPanelOpen,
   topPopover,
   workspaceMenuOpen,
+  workspaceName,
+  workspaceContextSummary,
   onAddFile,
   onChangeUserName,
   onCloseAllFiles,
@@ -189,6 +194,8 @@ export function useWorkspaceTopChromeController({
     rightPanelOpen,
     shareOpen,
     workspaceMenuOpen,
+    workspaceName,
+    workspaceContextSummary,
     onAddFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,

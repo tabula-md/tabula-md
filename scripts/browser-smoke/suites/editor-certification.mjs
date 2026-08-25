@@ -408,8 +408,7 @@ export async function run(ctx) {
     if ((await targetTab.count()) === 1) {
       await targetTab.click();
     } else {
-      await secondPage.getByRole("button", { name: "Toggle side panel" }).click();
-      await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+      await secondPage.getByRole("button", { name: "Toggle workspace panel" }).click();
       await secondPage.getByRole("button", { name: `Open ${targetFileName}` }).click();
     }
     await secondPage.waitForFunction(

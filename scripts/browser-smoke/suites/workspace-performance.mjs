@@ -81,7 +81,7 @@ export async function run(ctx) {
       await page.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(page, { mode: "visual" });
       await page.waitForSelector(
-        '.status-save-state[aria-label="Saved locally"]',
+        '.workspace-identity-trigger[data-workspace-context="browser"][data-workspace-state="steady"]',
         { state: "visible" },
       );
       await focusMarkdownEditor(page);

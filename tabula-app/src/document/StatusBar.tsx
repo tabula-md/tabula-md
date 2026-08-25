@@ -1,52 +1,34 @@
-import {
-  ChartNoAxesColumn,
-  Check,
-  Cloud,
-  FolderSync,
-  LoaderCircle,
-  TriangleAlert,
-} from "lucide-react";
+import { ChartNoAxesColumn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PopoverAnchor, PopoverContent, PopoverRoot } from "../ui/Popover";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import type { FileViewMode } from "../workspace/workspaceStorage";
-import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
-import { getWorkspaceStatusIndicator } from "../workspace/workspaceStatusIndicator";
 
 interface StatusBarProps {
   activeFileTitle: string;
   activeViewMode: FileViewMode;
-  isLive: boolean;
   language: WorkspaceLanguage;
-  saveRevision: number;
   approximateTokenCount: number;
   wordCount: number;
   characterCount: number;
   cursorPositionLabel: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
-  workspaceContextSummary: WorkspaceContextSummaryViewModel;
-  onOpenWorkspaceMenu: () => void;
 }
 
 export function StatusBar({
   activeFileTitle,
   activeViewMode,
-  isLive,
   language,
-  saveRevision,
   approximateTokenCount,
   wordCount,
   characterCount,
   cursorPositionLabel,
   selectedCharacterCount,
   selectedLineCount,
-  workspaceContextSummary,
-  onOpenWorkspaceMenu,
 }: StatusBarProps) {
   const copy = getWorkspaceChromeCopy(language).statusBar;
-  const workspaceStatus = getWorkspaceStatusIndicator(workspaceContextSummary);
   const cursorLabel =
     selectedCharacterCount > 0
       ? `${cursorPositionLabel} (${
@@ -86,45 +68,12 @@ export function StatusBar({
 
   useEffect(() => () => clearDocumentMetricsCloseTimer(), []);
 
-  const showWorkspaceStatus = isLive || saveRevision > 0 || workspaceStatus.tone !== "quiet";
-  const showWorkspaceStatusLabel = workspaceStatus.tone !== "quiet";
-  const workspaceStatusAriaLabel =
-    workspaceStatus.tone === "quiet" && workspaceStatus.kind === "browser"
-      ? copy.savedLocally
-      : workspaceStatus.description;
-  const WorkspaceStatusIcon = workspaceStatus.tone === "attention"
-    ? TriangleAlert
-    : workspaceStatus.tone === "working"
-      ? LoaderCircle
-      : workspaceStatus.kind === "collaboration"
-        ? Cloud
-        : workspaceStatus.kind === "folder"
-          ? FolderSync
-          : Check;
-
   return (
     <footer
       className="file-status-bar"
       aria-label={copy.statusFor(activeFileTitle)}
     >
       <div className="status-bar-right">
-        {showWorkspaceStatus && (
-          <button
-            className={`status-save-state ${workspaceStatus.tone}`}
-            type="button"
-            aria-label={workspaceStatusAriaLabel}
-            aria-live="polite"
-            data-tooltip={showWorkspaceStatusLabel ? undefined : workspaceStatus.description}
-            onClick={onOpenWorkspaceMenu}
-          >
-            <WorkspaceStatusIcon
-              className={workspaceStatus.tone === "working" ? "status-save-state-spinner" : undefined}
-              size={14}
-              aria-hidden="true"
-            />
-            {showWorkspaceStatusLabel && <span>{workspaceStatus.label}</span>}
-          </button>
-        )}
         <PopoverRoot open={showDocumentMetrics} onOpenChange={setShowDocumentMetrics}>
           <PopoverAnchor asChild>
             <button

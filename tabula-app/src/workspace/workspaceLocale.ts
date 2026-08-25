@@ -1077,6 +1077,7 @@ export type WorkspaceChromeCopy = {
   topChrome: {
     openWorkspaceMenu: string;
     closeWorkspaceMenu: string;
+    toggleWorkspacePanel: string;
     toggleSidePanel: string;
     closeSidePanel: string;
     collaborators: string;
@@ -1150,6 +1151,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Open Workspace menu",
       closeWorkspaceMenu: "Close Workspace menu",
+      toggleWorkspacePanel: "Toggle workspace panel",
       toggleSidePanel: "Toggle side panel",
       closeSidePanel: "Close side panel",
       collaborators: "Collaborators",
@@ -1221,6 +1223,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "작업공간 메뉴 열기",
       closeWorkspaceMenu: "작업공간 메뉴 닫기",
+      toggleWorkspacePanel: "작업공간 패널 전환",
       toggleSidePanel: "사이드 패널 전환",
       closeSidePanel: "사이드 패널 닫기",
       collaborators: "협업자",
@@ -1292,6 +1295,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "ワークスペースメニューを開く",
       closeWorkspaceMenu: "ワークスペースメニューを閉じる",
+      toggleWorkspacePanel: "ワークスペースパネルを切り替える",
       toggleSidePanel: "サイドパネルを切り替える",
       closeSidePanel: "サイドパネルを閉じる",
       collaborators: "共同編集者",
@@ -1363,6 +1367,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "打开工作区菜单",
       closeWorkspaceMenu: "关闭工作区菜单",
+      toggleWorkspacePanel: "切换工作区面板",
       toggleSidePanel: "切换侧边栏",
       closeSidePanel: "关闭侧边栏",
       collaborators: "协作者",
@@ -1434,6 +1439,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Abrir menú del espacio",
       closeWorkspaceMenu: "Cerrar menú del espacio",
+      toggleWorkspacePanel: "Alternar panel del espacio",
       toggleSidePanel: "Alternar panel lateral",
       closeSidePanel: "Cerrar panel lateral",
       collaborators: "Colaboradores",
@@ -1505,6 +1511,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Ouvrir le menu de l’espace",
       closeWorkspaceMenu: "Fermer le menu de l’espace",
+      toggleWorkspacePanel: "Afficher ou masquer le panneau de l’espace",
       toggleSidePanel: "Afficher ou masquer le panneau latéral",
       closeSidePanel: "Fermer le panneau latéral",
       collaborators: "Collaborateurs",
@@ -1576,6 +1583,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Workspace-Menü öffnen",
       closeWorkspaceMenu: "Workspace-Menü schließen",
+      toggleWorkspacePanel: "Workspace-Bereich ein-/ausblenden",
       toggleSidePanel: "Seitenleiste ein-/ausblenden",
       closeSidePanel: "Seitenleiste schließen",
       collaborators: "Mitwirkende",

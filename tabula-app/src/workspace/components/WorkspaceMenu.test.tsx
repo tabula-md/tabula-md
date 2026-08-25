@@ -17,6 +17,7 @@ describe("WorkspaceMenu", () => {
         onChangeLanguage={noop}
         onAddFile={noop}
         onImportFile={noop}
+        workspaceName="Handbook"
         contextSummary={{
           primary: {
             kind: "collaboration",
@@ -35,7 +36,7 @@ describe("WorkspaceMenu", () => {
             },
             {
               kind: "folder",
-              title: "Handbook",
+              title: "Connected folder",
               description: "Saving to this folder is paused.",
               state: "paused",
               attention: false,
@@ -61,7 +62,10 @@ describe("WorkspaceMenu", () => {
     expect(html.indexOf("Live collaboration")).toBeLessThan(
       html.indexOf("This browser"),
     );
-    expect(html.indexOf("This browser")).toBeLessThan(html.indexOf("Handbook"));
+    expect(html).toContain("Handbook");
+    expect(html.indexOf("This browser")).toBeLessThan(
+      html.indexOf("Connected folder"),
+    );
     expect(html).toContain('aria-label="Documents"');
     expect(html).toContain('aria-label="Workspace"');
     expect(html).not.toContain("Save to folder");
@@ -79,6 +83,7 @@ describe("WorkspaceMenu", () => {
         onChangeLanguage={noop}
         onAddFile={noop}
         onImportFile={noop}
+        workspaceName="Handbook"
         contextSummary={{
           primary: {
             kind: "collaboration",
@@ -90,7 +95,6 @@ describe("WorkspaceMenu", () => {
           items: [],
         }}
         collaborationActive
-        onOpenCollaboration={noop}
         onRetryCollaboration={noop}
         onExportFile={noop}
         onExportWorkspace={noop}
@@ -102,6 +106,6 @@ describe("WorkspaceMenu", () => {
     );
 
     expect(html).toContain("Retry");
-    expect(html).toContain("lucide-radio");
+    expect(html).not.toContain("lucide-radio");
   });
 });

@@ -7,9 +7,13 @@ import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import type { LeftPanelView } from "../../ui/uiTypes";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
+import { WorkspaceIdentityTrigger } from "./WorkspaceIdentityTrigger";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
+  workspaceName: string;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
@@ -29,6 +33,9 @@ type TopChromeProps = {
 };
 
 export function TopChrome({
+  workspaceMenuOpen,
+  workspaceName,
+  workspaceContextSummary,
   leftPanelOpen,
   rightPanelOpen,
   isLiveConnected,
@@ -40,6 +47,7 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
+  onToggleWorkspaceMenu,
   onToggleLeftPanel,
   onOpenWorkspaceLauncher,
   onToggleRightPanel,
@@ -48,6 +56,9 @@ export function TopChrome({
   const copy = getWorkspaceChromeCopy(language).topChrome;
   const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
   const sidePanelLabel = copy.toggleSidePanel;
+  const workspaceMenuLabel = workspaceMenuOpen
+    ? copy.closeWorkspaceMenu
+    : copy.openWorkspaceMenu;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
     (collaborator.name || "?").trim().slice(0, 1) || "?";
@@ -79,16 +90,25 @@ export function TopChrome({
     <header className="top-chrome">
       <div className="top-left-zone">
         {!leftPanelOpen && (
-          <button
-            className="panel-toggle top-panel-toggle left-panel-trigger"
-            type="button"
-            aria-label={panelCopy.tabs.files}
-            data-tooltip={panelCopy.tabs.files}
-            aria-pressed="false"
-            onClick={() => onToggleLeftPanel("files")}
-          >
-            <PanelLeft size={16} />
-          </button>
+          <>
+            <button
+              className="panel-toggle top-panel-toggle left-panel-trigger"
+              type="button"
+              aria-label={copy.toggleWorkspacePanel}
+              data-tooltip={copy.toggleWorkspacePanel}
+              aria-pressed="false"
+              onClick={() => onToggleLeftPanel("files")}
+            >
+              <PanelLeft size={16} />
+            </button>
+            <WorkspaceIdentityTrigger
+              contextSummary={workspaceContextSummary}
+              isOpen={workspaceMenuOpen}
+              label={workspaceMenuLabel}
+              workspaceName={workspaceName}
+              onToggle={onToggleWorkspaceMenu}
+            />
+          </>
         )}
         <button
           className="panel-toggle top-panel-toggle"

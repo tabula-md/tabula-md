@@ -5,7 +5,7 @@ async function openWorkspaceMenu(page) {
     name: /^(Open|Close) Workspace menu$/,
   });
   if ((await menuButton.count()) === 0) {
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
   }
   await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
 }

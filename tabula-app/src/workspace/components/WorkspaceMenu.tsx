@@ -15,7 +15,6 @@ import {
   Info,
   Monitor,
   Moon,
-  Radio,
   RefreshCw,
   SlidersHorizontal,
   Save,
@@ -55,8 +54,8 @@ type WorkspaceMenuProps = {
   onToggleLiveFolderAutoSave?: () => void;
   contextSummary: WorkspaceContextSummaryViewModel;
   collaborationActive?: boolean;
-  onOpenCollaboration?: () => void;
   onRetryCollaboration?: () => void;
+  workspaceName: string;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -169,8 +168,8 @@ export function WorkspaceMenu({
   onToggleLiveFolderAutoSave,
   contextSummary,
   collaborationActive = false,
-  onOpenCollaboration,
   onRetryCollaboration,
+  workspaceName,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -220,6 +219,9 @@ export function WorkspaceMenu({
       role="dialog"
       aria-label={copy.aria.workspaceMenu}
     >
+      <header className="workspace-menu-identity">
+        <strong>{workspaceName}</strong>
+      </header>
       <div className="workspace-menu-contexts">
         {contextItems.map((contextItem) => (
           <div
@@ -271,18 +273,13 @@ export function WorkspaceMenu({
             {copy.actions.exportWorkspace}
           </MenuRow>
         </MenuSection>
-        {collaborationActive && onOpenCollaboration && (
+        {collaborationActive && onRetryCollaboration && (
           <MenuSection label={copy.actions.liveCollaboration}>
-            {onRetryCollaboration && (
-              <MenuRow
-                icon={<RefreshCw size={16} />}
-                onClick={onRetryCollaboration}
-              >
-                {copy.share.live.retrySession}
-              </MenuRow>
-            )}
-            <MenuRow icon={<Radio size={16} />} onClick={onOpenCollaboration}>
-              {copy.actions.liveCollaboration}
+            <MenuRow
+              icon={<RefreshCw size={16} />}
+              onClick={onRetryCollaboration}
+            >
+              {copy.share.live.retrySession}
             </MenuRow>
           </MenuSection>
         )}
