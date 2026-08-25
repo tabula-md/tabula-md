@@ -75,6 +75,7 @@ export type WorkspaceOverlaySurfaceProps = {
   onKeepTabulaLiveFolderVersion: () => void;
   onMergeLiveFolderConflictManually: () => void;
   onUseExternalLiveFolderVersion: () => void;
+  onDeferLiveFolderConflict: () => void;
 };
 
 export function WorkspaceOverlaySurface({
@@ -97,6 +98,7 @@ export function WorkspaceOverlaySurface({
   onKeepTabulaLiveFolderVersion,
   onMergeLiveFolderConflictManually,
   onUseExternalLiveFolderVersion,
+  onDeferLiveFolderConflict,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -130,6 +132,7 @@ export function WorkspaceOverlaySurface({
             onKeepTabula={onKeepTabulaLiveFolderVersion}
             onMergeManually={onMergeLiveFolderConflictManually}
             onUseExternal={onUseExternalLiveFolderVersion}
+            onDefer={onDeferLiveFolderConflict}
           />
         </Suspense>
       )}

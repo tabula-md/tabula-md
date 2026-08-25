@@ -219,6 +219,8 @@ export function useWorkspaceFileIoController({
     useState<LiveFolderSaveStatus>("ready");
   const [liveFolderConflict, setLiveFolderConflict] =
     useState<LiveFolderConflictReview | null>(null);
+  const [liveFolderConflictDialogOpen, setLiveFolderConflictDialogOpen] =
+    useState(false);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -343,6 +345,7 @@ export function useWorkspaceFileIoController({
     setLiveFolderAutoSave(false);
     setLiveFolderSaveStatus("ready");
     setLiveFolderConflict(null);
+    setLiveFolderConflictDialogOpen(false);
     setWorkspaceSourceKind("browser-copy");
     setWorkspaceSourceLabel(undefined);
   };
@@ -467,6 +470,7 @@ export function useWorkspaceFileIoController({
         externalSnapshot,
         localSnapshot,
       });
+      setLiveFolderConflictDialogOpen(true);
       setLiveFolderSaveStatus("conflict");
       setLiveFolderAutoSave(false);
       showToast(
@@ -649,6 +653,7 @@ export function useWorkspaceFileIoController({
     });
     active.baseline = resolved.baseline;
     setLiveFolderConflict(null);
+    setLiveFolderConflictDialogOpen(false);
     const plan = getLiveFolderWorkspaceWritePlan(resolved.baseline, resolved.local);
     setLiveFolderSaveStatus(
       plan.changes.length > 0 || plan.deletes.length > 0 ? "dirty" : "ready",
@@ -684,6 +689,7 @@ export function useWorkspaceFileIoController({
         });
         active.baseline = resolved.baseline;
         setLiveFolderConflict(null);
+        setLiveFolderConflictDialogOpen(false);
         const plan = getLiveFolderWorkspaceWritePlan(resolved.baseline, resolved.local);
         setLiveFolderSaveStatus(
           plan.changes.length > 0 || plan.deletes.length > 0 ? "dirty" : "ready",
@@ -710,6 +716,7 @@ export function useWorkspaceFileIoController({
       });
       active.baseline = resolved.baseline;
       setLiveFolderConflict(null);
+      setLiveFolderConflictDialogOpen(false);
       setLiveFolderSaveStatus("dirty");
       void applyArtifactSnapshotToWorkspace(resolved.local);
     }
@@ -796,6 +803,7 @@ export function useWorkspaceFileIoController({
     liveFolderAutoSave,
     liveFolderSaveStatus,
     liveFolderConflict,
+    liveFolderConflictDialogOpen,
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
@@ -807,6 +815,10 @@ export function useWorkspaceFileIoController({
     toggleLiveFolderAutoSave,
     keepTabulaLiveFolderVersion,
     mergeLiveFolderConflictManually,
+    deferLiveFolderConflict: () => setLiveFolderConflictDialogOpen(false),
+    reviewLiveFolderConflict: () => {
+      if (liveFolderConflict) setLiveFolderConflictDialogOpen(true);
+    },
     useExternalLiveFolderVersion,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,

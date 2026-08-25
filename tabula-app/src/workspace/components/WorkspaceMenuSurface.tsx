@@ -27,6 +27,7 @@ export type WorkspaceMenuSurfaceProps = {
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
+  onReviewLiveFolderConflict?: () => void;
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
@@ -59,6 +60,7 @@ export function WorkspaceMenuSurface({
   onCloseChrome,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
+  onReviewLiveFolderConflict,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
@@ -108,6 +110,12 @@ export function WorkspaceMenuSurface({
           : undefined}
         onSaveLiveWorkspace={canUseLocalWorkspaceActions
           ? onSaveLiveWorkspace
+          : undefined}
+        onReviewLiveFolderConflict={canUseLocalWorkspaceActions && onReviewLiveFolderConflict
+          ? () => {
+              onCloseChrome();
+              onReviewLiveFolderConflict();
+            }
           : undefined}
         onDisconnectLiveWorkspace={onDisconnectLiveWorkspace
           ? () => {

@@ -32,6 +32,7 @@ type UseWorkspaceMenuControllerOptions = {
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
+  onReviewLiveFolderConflict?: () => void;
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
@@ -65,6 +66,7 @@ export function useWorkspaceMenuController({
   onImportWorkspaceChange,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
+  onReviewLiveFolderConflict,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
@@ -115,6 +117,7 @@ export function useWorkspaceMenuController({
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
+      onReviewLiveFolderConflict,
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
@@ -150,6 +153,7 @@ export function useWorkspaceMenuController({
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
+      onReviewLiveFolderConflict,
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,

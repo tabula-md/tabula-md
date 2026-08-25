@@ -108,4 +108,42 @@ describe("WorkspaceMenu", () => {
     expect(html).toContain("Retry");
     expect(html).not.toContain("lucide-radio");
   });
+
+  it("replaces folder save controls with a persistent conflict review action", () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceMenu
+        isOpen
+        preferencesOpen={false}
+        theme="system"
+        language="en"
+        onTogglePreferences={noop}
+        onChangeTheme={noop}
+        onChangeLanguage={noop}
+        onAddFile={noop}
+        onImportFile={noop}
+        workspaceName="Handbook"
+        contextSummary={{
+          primary: {
+            kind: "folder",
+            title: "Connected folder",
+            description: "Saving is paused until the folder conflict is resolved.",
+            state: "attention",
+            attention: true,
+          },
+          items: [],
+        }}
+        onSaveLiveWorkspace={noop}
+        onReviewLiveFolderConflict={noop}
+        onExportFile={noop}
+        onExportWorkspace={noop}
+        canExportFile
+        canExportWorkspace
+        onOpenAbout={noop}
+        onOpenHelp={noop}
+      />,
+    );
+
+    expect(html).toContain("Review folder conflict");
+    expect(html).not.toContain("Save to folder");
+  });
 });

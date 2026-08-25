@@ -12,6 +12,7 @@ type WorkspaceMenuCopy = {
     importWorkspace: string;
     openLiveWorkspace: string;
     saveLiveWorkspace: string;
+    reviewLiveFolderConflict: string;
     disconnectLiveWorkspace: string;
     autoSaveLiveWorkspace: string;
     exportFile: string;
@@ -149,6 +150,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "Import folder copy…",
       openLiveWorkspace: "Connect local folder…",
       saveLiveWorkspace: "Save to folder",
+      reviewLiveFolderConflict: "Review folder conflict",
       disconnectLiveWorkspace: "Disconnect folder",
       autoSaveLiveWorkspace: "Auto-save to folder",
       exportFile: "Export document (.md)",
@@ -281,6 +283,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "폴더 복사본 가져오기…",
       openLiveWorkspace: "로컬 폴더 연결…",
       saveLiveWorkspace: "폴더에 저장",
+      reviewLiveFolderConflict: "폴더 충돌 검토",
       disconnectLiveWorkspace: "폴더 연결 해제",
       autoSaveLiveWorkspace: "폴더에 자동 저장",
       exportFile: "문서 내보내기 (.md)",
@@ -413,6 +416,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "フォルダーのコピーを読み込む…",
       openLiveWorkspace: "ローカルフォルダーを接続…",
       saveLiveWorkspace: "フォルダーに保存",
+      reviewLiveFolderConflict: "フォルダーの競合を確認",
       disconnectLiveWorkspace: "フォルダーの接続を解除",
       autoSaveLiveWorkspace: "フォルダーに自動保存",
       exportFile: "ドキュメントを書き出す (.md)",
@@ -547,6 +551,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "导入文件夹副本…",
       openLiveWorkspace: "连接本地文件夹…",
       saveLiveWorkspace: "保存到文件夹",
+      reviewLiveFolderConflict: "检查文件夹冲突",
       disconnectLiveWorkspace: "断开文件夹连接",
       autoSaveLiveWorkspace: "自动保存到文件夹",
       exportFile: "导出文档 (.md)",
@@ -678,6 +683,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "Importar copia de carpeta…",
       openLiveWorkspace: "Conectar carpeta local…",
       saveLiveWorkspace: "Guardar en la carpeta",
+      reviewLiveFolderConflict: "Revisar conflicto de carpeta",
       disconnectLiveWorkspace: "Desconectar carpeta",
       autoSaveLiveWorkspace: "Guardar automáticamente en la carpeta",
       exportFile: "Exportar documento (.md)",
@@ -812,6 +818,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "Importer une copie du dossier…",
       openLiveWorkspace: "Connecter un dossier local…",
       saveLiveWorkspace: "Enregistrer dans le dossier",
+      reviewLiveFolderConflict: "Examiner le conflit du dossier",
       disconnectLiveWorkspace: "Déconnecter le dossier",
       autoSaveLiveWorkspace: "Enregistrement automatique dans le dossier",
       exportFile: "Exporter le document (.md)",
@@ -946,6 +953,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importWorkspace: "Ordnerkopie importieren…",
       openLiveWorkspace: "Lokalen Ordner verbinden…",
       saveLiveWorkspace: "Im Ordner speichern",
+      reviewLiveFolderConflict: "Ordnerkonflikt prüfen",
       disconnectLiveWorkspace: "Ordner trennen",
       autoSaveLiveWorkspace: "Automatisch im Ordner speichern",
       exportFile: "Dokument exportieren (.md)",

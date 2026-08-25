@@ -626,12 +626,15 @@ export function useWorkspaceRuntime() {
     isLiveFolderSupported,
     liveFolderAutoSave,
     liveFolderConflict,
+    liveFolderConflictDialogOpen,
     liveFolderSaveStatus,
+    deferLiveFolderConflict,
     keepTabulaLiveFolderVersion,
     mergeLiveFolderConflictManually,
     jsonShareImport,
     openLiveWorkspaceFolder,
     saveLiveWorkspaceFolder,
+    reviewLiveFolderConflict,
     toggleLiveFolderAutoSave,
     useExternalLiveFolderVersion,
     workspaceFolderImport,
@@ -883,12 +886,15 @@ export function useWorkspaceRuntime() {
     onSaveLiveWorkspace: workspaceSourceKind === "live-folder"
       ? saveLiveWorkspaceFolder
       : undefined,
+    onReviewLiveFolderConflict: workspaceSourceKind === "live-folder" && liveFolderConflict
+      ? reviewLiveFolderConflict
+      : undefined,
     onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
       && workspaceBoundaryCapabilities.canUseLocalWorkspaceActions
       ? disconnectLocalFolder
       : undefined,
     liveFolderAutoSave,
-    onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder"
+    onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder" && !liveFolderConflict
       ? toggleLiveFolderAutoSave
       : undefined,
     contextSummary: workspaceContextSummary,
@@ -1292,7 +1298,9 @@ export function useWorkspaceRuntime() {
       workspace: {
         infoDialog,
         jsonShareImport,
-        liveFolderConflict,
+        liveFolderConflict: liveFolderConflictDialogOpen
+          ? liveFolderConflict
+          : null,
         workspaceFolderImport,
         language: workspacePreferences.language,
         shortcutPlatform,
@@ -1351,6 +1359,7 @@ export function useWorkspaceRuntime() {
         onKeepTabulaLiveFolderVersion: keepTabulaLiveFolderVersion,
         onMergeLiveFolderConflictManually: mergeLiveFolderConflictManually,
         onUseExternalLiveFolderVersion: useExternalLiveFolderVersion,
+        onDeferLiveFolderConflict: deferLiveFolderConflict,
       },
     },
     collaboration: {

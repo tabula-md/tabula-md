@@ -20,6 +20,7 @@ import {
   Save,
   Sun,
   Trash2,
+  TriangleAlert,
   Unplug,
   Users,
 } from "lucide-react";
@@ -49,6 +50,7 @@ type WorkspaceMenuProps = {
   onImportWorkspace?: () => void;
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
+  onReviewLiveFolderConflict?: () => void;
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
@@ -163,6 +165,7 @@ export function WorkspaceMenu({
   onImportWorkspace,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
+  onReviewLiveFolderConflict,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave = false,
   onToggleLiveFolderAutoSave,
@@ -187,6 +190,7 @@ export function WorkspaceMenu({
   const hasFolderActions = Boolean(
     onOpenLiveWorkspace ||
     onSaveLiveWorkspace ||
+    onReviewLiveFolderConflict ||
     onToggleLiveFolderAutoSave ||
     onDisconnectLiveWorkspace,
   );
@@ -293,7 +297,15 @@ export function WorkspaceMenu({
                 {copy.actions.openLiveWorkspace}
               </MenuRow>
             )}
-            {onSaveLiveWorkspace && (
+            {onReviewLiveFolderConflict && (
+              <MenuRow
+                icon={<TriangleAlert size={16} />}
+                onClick={onReviewLiveFolderConflict}
+              >
+                {copy.actions.reviewLiveFolderConflict}
+              </MenuRow>
+            )}
+            {onSaveLiveWorkspace && !onReviewLiveFolderConflict && (
               <MenuRow
                 icon={<Save size={16} />}
                 onClick={onSaveLiveWorkspace}
