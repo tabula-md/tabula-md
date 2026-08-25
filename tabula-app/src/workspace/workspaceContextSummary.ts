@@ -34,6 +34,7 @@ export type WorkspaceContextSummaryItem = {
   kind: "browser" | "folder" | "collaboration";
   title: string;
   description: string;
+  state: "steady" | "working" | "pending" | "paused" | "attention";
   attention: boolean;
 };
 
@@ -273,6 +274,14 @@ export const getWorkspaceContextSummary = (
       context.browserPersistence.state,
       Boolean(context.folderBinding),
     ),
+    state:
+      context.browserPersistence.state === "error"
+        ? "attention"
+        : context.browserPersistence.state === "saving"
+          ? "working"
+          : context.browserPersistence.state === "suspended"
+            ? "paused"
+            : "steady",
     attention: context.browserPersistence.state === "error",
   };
   const folder: WorkspaceContextSummaryItem | null = context.folderBinding
@@ -280,6 +289,17 @@ export const getWorkspaceContextSummary = (
         kind: "folder",
         title: context.folderBinding.label || copy.folderTitle,
         description: getFolderDescription(copy, context.folderBinding),
+        state:
+          context.folderBinding.status === "conflict" ||
+          context.folderBinding.status === "permission-required"
+            ? "attention"
+            : context.folderBinding.status === "saving"
+              ? "working"
+              : context.folderBinding.status === "dirty"
+                ? "pending"
+                : context.folderBinding.status === "suspended"
+                  ? "paused"
+                  : "steady",
         attention:
           context.folderBinding.status === "conflict" ||
           context.folderBinding.status === "permission-required",
@@ -293,6 +313,17 @@ export const getWorkspaceContextSummary = (
           copy,
           context.collaboration.connectionStatus,
         ),
+        state:
+          context.collaboration.connectionStatus === "disconnected" ||
+          context.collaboration.connectionStatus === "failed"
+            ? "attention"
+            : context.collaboration.connectionStatus === "connecting" ||
+                context.collaboration.connectionStatus === "reconnecting" ||
+                context.collaboration.connectionStatus === "idle"
+              ? "working"
+              : context.collaboration.connectionStatus === "suspended"
+                ? "paused"
+                : "steady",
         attention:
           context.collaboration.connectionStatus === "disconnected" ||
           context.collaboration.connectionStatus === "failed",

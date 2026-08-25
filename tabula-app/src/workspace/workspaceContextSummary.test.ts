@@ -19,12 +19,14 @@ describe("workspace context summary", () => {
         kind: "browser",
         title: "This browser",
         description: "Saved automatically here. Not connected to a local folder.",
+        state: "steady",
         attention: false,
       },
       items: [{
         kind: "browser",
         title: "This browser",
         description: "Saved automatically here. Not connected to a local folder.",
+        state: "steady",
         attention: false,
       }],
     });

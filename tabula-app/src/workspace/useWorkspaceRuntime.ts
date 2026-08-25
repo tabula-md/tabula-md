@@ -425,6 +425,7 @@ export function useWorkspaceRuntime() {
     setLauncherOpen,
     closeFloatingChrome,
     openFilesPanel,
+    openWorkspaceMenu,
     toggleWorkspaceMenu,
     toggleLeftPanel,
     toggleRightPanel,
@@ -805,6 +806,29 @@ export function useWorkspaceRuntime() {
     syncUrlForLocalWorkspace("replace");
     showToast(workspaceMenuCopy.clearWorkspace.cleared);
   });
+  const workspaceContextSummary = getWorkspaceContextSummary(
+    workspacePreferences.language,
+    {
+      runtime: activeRoom ? { kind: "room" } : { kind: "local" },
+      browserPersistence: {
+        state: activeRoom
+          ? "suspended"
+          : localWorkspacePersistence.saveState,
+      },
+      folderBinding: workspaceSourceKind === "live-folder"
+        ? {
+            label: workspaceSourceLabel,
+            writeMode: liveFolderAutoSave ? "automatic" : "manual",
+            status: activeRoom
+              ? "suspended"
+              : liveFolderConflict
+                ? "conflict"
+                : "ready",
+          }
+        : null,
+      collaboration: activeRoom ? { connectionStatus } : null,
+    },
+  );
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
@@ -832,28 +856,7 @@ export function useWorkspaceRuntime() {
     onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder"
       ? toggleLiveFolderAutoSave
       : undefined,
-    contextSummary: getWorkspaceContextSummary(workspacePreferences.language, {
-      runtime: activeRoom ? { kind: "room" } : { kind: "local" },
-      browserPersistence: {
-        state: activeRoom
-          ? "suspended"
-          : localWorkspacePersistence.pending
-            ? "saving"
-            : "saved",
-      },
-      folderBinding: workspaceSourceKind === "live-folder"
-        ? {
-            label: workspaceSourceLabel,
-            writeMode: liveFolderAutoSave ? "automatic" : "manual",
-            status: activeRoom
-              ? "suspended"
-              : liveFolderConflict
-                ? "conflict"
-                : "ready",
-          }
-        : null,
-      collaboration: activeRoom ? { connectionStatus } : null,
-    }),
+    contextSummary: workspaceContextSummary,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -1178,6 +1181,8 @@ export function useWorkspaceRuntime() {
     onPropertyAddRequestHandled: handlePropertyAddRequest,
     onSetViewMode: setViewModeWithPendingCommit,
     persistence: localWorkspacePersistence,
+    workspaceContextSummary,
+    onOpenWorkspaceMenu: openWorkspaceMenu,
     previewRef,
     room: roomController,
     surface: documentSurfaceController,

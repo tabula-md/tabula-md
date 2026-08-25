@@ -34,15 +34,24 @@ export const useQueuedWorkspacePersistence = (
   }: UseQueuedWorkspacePersistenceOptions = {},
 ) => {
   const [persistedRevision, setPersistedRevision] = useState(0);
+  const [saveState, setSaveState] = useState<
+    "saving" | "saved" | "error" | "suspended"
+  >(enabled ? "saving" : "suspended");
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const queueRef = useRef<ReturnType<typeof createWorkspacePersistenceQueue> | null>(null);
 
   if (!queueRef.current) {
     queueRef.current = createWorkspacePersistenceQueue({
-      onError: (error) => onErrorRef.current?.(error),
+      onError: (error) => {
+        if (mountedRef.current) setSaveState("error");
+        onErrorRef.current?.(error);
+      },
       onPersisted: () => {
-        if (mountedRef.current) setPersistedRevision((revision) => revision + 1);
+        if (mountedRef.current) {
+          setPersistedRevision((revision) => revision + 1);
+          setSaveState("saved");
+        }
       },
     });
   }
@@ -60,9 +69,11 @@ export const useQueuedWorkspacePersistence = (
 
     if (!enabled) {
       queueRef.current?.cancel();
+      setSaveState("suspended");
       return;
     }
 
+    setSaveState("saving");
     queueRef.current?.schedule(workspace);
   }, [enabled, getWorkspaceSnapshot, onBeforePersist, onError, workspace]);
 
@@ -110,8 +121,9 @@ export const useQueuedWorkspacePersistence = (
   }, []);
 
   const persistNow = useCallback((nextWorkspace: WorkspaceState) => {
+    setSaveState("saving");
     queueRef.current?.persistNow(nextWorkspace);
   }, []);
 
-  return { persistedRevision, persistNow };
+  return { persistedRevision, persistNow, saveState };
 };

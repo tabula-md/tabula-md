@@ -18,6 +18,7 @@ import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
 import type { SearchTarget } from "../editor/useEditorSearchController";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
 import type {
   MarkdownCommentAnchor,
   MarkdownBookmark,
@@ -96,11 +97,11 @@ export type DocumentWorkbenchProps = {
   splitDividerMinValue: number;
   splitDividerValue: number;
   splitWorkspaceStyle?: CSSProperties;
-  statusLabel: string;
   text: string;
   toolbarLabel: string;
   workspaceRef: RefObject<HTMLElement | null>;
   workspaceMarkdownDocuments?: readonly string[];
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
@@ -112,6 +113,7 @@ export type DocumentWorkbenchProps = {
   onOpenComment: (commentId: string) => void;
   onPropertyAddRequestHandled?: () => void;
   onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
+  onOpenWorkspaceMenu: () => void;
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -200,11 +202,11 @@ export function DocumentWorkbench({
   splitDividerMinValue,
   splitDividerValue,
   splitWorkspaceStyle,
-  statusLabel,
   text,
   toolbarLabel,
   workspaceRef,
   workspaceMarkdownDocuments,
+  workspaceContextSummary,
   onBookmarksChange,
   onEditorHistoryStateChange,
   onEditorScroll,
@@ -216,6 +218,7 @@ export function DocumentWorkbench({
   onOpenComment,
   onPropertyAddRequestHandled,
   onOpenWorkspaceLink,
+  onOpenWorkspaceMenu,
   onOpenSelectionComment,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -412,7 +415,8 @@ export function DocumentWorkbench({
         isLive={isLive}
         language={language}
         saveRevision={saveRevision}
-        statusLabel={statusLabel}
+        workspaceContextSummary={workspaceContextSummary}
+        onOpenWorkspaceMenu={onOpenWorkspaceMenu}
         approximateTokenCount={documentSurface.statusBar.approximateTokenCount}
         wordCount={documentSurface.statusBar.wordCount}
         characterCount={text.length}

@@ -75,6 +75,11 @@ export function useWorkspaceChromeController({
     if (willOpen && usesOverlayPanels()) setRightPanelOpen(false);
   };
 
+  const openWorkspaceMenu = () => {
+    setWorkspaceMenuOpen(true);
+    if (usesOverlayPanels()) setRightPanelOpen(false);
+  };
+
   useEffect(() => {
     if (!leftPanelOpen || !rightPanelOpen) return undefined;
 
@@ -216,6 +221,7 @@ export function useWorkspaceChromeController({
     setRightPanelView,
     closeFloatingChrome,
     openFilesPanel,
+    openWorkspaceMenu,
     openSharePanel,
     toggleWorkspaceMenu,
     toggleLeftPanel,

@@ -10,6 +10,7 @@ import type { useWorkspaceRoomController } from "../workspace/useWorkspaceRoomCo
 import type { useWorkspacePersistenceRuntime } from "../workspace/persistence/useWorkspacePersistenceRuntime";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
+import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
 import type { CenterPopover } from "../ui/uiTypes";
 import type { MarkdownPreviewProps } from "../preview/markdownPreviewTypes";
 
@@ -41,13 +42,14 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
     | "editorBinding"
     | "isLive"
     | "publishCurrentRoomViewport"
-    | "statusLabel"
     | "stopFollowing"
     | "stopFollowingForLocalNavigation"
   >;
   surface: DocumentSurfaceController;
   toolbarLabel: string;
   workspaceMarkdownDocuments: readonly string[];
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
+  onOpenWorkspaceMenu: () => void;
   resolveWorkspaceDocument: NonNullable<MarkdownPreviewProps["resolveWorkspaceDocument"]>;
   resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
@@ -72,6 +74,8 @@ export function useWorkspaceWorkbenchSurfaceController({
   surface,
   toolbarLabel,
   workspaceMarkdownDocuments,
+  workspaceContextSummary,
+  onOpenWorkspaceMenu,
   resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
@@ -144,11 +148,11 @@ export function useWorkspaceWorkbenchSurfaceController({
       splitDividerMinValue: document.splitDividerMinValue,
       splitDividerValue: document.splitDividerValue,
       splitWorkspaceStyle: document.splitWorkspaceStyle,
-      statusLabel: room.statusLabel,
       text: document.text,
       toolbarLabel,
       workspaceRef: document.workspaceRef,
       workspaceMarkdownDocuments,
+      workspaceContextSummary,
       onBookmarksChange: editor.updateActiveFileBookmarks,
       onEditorHistoryStateChange: editor.handleEditorHistoryStateChange,
       onEditorScroll: () => {
@@ -174,6 +178,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,
+      onOpenWorkspaceMenu,
       onPropertyAddRequestHandled,
       onOpenSelectionComment: comments.openSelectionComment,
       onPreviewKeyUp: document.syncPreviewSelection,
