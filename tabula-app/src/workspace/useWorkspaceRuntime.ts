@@ -458,6 +458,7 @@ export function useWorkspaceRuntime() {
   const {
     collaborators,
     connectionStatus,
+    durability: roomDurability,
     hydrationStatus,
     applyLocalText,
     renameNode: renameRoomNode,
@@ -470,6 +471,7 @@ export function useWorkspaceRuntime() {
     upsertComment: upsertRoomComment,
     resetCollaborationState,
     retryConnection: retryCollaborationConnection,
+    recoveryMode: roomRecoveryMode,
     addRoomAwareFileFromContent,
     followState,
     isLiveConnected,
@@ -540,12 +542,14 @@ export function useWorkspaceRuntime() {
     replaceWorkspace,
   });
   const {
+    canChooseRoomExitStrategy,
     copyShareUrl: copyShareUrlWithPendingCommit,
     isStartingLive,
     isLiveChromeVisible,
     jsonShare,
     liveRoomOpenTimedOut,
     openLocalWorkspaceAfterRoomFailure,
+    roomExitStrategy,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,
   } = useWorkspaceLiveSessionController({
@@ -848,7 +852,11 @@ export function useWorkspaceRuntime() {
               : liveFolderSaveStatus,
           }
         : null,
-      collaboration: activeRoom ? { connectionStatus } : null,
+      collaboration: activeRoom ? {
+        connectionStatus,
+        durability: roomDurability,
+        recoveryMode: roomRecoveryMode,
+      } : null,
     },
   );
   const { menuSurfaceProps } = useWorkspaceMenuController({
@@ -883,6 +891,14 @@ export function useWorkspaceRuntime() {
       ? toggleLiveFolderAutoSave
       : undefined,
     contextSummary: workspaceContextSummary,
+    collaborationActive: Boolean(activeRoom),
+    onOpenCollaboration: activeRoom
+      ? () => setTopPopover("share")
+      : undefined,
+    onRetryCollaboration:
+      activeRoom && (connectionStatus === "disconnected" || connectionStatus === "failed")
+        ? retryCollaborationConnection
+        : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -1056,6 +1072,7 @@ export function useWorkspaceRuntime() {
     collaborators,
     connectionStatus,
     copiedFileId,
+    canChooseRoomExitStrategy,
     currentUserName: identity.name,
     files,
     folders,
@@ -1069,6 +1086,7 @@ export function useWorkspaceRuntime() {
     openFiles,
     lastClosedFile,
     room: activeRoom,
+    roomExitStrategy,
     leftPanelOpen,
     rightPanelOpen,
     topPopover,

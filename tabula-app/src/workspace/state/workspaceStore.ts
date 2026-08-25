@@ -562,12 +562,14 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
   },
 
   setFileText: (fileId, text) => {
-    set((state) =>
-      updateFileInState(state, fileId, (file) => ({
-        ...file,
+    set((state) => {
+      const file = state.files.find((candidate) => candidate.id === fileId);
+      if (!file || file.text === text) return state;
+      return updateFileInState(state, fileId, (currentFile) => ({
+        ...currentFile,
         text,
-      })),
-    );
+      }));
+    });
   },
 
   setActiveFileBookmarks: (bookmarks) => {

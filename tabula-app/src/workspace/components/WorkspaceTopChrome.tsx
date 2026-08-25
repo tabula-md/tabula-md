@@ -18,6 +18,7 @@ import {
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
+import type { RoomExitLocalWorkspaceStrategy } from "../workspaceSessionTransition";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
 
@@ -34,6 +35,7 @@ export type WorkspaceTopChromeProps = {
   followState: FollowState;
   connectionStatus: ConnectionStatus;
   copied: boolean;
+  canChooseRoomExitStrategy: boolean;
   currentUserName: string;
   folders: WorkspaceFolder[];
   identity: Collaborator;
@@ -45,6 +47,7 @@ export type WorkspaceTopChromeProps = {
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   shareOpen: boolean;
@@ -65,7 +68,7 @@ export type WorkspaceTopChromeProps = {
   onReopenLastClosedFile: () => void;
   onSelectFile: FileTabsProps["onSelectFile"];
   onStartSession: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
   onRetrySession: () => void;
   onToggleLeftPanel: (view: LeftPanelView) => void;
   onOpenWorkspaceLauncher: () => void;
@@ -82,6 +85,7 @@ export function WorkspaceTopChrome({
   followState,
   connectionStatus,
   copied,
+  canChooseRoomExitStrategy,
   currentUserName,
   folders,
   identity,
@@ -93,6 +97,7 @@ export function WorkspaceTopChrome({
   lastClosedFile,
   openFiles,
   room,
+  roomExitStrategy,
   leftPanelOpen,
   rightPanelOpen,
   shareOpen,
@@ -185,7 +190,9 @@ export function WorkspaceTopChrome({
               isLive={isLive}
               shareOpen={shareOpen}
               copied={copied}
+              canChooseRoomExitStrategy={canChooseRoomExitStrategy}
               jsonShare={jsonShare}
+              roomExitStrategy={roomExitStrategy}
               onCloseShare={onCloseShare}
               onCopyFailed={onShareCopyFailed}
               onStartSession={onStartSession}

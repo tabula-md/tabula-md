@@ -117,7 +117,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the side panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Import document (.md)…|Import folder copy…|Connect local folder…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
+        "New document|Import document (.md)…|Export document (.md)|Import folder copy…|Export workspace (.zip)|Connect local folder…|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
       "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
@@ -163,10 +163,11 @@ export async function run(ctx) {
     expect(
       focusIndex("New document") <
         focusIndex("Import document (.md)…") &&
-        focusIndex("Import document (.md)…") < focusIndex("Import folder copy…") &&
-        focusIndex("Import folder copy…") < focusIndex("Export document (.md)") &&
-        focusIndex("Export document (.md)") < focusIndex("Export workspace (.zip)") &&
-        focusIndex("Export workspace (.zip)") < focusIndex("Preferences") &&
+        focusIndex("Import document (.md)…") < focusIndex("Export document (.md)") &&
+        focusIndex("Export document (.md)") < focusIndex("Import folder copy…") &&
+        focusIndex("Import folder copy…") < focusIndex("Export workspace (.zip)") &&
+        focusIndex("Export workspace (.zip)") < focusIndex("Connect local folder…") &&
+        focusIndex("Connect local folder…") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&
         focusIndex("About") < focusIndex("Help"),
       "Workspace menu keyboard order should move from file actions to support actions.",

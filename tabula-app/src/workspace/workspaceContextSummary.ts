@@ -1,4 +1,8 @@
-import type { ConnectionStatus } from "../collaboration/liveCollaboration";
+import type {
+  ConnectionStatus,
+  RoomDurability,
+  RoomRecoveryMode,
+} from "../collaboration/liveCollaboration";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 export type BrowserPersistenceState =
@@ -28,6 +32,8 @@ export type WorkspaceContextState = {
   };
   collaboration: null | {
     connectionStatus: ConnectionStatus;
+    durability: RoomDurability;
+    recoveryMode: RoomRecoveryMode;
   };
 };
 
@@ -72,6 +78,9 @@ type ContextSummaryCopy = {
   roomConnected: string;
   roomPaused: string;
   roomDisconnected: string;
+  roomOfflineDurable: string;
+  roomOfflineTemporary: string;
+  roomRecoveryFailed: string;
 };
 
 const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
@@ -96,6 +105,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "Changes are synchronized with everyone in this room.",
     roomPaused: "Synchronization is paused and will resume automatically.",
     roomDisconnected: "This browser is not synchronized with the live room.",
+    roomOfflineDurable: "Offline changes are saved in this browser and will sync after reconnecting.",
+    roomOfflineTemporary: "Offline changes are only in this tab. Keep it open and retry the connection.",
+    roomRecoveryFailed: "Couldn’t save the room recovery copy. Keep this tab open and retry the connection.",
   },
   ko: {
     browserTitle: "이 브라우저",
@@ -118,6 +130,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "이 룸의 모든 참여자와 변경 사항을 동기화합니다.",
     roomPaused: "동기화가 일시 중지되었으며 자동으로 다시 시작됩니다.",
     roomDisconnected: "이 브라우저가 실시간 룸과 동기화되지 않고 있습니다.",
+    roomOfflineDurable: "오프라인 변경 사항은 이 브라우저에 저장되며 다시 연결되면 동기화됩니다.",
+    roomOfflineTemporary: "오프라인 변경 사항은 이 탭에만 있습니다. 탭을 닫지 말고 연결을 다시 시도하세요.",
+    roomRecoveryFailed: "룸 복구 사본을 저장하지 못했습니다. 탭을 닫지 말고 연결을 다시 시도하세요.",
   },
   ja: {
     browserTitle: "このブラウザー",
@@ -140,6 +155,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "このルームの全員と変更を同期しています。",
     roomPaused: "同期は一時停止中で、自動的に再開されます。",
     roomDisconnected: "このブラウザーはライブルームと同期していません。",
+    roomOfflineDurable: "オフラインの変更はこのブラウザーに保存され、再接続後に同期されます。",
+    roomOfflineTemporary: "オフラインの変更はこのタブにのみあります。タブを開いたまま再接続してください。",
+    roomRecoveryFailed: "ルームの復元用コピーを保存できませんでした。タブを開いたまま再接続してください。",
   },
   zh: {
     browserTitle: "此浏览器",
@@ -162,6 +180,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "更改正与此房间中的所有人同步。",
     roomPaused: "同步已暂停，并会自动恢复。",
     roomDisconnected: "此浏览器未与实时房间同步。",
+    roomOfflineDurable: "离线更改已保存在此浏览器中，重新连接后会同步。",
+    roomOfflineTemporary: "离线更改仅保留在此标签页中。请保持标签页打开并重试连接。",
+    roomRecoveryFailed: "无法保存房间恢复副本。请保持标签页打开并重试连接。",
   },
   es: {
     browserTitle: "Este navegador",
@@ -184,6 +205,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "Los cambios se sincronizan con todas las personas de esta sala.",
     roomPaused: "La sincronización está pausada y se reanudará automáticamente.",
     roomDisconnected: "Este navegador no está sincronizado con la sala en vivo.",
+    roomOfflineDurable: "Los cambios sin conexión se guardan en este navegador y se sincronizarán al reconectar.",
+    roomOfflineTemporary: "Los cambios sin conexión solo están en esta pestaña. Mantenla abierta y reintenta la conexión.",
+    roomRecoveryFailed: "No se pudo guardar la copia de recuperación. Mantén esta pestaña abierta y reintenta la conexión.",
   },
   fr: {
     browserTitle: "Ce navigateur",
@@ -206,6 +230,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "Les modifications sont synchronisées avec toutes les personnes de cette salle.",
     roomPaused: "La synchronisation est suspendue et reprendra automatiquement.",
     roomDisconnected: "Ce navigateur n’est pas synchronisé avec la salle en direct.",
+    roomOfflineDurable: "Les modifications hors ligne sont enregistrées dans ce navigateur et seront synchronisées après reconnexion.",
+    roomOfflineTemporary: "Les modifications hors ligne sont uniquement dans cet onglet. Gardez-le ouvert et réessayez la connexion.",
+    roomRecoveryFailed: "Impossible d’enregistrer la copie de récupération. Gardez cet onglet ouvert et réessayez la connexion.",
   },
   de: {
     browserTitle: "Dieser Browser",
@@ -228,6 +255,9 @@ const copies: Record<WorkspaceLanguage, ContextSummaryCopy> = {
     roomConnected: "Änderungen werden mit allen Personen in diesem Raum synchronisiert.",
     roomPaused: "Die Synchronisierung ist pausiert und wird automatisch fortgesetzt.",
     roomDisconnected: "Dieser Browser ist nicht mit dem Live-Raum synchronisiert.",
+    roomOfflineDurable: "Offline-Änderungen sind in diesem Browser gespeichert und werden nach dem Verbinden synchronisiert.",
+    roomOfflineTemporary: "Offline-Änderungen befinden sich nur in diesem Tab. Lass ihn geöffnet und versuche die Verbindung erneut.",
+    roomRecoveryFailed: "Die Wiederherstellungskopie konnte nicht gespeichert werden. Lass diesen Tab geöffnet und versuche es erneut.",
   },
 };
 
@@ -261,13 +291,20 @@ const getFolderDescription = (
 
 const getRoomDescription = (
   copy: ContextSummaryCopy,
-  status: ConnectionStatus,
+  collaboration: NonNullable<WorkspaceContextState["collaboration"]>,
 ) => {
+  const { connectionStatus: status, durability, recoveryMode } = collaboration;
+  if (durability === "failed") return copy.roomRecoveryFailed;
   if (status === "connected") return copy.roomConnected;
   if (status === "connecting" || status === "reconnecting" || status === "idle") {
     return copy.roomConnecting;
   }
   if (status === "suspended") return copy.roomPaused;
+  if (status === "disconnected" || status === "failed") {
+    return recoveryMode === "durable"
+      ? copy.roomOfflineDurable
+      : copy.roomOfflineTemporary;
+  }
   return copy.roomDisconnected;
 };
 
@@ -321,11 +358,9 @@ export const getWorkspaceContextSummary = (
     ? {
         kind: "collaboration",
         title: copy.roomTitle,
-        description: getRoomDescription(
-          copy,
-          context.collaboration.connectionStatus,
-        ),
+        description: getRoomDescription(copy, context.collaboration),
         state:
+          context.collaboration.durability === "failed" ||
           context.collaboration.connectionStatus === "disconnected" ||
           context.collaboration.connectionStatus === "failed"
             ? "attention"
@@ -337,6 +372,7 @@ export const getWorkspaceContextSummary = (
                 ? "paused"
                 : "steady",
         attention:
+          context.collaboration.durability === "failed" ||
           context.collaboration.connectionStatus === "disconnected" ||
           context.collaboration.connectionStatus === "failed",
       }

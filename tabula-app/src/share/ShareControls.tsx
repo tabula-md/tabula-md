@@ -9,6 +9,7 @@ import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspace/workspaceStorage";
 import { ModalSurface } from "../ui/ModalSurface";
 import { X } from "lucide-react";
+import type { RoomExitLocalWorkspaceStrategy } from "../workspace/workspaceSessionTransition";
 
 type ShareControlsProps = {
   room?: LocationRoom | null;
@@ -19,6 +20,8 @@ type ShareControlsProps = {
   isLive: boolean;
   shareOpen: boolean;
   copied: boolean;
+  canChooseRoomExitStrategy: boolean;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   jsonShare: JsonShareController;
   onCloseShare: () => void;
   onCopyFailed: () => void;
@@ -27,7 +30,7 @@ type ShareControlsProps = {
   onCopyShareUrl: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
 };
 
 export function ShareControls({
@@ -39,6 +42,8 @@ export function ShareControls({
   isLive,
   shareOpen,
   copied,
+  canChooseRoomExitStrategy,
+  roomExitStrategy,
   jsonShare,
   onCloseShare,
   onCopyFailed,
@@ -55,6 +60,7 @@ export function ShareControls({
     isLive: showLiveRoomPanel,
     jsonShare,
     language,
+    roomExitStrategy,
     onCloseShare,
     onCopyFailed,
     onStopSession,
@@ -72,9 +78,12 @@ export function ShareControls({
         onClose={shareController.cancelStopSession}
       >
         <ShareStopSessionConfirm
+          canChooseExitStrategy={canChooseRoomExitStrategy}
           copy={shareController.copy}
+          exitStrategy={shareController.selectedRoomExitStrategy}
           onCancel={shareController.cancelStopSession}
           onConfirm={shareController.confirmStopSession}
+          onExitStrategyChange={shareController.setSelectedRoomExitStrategy}
         />
       </ModalSurface>
     );

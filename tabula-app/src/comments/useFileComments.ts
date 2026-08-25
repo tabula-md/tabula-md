@@ -7,6 +7,7 @@ import {
   WORKSPACE_ROOM_MAX_REPLIES,
 } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration/liveCollaboration";
+import { useEventCallback } from "../shared/useEventCallback";
 import { mapSessionCommentAnchors } from "./commentAnchorSessionModel";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspace/workspaceStorage";
 
@@ -104,7 +105,7 @@ export function useFileComments({
     resetCommentInteraction();
   }, [activeFileId]);
 
-  const replaceCommentsByFileId = (
+  const replaceCommentsByFileId = useEventCallback((
     nextCommentsByFileId: Record<string, FileComment[]>,
     options: { preserveInteraction?: boolean } = {},
   ) => {
@@ -135,7 +136,7 @@ export function useFileComments({
           interactionCommentExists(commentId)),
       ),
     );
-  };
+  });
 
   const addFileComment = ({ fileId, body, quote, anchor }: AddFileCommentOptions) => {
     if (!fileIds.has(fileId)) {

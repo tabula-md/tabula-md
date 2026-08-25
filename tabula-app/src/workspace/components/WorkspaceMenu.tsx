@@ -15,6 +15,8 @@ import {
   Info,
   Monitor,
   Moon,
+  Radio,
+  RefreshCw,
   SlidersHorizontal,
   Save,
   Sun,
@@ -52,6 +54,9 @@ type WorkspaceMenuProps = {
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
   contextSummary: WorkspaceContextSummaryViewModel;
+  collaborationActive?: boolean;
+  onOpenCollaboration?: () => void;
+  onRetryCollaboration?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -163,6 +168,9 @@ export function WorkspaceMenu({
   liveFolderAutoSave = false,
   onToggleLiveFolderAutoSave,
   contextSummary,
+  collaborationActive = false,
+  onOpenCollaboration,
+  onRetryCollaboration,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -263,6 +271,21 @@ export function WorkspaceMenu({
             {copy.actions.exportWorkspace}
           </MenuRow>
         </MenuSection>
+        {collaborationActive && onOpenCollaboration && (
+          <MenuSection label={copy.actions.liveCollaboration}>
+            {onRetryCollaboration && (
+              <MenuRow
+                icon={<RefreshCw size={16} />}
+                onClick={onRetryCollaboration}
+              >
+                {copy.share.live.retrySession}
+              </MenuRow>
+            )}
+            <MenuRow icon={<Radio size={16} />} onClick={onOpenCollaboration}>
+              {copy.actions.liveCollaboration}
+            </MenuRow>
+          </MenuSection>
+        )}
         {hasFolderActions && (
           <MenuSection label={copy.sections.localFolder}>
             {onOpenLiveWorkspace && (

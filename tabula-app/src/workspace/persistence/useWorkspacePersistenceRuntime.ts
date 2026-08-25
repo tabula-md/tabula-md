@@ -19,6 +19,14 @@ type UseWorkspacePersistenceRuntimeOptions = {
   workspace: WorkspaceState;
 };
 
+export const isQueuedWorkspacePersistenceEnabled = ({
+  enabled,
+  deferPersistence,
+}: {
+  enabled: boolean;
+  deferPersistence: boolean;
+}) => enabled && !deferPersistence;
+
 export function useWorkspacePersistenceRuntime({
   enabled,
   getWorkspaceSnapshot,
@@ -41,7 +49,10 @@ export function useWorkspacePersistenceRuntime({
   });
 
   const persistence = useQueuedWorkspacePersistence(workspace, {
-    enabled: !indexedDbHydration.deferPersistence,
+    enabled: isQueuedWorkspacePersistenceEnabled({
+      enabled,
+      deferPersistence: indexedDbHydration.deferPersistence,
+    }),
     getWorkspaceSnapshot,
     onError,
     onBeforePersist,

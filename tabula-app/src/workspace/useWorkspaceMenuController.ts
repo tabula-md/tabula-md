@@ -36,6 +36,9 @@ type UseWorkspaceMenuControllerOptions = {
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
   contextSummary: WorkspaceContextSummaryViewModel;
+  collaborationActive?: boolean;
+  onOpenCollaboration?: () => void;
+  onRetryCollaboration?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -66,6 +69,9 @@ export function useWorkspaceMenuController({
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
   contextSummary,
+  collaborationActive,
+  onOpenCollaboration,
+  onRetryCollaboration,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -113,6 +119,9 @@ export function useWorkspaceMenuController({
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
       contextSummary,
+      collaborationActive,
+      onOpenCollaboration,
+      onRetryCollaboration,
       onClearWorkspace,
       onExportFile,
       onExportWorkspace,
@@ -145,6 +154,9 @@ export function useWorkspaceMenuController({
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
       contextSummary,
+      collaborationActive,
+      onOpenCollaboration,
+      onRetryCollaboration,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

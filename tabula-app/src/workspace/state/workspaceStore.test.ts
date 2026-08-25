@@ -116,6 +116,15 @@ describe("workspace store", () => {
     });
   });
 
+  it("does not publish a new workspace snapshot when file text is unchanged", () => {
+    const { draft } = initializeWorkspaceStore();
+    const filesBeforeUpdate = useWorkspaceStore.getState().files;
+
+    useWorkspaceStore.getState().setFileText(draft.id, draft.text);
+
+    expect(useWorkspaceStore.getState().files).toBe(filesBeforeUpdate);
+  });
+
   it("keeps the selected workspace view when switching documents", () => {
     const { readme, draft } = initializeWorkspaceStore();
 

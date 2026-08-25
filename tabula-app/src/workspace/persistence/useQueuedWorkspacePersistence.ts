@@ -38,24 +38,33 @@ export const useQueuedWorkspacePersistence = (
     "saving" | "saved" | "error" | "suspended"
   >(enabled ? "saving" : "suspended");
   const mountedRef = useRef(true);
+  const enabledRef = useRef(enabled);
   const onErrorRef = useRef(onError);
   const queueRef = useRef<ReturnType<typeof createWorkspacePersistenceQueue> | null>(null);
 
   if (!queueRef.current) {
     queueRef.current = createWorkspacePersistenceQueue({
       onError: (error) => {
-        if (mountedRef.current) setSaveState("error");
+        if (mountedRef.current && enabledRef.current) setSaveState("error");
         onErrorRef.current?.(error);
       },
       onPersisted: () => {
-        if (mountedRef.current) {
-          setPersistedRevision((revision) => revision + 1);
+        if (
+          mountedRef.current &&
+          enabledRef.current &&
+          !queueRef.current?.hasPending()
+        ) {
+          // Flush snapshots are reconstructed after pending editor changes are
+          // committed, so object identity cannot tell us whether the latest
+          // accepted state was saved. The queue is authoritative: only expose
+          // the steady state after no newer debounced or serialized write is
+          // waiting behind the completed write.
+          setPersistedRevision(1);
           setSaveState("saved");
         }
       },
     });
   }
-  const enabledRef = useRef(enabled);
   const getWorkspaceSnapshotRef = useRef(getWorkspaceSnapshot);
   const latestWorkspaceRef = useRef(workspace);
   const onBeforePersistRef = useRef(onBeforePersist);
@@ -66,16 +75,22 @@ export const useQueuedWorkspacePersistence = (
     latestWorkspaceRef.current = workspace;
     onErrorRef.current = onError;
     onBeforePersistRef.current = onBeforePersist;
+  });
 
+  useLayoutEffect(() => {
     if (!enabled) {
       queueRef.current?.cancel();
-      setSaveState("suspended");
-      return;
+      setSaveState((currentState) =>
+        currentState === "suspended" ? currentState : "suspended"
+      );
     }
+  }, [enabled]);
 
+  useLayoutEffect(() => {
+    if (!enabled) return;
     setSaveState("saving");
     queueRef.current?.schedule(workspace);
-  }, [enabled, getWorkspaceSnapshot, onBeforePersist, onError, workspace]);
+  }, [enabled, workspace]);
 
   useEffect(() => {
     mountedRef.current = true;

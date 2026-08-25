@@ -54,10 +54,15 @@ export function ShareLinkPanel({
   onStopSession,
 }: ShareLinkPanelProps) {
   const nameInputId = useId();
-  const canRetrySession = connectionStatus === "disconnected";
+  const canRetrySession =
+    connectionStatus === "disconnected" || connectionStatus === "failed";
   const liveMetadata = connectionStatus === "suspended"
     ? copy.live.pausedDescription
-    : undefined;
+    : connectionStatus === "reconnecting"
+      ? copy.live.reconnectingTitle
+      : canRetrySession
+        ? copy.live.disconnectedTitle
+        : undefined;
 
   const livePanel = (
     <div

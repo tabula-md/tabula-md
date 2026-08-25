@@ -21,7 +21,11 @@ import type { useWorkspaceChromeController } from "./useWorkspaceChromeControlle
 import type { useWorkspaceRoomController } from "./useWorkspaceRoomController";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import type { WorkspaceSessionHost } from "./session/WorkspaceSessionHost";
-import { getRoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
+import {
+  canChooseRoomExitLocalWorkspaceStrategy,
+  getRoomExitLocalWorkspaceStrategy,
+  type RoomExitLocalWorkspaceStrategy,
+} from "./workspaceSessionTransition";
 import {
   createRoomWorkspaceState,
   createStarterWorkspaceState,
@@ -252,12 +256,15 @@ export function useWorkspaceLiveSessionController({
       showToast(copy.live.unavailable, "error");
     }
   });
-  const stopSessionWithPendingCommit = useEventCallback(() => {
+  const stopSessionWithPendingCommit = useEventCallback((
+    requestedStrategy?: RoomExitLocalWorkspaceStrategy,
+  ) => {
     pendingCreatedRoomIdRef.current = null;
     setIsStartingLive(false);
     flushPendingEditorCommit();
     const roomExitStrategy = getRoomExitLocalWorkspaceStrategy(
       sessionHost.getSnapshot(),
+      requestedStrategy,
     );
     const roomWorkspace = roomExitStrategy === "adopt-room"
       ? getWorkspaceSnapshot()
@@ -274,17 +281,10 @@ export function useWorkspaceLiveSessionController({
     }
     restorePersistedLocalWorkspace();
   });
-  const handleLiveRoomConnectionFailed = useEventCallback(() => {
-    chrome.setTopPopover(null);
-    showToast(copy.live.unavailable, "error");
-    stopSessionWithPendingCommit();
-  });
   const { timedOut } = useLiveRoomConnectionLifecycle({
-    activeFileAvailable: Boolean(workspace.activeFile),
     activeRoom,
     connectionStatus: room.connectionStatus,
     hydrationStatus: room.hydrationStatus,
-    onConnectionFailed: handleLiveRoomConnectionFailed,
   });
   const handleRouteWorkspaceChange = useEventCallback(() => {
     chrome.setTopPopover(null);
@@ -309,6 +309,8 @@ export function useWorkspaceLiveSessionController({
   });
 
   return {
+    canChooseRoomExitStrategy:
+      canChooseRoomExitLocalWorkspaceStrategy(activeRoomSession),
     copyShareUrl: copyShareUrlWithPendingCommit,
     isStartingLive,
     isLiveChromeVisible:
@@ -319,6 +321,7 @@ export function useWorkspaceLiveSessionController({
       !timedOut,
     jsonShare,
     liveRoomOpenTimedOut: timedOut,
+    roomExitStrategy: getRoomExitLocalWorkspaceStrategy(activeRoomSession),
     openLocalWorkspaceAfterRoomFailure,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,

@@ -11,6 +11,7 @@ import type { TopPopover } from "../ui/uiTypes";
 import type { LeftPanelView } from "../ui/uiTypes";
 import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
 import type { FollowState } from "../collaboration/followModel";
+import type { RoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
 
 type SetTopPopover = (popover: TopPopover) => void;
 type SetCenterPopover = (popover: null) => void;
@@ -24,6 +25,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   followState: FollowState;
   connectionStatus: ConnectionStatus;
   copiedFileId: string | null;
+  canChooseRoomExitStrategy: boolean;
   currentUserName: string;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
@@ -36,6 +38,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
@@ -56,7 +59,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onSelectFile: (fileId: string) => void;
   onShareOpened: () => void;
   onStartSession: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
   onRetrySession: () => void;
   onToggleLeftPanel: (view: LeftPanelView) => void;
   onOpenWorkspaceLauncher: () => void;
@@ -76,6 +79,7 @@ export function useWorkspaceTopChromeController({
   followState,
   connectionStatus,
   copiedFileId,
+  canChooseRoomExitStrategy,
   currentUserName,
   files,
   folders,
@@ -88,6 +92,7 @@ export function useWorkspaceTopChromeController({
   lastClosedFile,
   openFiles,
   room,
+  roomExitStrategy,
   leftPanelOpen,
   rightPanelOpen,
   topPopover,
@@ -167,6 +172,7 @@ export function useWorkspaceTopChromeController({
     followState,
     connectionStatus,
     copied,
+    canChooseRoomExitStrategy,
     currentUserName,
     folders,
     identity,
@@ -178,6 +184,7 @@ export function useWorkspaceTopChromeController({
     lastClosedFile,
     openFiles,
     room,
+    roomExitStrategy,
     leftPanelOpen,
     rightPanelOpen,
     shareOpen,

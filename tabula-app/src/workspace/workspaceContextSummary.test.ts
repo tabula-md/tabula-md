@@ -63,7 +63,11 @@ describe("workspace context summary", () => {
         writeMode: "automatic",
         status: "suspended",
       },
-      collaboration: { connectionStatus: "connected" },
+      collaboration: {
+        connectionStatus: "connected",
+        durability: "clean",
+        recoveryMode: "durable",
+      },
     });
 
     expect(summary.primary).toMatchObject({
@@ -94,7 +98,11 @@ describe("workspace context summary", () => {
         writeMode: "automatic",
         status: "conflict",
       },
-      collaboration: { connectionStatus: "failed" },
+      collaboration: {
+        connectionStatus: "failed",
+        durability: "failed",
+        recoveryMode: "durable",
+      },
     });
 
     expect(summary.items).toHaveLength(3);
@@ -102,5 +110,31 @@ describe("workspace context summary", () => {
     expect(summary.items[1]).toMatchObject({
       description: "폴더 충돌을 해결할 때까지 저장이 중지됩니다.",
     });
+  });
+
+  it("explains where offline room changes remain", () => {
+    const durable = getWorkspaceContextSummary("en", {
+      runtime: { kind: "room" },
+      browserPersistence: { state: "suspended" },
+      folderBinding: null,
+      collaboration: {
+        connectionStatus: "disconnected",
+        durability: "clean",
+        recoveryMode: "durable",
+      },
+    });
+    const temporary = getWorkspaceContextSummary("en", {
+      runtime: { kind: "room" },
+      browserPersistence: { state: "suspended" },
+      folderBinding: null,
+      collaboration: {
+        connectionStatus: "disconnected",
+        durability: "unknown",
+        recoveryMode: "temporary",
+      },
+    });
+
+    expect(durable.primary.description).toContain("saved in this browser");
+    expect(temporary.primary.description).toContain("only in this tab");
   });
 });

@@ -28,7 +28,11 @@ describe("workspace status indicator", () => {
         writeMode: "automatic",
         status: "conflict",
       },
-      collaboration: { connectionStatus: "connected" },
+      collaboration: {
+        connectionStatus: "connected",
+        durability: "clean",
+        recoveryMode: "durable",
+      },
     });
 
     expect(getWorkspaceStatusIndicator(summary)).toMatchObject({

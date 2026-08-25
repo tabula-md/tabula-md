@@ -98,6 +98,12 @@ type WorkspaceMenuCopy = {
       stopDescription: string;
       stopConfirmTitle: string;
       stopConfirmDescription: string;
+      stopJoinedConfirmDescription: string;
+      afterLeaving: string;
+      restoreLocalWorkspace: string;
+      restoreLocalWorkspaceDescription: string;
+      keepRoomCopy: string;
+      keepRoomCopyDescription: string;
       cancelStop: string;
       confirmStop: string;
     };
@@ -237,6 +243,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Leave live collaboration?",
         stopConfirmDescription:
           "You’ll leave the live room and keep the latest workspace on this device as a local copy. Everyone else can continue collaborating.",
+        stopJoinedConfirmDescription:
+          "Choose what this browser should show after it disconnects. The live room and its invite link continue to work.",
+        afterLeaving: "After leaving",
+        restoreLocalWorkspace: "Return to my previous workspace",
+        restoreLocalWorkspaceDescription:
+          "Restore the browser workspace you had before opening this room.",
+        keepRoomCopy: "Keep this room as my local workspace",
+        keepRoomCopyDescription:
+          "Replace the previous browser workspace with the latest room contents.",
         cancelStop: "Cancel",
         confirmStop: "Leave room",
       },
@@ -360,6 +375,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "실시간 협업에서 나갈까요?",
         stopConfirmDescription:
           "실시간 룸에서 나가고 최신 워크스페이스를 이 기기에 로컬 복사본으로 남깁니다. 다른 참여자는 계속 협업할 수 있습니다.",
+        stopJoinedConfirmDescription:
+          "연결을 끊은 뒤 이 브라우저에 무엇을 표시할지 선택하세요. 실시간 룸과 초대 링크는 그대로 유지됩니다.",
+        afterLeaving: "나간 뒤",
+        restoreLocalWorkspace: "이전 워크스페이스로 돌아가기",
+        restoreLocalWorkspaceDescription:
+          "이 룸을 열기 전에 사용하던 브라우저 워크스페이스를 복원합니다.",
+        keepRoomCopy: "이 룸을 로컬 워크스페이스로 유지",
+        keepRoomCopyDescription:
+          "이전 브라우저 워크스페이스를 최신 룸 내용으로 교체합니다.",
         cancelStop: "취소",
         confirmStop: "룸 나가기",
       },
@@ -484,6 +508,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "ライブ共同編集から退出しますか？",
         stopConfirmDescription:
           "ライブルームを退出し、最新のワークスペースをこの端末にローカルコピーとして残します。他の参加者は共同編集を続けられます。",
+        stopJoinedConfirmDescription:
+          "切断後にこのブラウザーに表示する内容を選択してください。ライブルームと招待リンクは引き続き利用できます。",
+        afterLeaving: "退出後",
+        restoreLocalWorkspace: "以前のワークスペースに戻る",
+        restoreLocalWorkspaceDescription:
+          "このルームを開く前のブラウザーワークスペースを復元します。",
+        keepRoomCopy: "このルームをローカルワークスペースとして保持",
+        keepRoomCopyDescription:
+          "以前のブラウザーワークスペースを最新のルーム内容で置き換えます。",
         cancelStop: "キャンセル",
         confirmStop: "ルームを退出",
       },
@@ -607,6 +640,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "离开实时协作？",
         stopConfirmDescription:
           "你将离开实时房间，并在此设备上保留最新工作区的本地副本。其他参与者仍可继续协作。",
+        stopJoinedConfirmDescription:
+          "选择断开连接后此浏览器显示的内容。实时房间和邀请链接仍可继续使用。",
+        afterLeaving: "离开后",
+        restoreLocalWorkspace: "返回之前的工作区",
+        restoreLocalWorkspaceDescription:
+          "恢复打开此房间之前使用的浏览器工作区。",
+        keepRoomCopy: "将此房间保留为本地工作区",
+        keepRoomCopyDescription:
+          "用最新的房间内容替换之前的浏览器工作区。",
         cancelStop: "取消",
         confirmStop: "离开协作空间",
       },
@@ -731,6 +773,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "¿Salir de la colaboración en vivo?",
         stopConfirmDescription:
           "Saldrás de la sala y conservarás el espacio más reciente como copia local en este dispositivo. Los demás pueden continuar colaborando.",
+        stopJoinedConfirmDescription:
+          "Elige qué mostrará este navegador después de desconectarse. La sala y su enlace de invitación seguirán funcionando.",
+        afterLeaving: "Después de salir",
+        restoreLocalWorkspace: "Volver a mi espacio anterior",
+        restoreLocalWorkspaceDescription:
+          "Restaura el espacio del navegador que usabas antes de abrir esta sala.",
+        keepRoomCopy: "Conservar esta sala como espacio local",
+        keepRoomCopyDescription:
+          "Reemplaza el espacio anterior del navegador con el contenido más reciente de la sala.",
         cancelStop: "Cancelar",
         confirmStop: "Salir de la sala",
       },
@@ -856,6 +907,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Quitter la collaboration en direct ?",
         stopConfirmDescription:
           "Vous quitterez la salle et conserverez l’espace le plus récent comme copie locale sur cet appareil. Les autres peuvent poursuivre la collaboration.",
+        stopJoinedConfirmDescription:
+          "Choisissez ce que ce navigateur affichera après la déconnexion. La salle et son lien d’invitation continueront de fonctionner.",
+        afterLeaving: "Après avoir quitté",
+        restoreLocalWorkspace: "Revenir à mon espace précédent",
+        restoreLocalWorkspaceDescription:
+          "Restaure l’espace du navigateur utilisé avant d’ouvrir cette salle.",
+        keepRoomCopy: "Conserver cette salle comme espace local",
+        keepRoomCopyDescription:
+          "Remplace l’espace précédent du navigateur par le contenu actuel de la salle.",
         cancelStop: "Annuler",
         confirmStop: "Quitter la salle",
       },
@@ -981,6 +1041,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Live-Zusammenarbeit verlassen?",
         stopConfirmDescription:
           "Du verlässt den Live-Raum und behältst den aktuellen Workspace als lokale Kopie auf diesem Gerät. Alle anderen können weiter zusammenarbeiten.",
+        stopJoinedConfirmDescription:
+          "Wähle, was dieser Browser nach dem Trennen anzeigen soll. Der Live-Raum und sein Einladungslink bleiben bestehen.",
+        afterLeaving: "Nach dem Verlassen",
+        restoreLocalWorkspace: "Zum vorherigen Workspace zurückkehren",
+        restoreLocalWorkspaceDescription:
+          "Stellt den Browser-Workspace wieder her, der vor diesem Raum geöffnet war.",
+        keepRoomCopy: "Diesen Raum als lokalen Workspace behalten",
+        keepRoomCopyDescription:
+          "Ersetzt den vorherigen Browser-Workspace durch den aktuellen Rauminhalt.",
         cancelStop: "Abbrechen",
         confirmStop: "Raum verlassen",
       },

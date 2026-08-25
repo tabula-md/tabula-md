@@ -117,6 +117,37 @@ describe("workspace persistence queue", () => {
     expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Latest"));
   });
 
+  it("reports pending work until the latest serialized write succeeds", async () => {
+    let finishFirstWrite: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirstWrite = resolve;
+    });
+    const writeWorkspace = vi.fn()
+      .mockReturnValueOnce(firstWrite)
+      .mockResolvedValue(undefined);
+    const persistenceStates: Array<{ text: string; hasPending: boolean }> = [];
+    let queue: ReturnType<typeof createWorkspacePersistenceQueue>;
+    queue = createWorkspacePersistenceQueue({
+      onPersisted: (workspace) => {
+        persistenceStates.push({
+          text: workspace.files[0]?.text ?? "",
+          hasPending: queue.hasPending(),
+        });
+      },
+      writeWorkspace,
+    });
+
+    queue.persistNow(createWorkspace("# First"));
+    queue.persistNow(createWorkspace("# Latest"));
+    finishFirstWrite?.();
+
+    await vi.waitFor(() => expect(persistenceStates).toHaveLength(2));
+    expect(persistenceStates).toEqual([
+      { text: "# First", hasPending: true },
+      { text: "# Latest", hasPending: false },
+    ]);
+  });
+
   it("does not discard an accepted write when a later debounce is cancelled", async () => {
     let finishFirstWrite: (() => void) | undefined;
     const firstWrite = new Promise<void>((resolve) => {

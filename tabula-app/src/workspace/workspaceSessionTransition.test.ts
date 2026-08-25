@@ -3,7 +3,10 @@ import {
   createLocalWorkspaceSession,
   createRoomWorkspaceSession,
 } from "./session/WorkspaceSession";
-import { getRoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
+import {
+  canChooseRoomExitLocalWorkspaceStrategy,
+  getRoomExitLocalWorkspaceStrategy,
+} from "./workspaceSessionTransition";
 
 const room = {
   roomId: "room-id",
@@ -15,6 +18,7 @@ describe("workspace session transitions", () => {
     const session = createRoomWorkspaceSession(room, null, "created");
 
     expect(getRoomExitLocalWorkspaceStrategy(session)).toBe("adopt-room");
+    expect(canChooseRoomExitLocalWorkspaceStrategy(session)).toBe(false);
 
     session.dispose();
   });
@@ -23,6 +27,10 @@ describe("workspace session transitions", () => {
     const session = createRoomWorkspaceSession(room, null, "joined");
 
     expect(getRoomExitLocalWorkspaceStrategy(session)).toBe("restore-local");
+    expect(canChooseRoomExitLocalWorkspaceStrategy(session)).toBe(true);
+    expect(getRoomExitLocalWorkspaceStrategy(session, "adopt-room")).toBe(
+      "adopt-room",
+    );
 
     session.dispose();
   });
@@ -31,6 +39,7 @@ describe("workspace session transitions", () => {
     const session = createLocalWorkspaceSession();
 
     expect(getRoomExitLocalWorkspaceStrategy(session)).toBe("restore-local");
+    expect(canChooseRoomExitLocalWorkspaceStrategy(session)).toBe(false);
 
     session.dispose();
   });

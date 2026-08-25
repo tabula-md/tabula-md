@@ -6,7 +6,6 @@ import type {
   WorkspaceTheme,
 } from "../state/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
-import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 export type WorkspaceMenuSurfaceProps = {
@@ -32,6 +31,9 @@ export type WorkspaceMenuSurfaceProps = {
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
   contextSummary: WorkspaceContextSummaryViewModel;
+  collaborationActive?: boolean;
+  onOpenCollaboration?: () => void;
+  onRetryCollaboration?: () => void;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -55,14 +57,15 @@ export function WorkspaceMenuSurface({
   onChangeLanguage,
   onChangeTheme,
   onCloseChrome,
-  onImportFileChange,
-  onImportWorkspaceChange,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
   contextSummary,
+  collaborationActive,
+  onOpenCollaboration,
+  onRetryCollaboration,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -71,7 +74,6 @@ export function WorkspaceMenuSurface({
   onTogglePreferences,
 }: WorkspaceMenuSurfaceProps) {
   const copy = getWorkspaceMenuCopy(language);
-  const interfaceCopy = getWorkspaceInterfaceCopy(language);
   const [confirmation, setConfirmation] = useState<"clear" | "disconnect" | null>(null);
   const closeConfirmation = () => setConfirmation(null);
   const confirmClearWorkspace = () => {
@@ -84,23 +86,6 @@ export function WorkspaceMenuSurface({
   };
   return (
     <>
-      <input
-        ref={importInputRef}
-        className="ui-input-surface workspace-file-input"
-        type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
-        onChange={onImportFileChange}
-        aria-label={interfaceCopy.sidePanel.files.openMarkdown}
-      />
-      <input
-        ref={workspaceImportInputRef}
-        className="ui-input-surface workspace-file-input"
-        type="file"
-        multiple
-        {...{ webkitdirectory: "" }}
-        onChange={onImportWorkspaceChange}
-        aria-label={copy.actions.importWorkspace}
-      />
       <WorkspaceMenu
         isOpen={isOpen}
         preferencesOpen={preferencesOpen}
@@ -135,6 +120,15 @@ export function WorkspaceMenuSurface({
           ? onToggleLiveFolderAutoSave
           : undefined}
         contextSummary={contextSummary}
+        collaborationActive={collaborationActive}
+        onOpenCollaboration={onOpenCollaboration ? () => {
+          onCloseChrome();
+          onOpenCollaboration();
+        } : undefined}
+        onRetryCollaboration={onRetryCollaboration ? () => {
+          onCloseChrome();
+          onRetryCollaboration();
+        } : undefined}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
         onExportFile={() => {
