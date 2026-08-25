@@ -82,6 +82,7 @@ import {
 } from "./session/WorkspaceSessionHost";
 import type { WorkspaceInfoDialogKind } from "./components/WorkspaceInfoDialog";
 import { getWorkspaceContextSummary } from "./workspaceContextSummary";
+import { getWorkspaceBoundaryCapabilities } from "./workspaceBoundaryPolicy";
 import {
   useWorkspaceRoomController,
   type RoomCommentActions,
@@ -792,9 +793,18 @@ export function useWorkspaceRuntime() {
     consumeSelectionCommentRequest,
     startCommentReply,
   } = workspaceCommentActions;
-  const clearLocalWorkspace = useEventCallback(() => {
-    if (activeRoom) return;
+  const workspaceBoundaryCapabilities = getWorkspaceBoundaryCapabilities({
+    hasActiveRoom: Boolean(activeRoom),
+    hasLiveFolderBinding: workspaceSourceKind === "live-folder",
+  });
+  const disconnectLocalFolder = useEventCallback(() => {
+    if (!workspaceBoundaryCapabilities.canUseLocalWorkspaceActions) return;
     disconnectLiveWorkspaceFolder();
+    showToast(workspaceMenuCopy.disconnectFolder.disconnected);
+  });
+  const clearLocalWorkspace = useEventCallback(() => {
+    if (!workspaceBoundaryCapabilities.canClearBrowserWorkspace) return;
+    const previousWorkspace = getWorkspaceSnapshot();
     handleUserWorkspaceBoundary();
     const starterWorkspace = createStarterWorkspaceState();
     replaceWorkspace(starterWorkspace);
@@ -804,7 +814,20 @@ export function useWorkspaceRuntime() {
     localWorkspacePersistence.persistNow(starterWorkspace);
     closeFloatingChrome();
     syncUrlForLocalWorkspace("replace");
-    showToast(workspaceMenuCopy.clearWorkspace.cleared);
+    showToast(workspaceMenuCopy.clearWorkspace.cleared, "neutral", {
+      actionLabel: workspaceMenuCopy.clearWorkspace.undo,
+      onAction: () => {
+        handleUserWorkspaceBoundary();
+        replaceWorkspace(previousWorkspace);
+        replaceCommentsByFileId(previousWorkspace.commentsByFileId);
+        setKnowledgeBaseline(previousWorkspace.knowledgeBaseline);
+        clearFileHistory();
+        localWorkspacePersistence.persistNow(previousWorkspace);
+        closeFloatingChrome();
+        syncUrlForLocalWorkspace("replace");
+        showToast(workspaceMenuCopy.clearWorkspace.restored);
+      },
+    });
   });
   const workspaceContextSummary = getWorkspaceContextSummary(
     workspacePreferences.language,
@@ -834,7 +857,10 @@ export function useWorkspaceRuntime() {
     workspaceImportInputRef,
     isOpen: workspaceMenuOpen,
     onAddFile: addRootFile,
-    canClearWorkspace: !activeRoom,
+    canUseLocalWorkspaceActions:
+      workspaceBoundaryCapabilities.canUseLocalWorkspaceActions,
+    canClearBrowserWorkspace:
+      workspaceBoundaryCapabilities.canClearBrowserWorkspace,
     canExportFile: Boolean(activeFile),
     canExportWorkspace: files.length > 0,
     onClearWorkspace: clearLocalWorkspace,
@@ -850,7 +876,8 @@ export function useWorkspaceRuntime() {
       ? saveLiveWorkspaceFolder
       : undefined,
     onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
-      ? disconnectLiveWorkspaceFolder
+      && workspaceBoundaryCapabilities.canUseLocalWorkspaceActions
+      ? disconnectLocalFolder
       : undefined,
     liveFolderAutoSave,
     onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder"

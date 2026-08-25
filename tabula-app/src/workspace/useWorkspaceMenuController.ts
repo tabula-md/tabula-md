@@ -20,7 +20,8 @@ type UseWorkspaceMenuControllerOptions = {
   workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   onAddFile: () => void;
-  canClearWorkspace: boolean;
+  canUseLocalWorkspaceActions: boolean;
+  canClearBrowserWorkspace: boolean;
   canExportFile: boolean;
   canExportWorkspace: boolean;
   onClearWorkspace: () => void;
@@ -49,7 +50,8 @@ export function useWorkspaceMenuController({
   workspaceImportInputRef,
   isOpen,
   onAddFile,
-  canClearWorkspace,
+  canUseLocalWorkspaceActions,
+  canClearBrowserWorkspace,
   canExportFile,
   canExportWorkspace,
   onClearWorkspace,
@@ -99,7 +101,8 @@ export function useWorkspaceMenuController({
       language: preferences.language,
       importInputRef,
       workspaceImportInputRef,
-      canClearWorkspace,
+      canUseLocalWorkspaceActions,
+      canClearBrowserWorkspace,
       canExportFile,
       canExportWorkspace,
       onImportFileChange,
@@ -126,7 +129,8 @@ export function useWorkspaceMenuController({
       workspaceImportInputRef,
       isOpen,
       onAddFile,
-      canClearWorkspace,
+      canUseLocalWorkspaceActions,
+      canClearBrowserWorkspace,
       canExportFile,
       canExportWorkspace,
       onClearWorkspace,

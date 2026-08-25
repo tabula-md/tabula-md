@@ -55,6 +55,15 @@ type WorkspaceMenuCopy = {
     cancel: string;
     confirm: string;
     cleared: string;
+    undo: string;
+    restored: string;
+  };
+  disconnectFolder: {
+    title: string;
+    description: string;
+    cancel: string;
+    confirm: string;
+    disconnected: string;
   };
   share: {
     trigger: string;
@@ -173,10 +182,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Clear local workspace?",
-      description: "Delete all local documents, folders, and comments. This cannot be undone.",
+      description: "Remove all documents, folders, and comments from this browser. You can undo immediately after clearing.",
       cancel: "Cancel",
       confirm: "Clear workspace",
       cleared: "Local workspace cleared.",
+      undo: "Undo",
+      restored: "Local workspace restored.",
+    },
+    disconnectFolder: {
+      title: "Disconnect local folder?",
+      description: "Keep the current browser copy, but stop saving changes to the folder. Files already in the folder are not deleted.",
+      cancel: "Cancel",
+      confirm: "Disconnect folder",
+      disconnected: "Folder disconnected. The browser copy is still here.",
     },
     share: {
       trigger: "Share",
@@ -287,10 +305,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "로컬 워크스페이스를 비울까요?",
-      description: "이 기기의 모든 문서, 폴더, 댓글을 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+      description: "이 브라우저의 모든 문서, 폴더, 댓글을 제거합니다. 비운 직후에는 되돌릴 수 있습니다.",
       cancel: "취소",
       confirm: "워크스페이스 비우기",
       cleared: "로컬 워크스페이스를 비웠습니다.",
+      undo: "되돌리기",
+      restored: "로컬 워크스페이스를 복구했습니다.",
+    },
+    disconnectFolder: {
+      title: "로컬 폴더 연결을 해제할까요?",
+      description: "현재 브라우저 복사본은 유지하지만 폴더에 변경 사항을 저장하지 않습니다. 폴더의 기존 파일은 삭제되지 않습니다.",
+      cancel: "취소",
+      confirm: "폴더 연결 해제",
+      disconnected: "폴더 연결을 해제했습니다. 브라우저 복사본은 그대로 유지됩니다.",
     },
     share: {
       trigger: "공유",
@@ -401,10 +428,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "ローカルワークスペースを消去しますか？",
-      description: "この端末のすべてのドキュメント、フォルダー、コメントを削除します。この操作は元に戻せません。",
+      description: "このブラウザーのすべてのドキュメント、フォルダー、コメントを削除します。消去直後は元に戻せます。",
       cancel: "キャンセル",
       confirm: "ワークスペースを消去",
       cleared: "ローカルワークスペースを消去しました。",
+      undo: "元に戻す",
+      restored: "ローカルワークスペースを復元しました。",
+    },
+    disconnectFolder: {
+      title: "ローカルフォルダーを切断しますか？",
+      description: "現在のブラウザーコピーは保持しますが、変更をフォルダーへ保存しなくなります。フォルダー内の既存ファイルは削除されません。",
+      cancel: "キャンセル",
+      confirm: "フォルダーを切断",
+      disconnected: "フォルダーを切断しました。ブラウザーコピーは保持されています。",
     },
     share: {
       trigger: "共有",
@@ -517,10 +553,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "清空本地工作区？",
-      description: "删除此设备上的所有文档、文件夹和评论。此操作无法撤销。",
+      description: "移除此浏览器中的所有文档、文件夹和评论。清空后可立即撤销。",
       cancel: "取消",
       confirm: "清空工作区",
       cleared: "本地工作区已清空。",
+      undo: "撤销",
+      restored: "本地工作区已恢复。",
+    },
+    disconnectFolder: {
+      title: "断开本地文件夹？",
+      description: "保留当前浏览器副本，但停止将更改保存到文件夹。文件夹中的现有文件不会被删除。",
+      cancel: "取消",
+      confirm: "断开文件夹",
+      disconnected: "文件夹已断开。浏览器副本仍然保留。",
     },
     share: {
       trigger: "分享",
@@ -630,10 +675,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "¿Vaciar el espacio local?",
-      description: "Elimina todos los documentos, carpetas y comentarios locales. Esta acción no se puede deshacer.",
+      description: "Elimina del navegador todos los documentos, carpetas y comentarios. Puedes deshacerlo inmediatamente.",
       cancel: "Cancelar",
       confirm: "Vaciar espacio",
       cleared: "Espacio local vaciado.",
+      undo: "Deshacer",
+      restored: "Espacio local restaurado.",
+    },
+    disconnectFolder: {
+      title: "¿Desconectar la carpeta local?",
+      description: "Conserva la copia del navegador, pero deja de guardar cambios en la carpeta. Los archivos existentes no se eliminan.",
+      cancel: "Cancelar",
+      confirm: "Desconectar carpeta",
+      disconnected: "Carpeta desconectada. La copia del navegador se conserva.",
     },
     share: {
       trigger: "Compartir",
@@ -746,10 +800,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Effacer l’espace local ?",
-      description: "Supprime tous les documents, dossiers et commentaires locaux. Cette action est irréversible.",
+      description: "Supprime du navigateur tous les documents, dossiers et commentaires. Vous pouvez annuler immédiatement.",
       cancel: "Annuler",
       confirm: "Effacer l’espace",
       cleared: "Espace local effacé.",
+      undo: "Annuler",
+      restored: "Espace local restauré.",
+    },
+    disconnectFolder: {
+      title: "Déconnecter le dossier local ?",
+      description: "Conserve la copie du navigateur, mais cesse d’enregistrer les changements dans le dossier. Les fichiers existants ne sont pas supprimés.",
+      cancel: "Annuler",
+      confirm: "Déconnecter le dossier",
+      disconnected: "Dossier déconnecté. La copie du navigateur est conservée.",
     },
     share: {
       trigger: "Partager",
@@ -862,10 +925,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Lokalen Workspace leeren?",
-      description: "Löscht alle lokalen Dokumente, Ordner und Kommentare. Diese Aktion kann nicht rückgängig gemacht werden.",
+      description: "Entfernt alle Dokumente, Ordner und Kommentare aus diesem Browser. Direkt danach ist Rückgängig möglich.",
       cancel: "Abbrechen",
       confirm: "Workspace leeren",
       cleared: "Lokaler Workspace geleert.",
+      undo: "Rückgängig",
+      restored: "Lokaler Workspace wiederhergestellt.",
+    },
+    disconnectFolder: {
+      title: "Lokalen Ordner trennen?",
+      description: "Behält die Browserkopie, speichert Änderungen aber nicht mehr im Ordner. Vorhandene Dateien werden nicht gelöscht.",
+      cancel: "Abbrechen",
+      confirm: "Ordner trennen",
+      disconnected: "Ordner getrennt. Die Browserkopie bleibt erhalten.",
     },
     share: {
       trigger: "Teilen",

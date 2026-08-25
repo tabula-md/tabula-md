@@ -41,6 +41,11 @@ describe("workspace locale chrome copy", () => {
     expect(english.actions.importWorkspace).toBe("Import folder copy…");
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
+    expect(english.clearWorkspace.description).toContain("this browser");
+    expect(english.clearWorkspace.undo).toBe("Undo");
+    expect(english.disconnectFolder.description).toContain(
+      "Files already in the folder are not deleted.",
+    );
     expect(english.emptyState.tagline).toBe(
       "Open Markdown. Share one link. Edit with people or agents.",
     );

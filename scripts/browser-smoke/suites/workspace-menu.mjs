@@ -374,8 +374,8 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
     await page.getByRole("dialog", { name: "Clear local workspace?" }).waitFor();
     expect(
-      (await page.getByText("Delete all local documents, folders, and comments. This cannot be undone.").count()) === 1,
-      "Clear workspace should explain its destructive local scope.",
+      (await page.getByText("Remove all documents, folders, and comments from this browser. You can undo immediately after clearing.").count()) === 1,
+      "Clear workspace should explain its browser-local scope and immediate recovery.",
     );
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
@@ -388,6 +388,16 @@ export async function run(ctx) {
     await page.waitForFunction(
       () => document.querySelector(".app-toast")?.textContent?.includes("Local workspace cleared."),
     );
+    await page.locator(".app-toast").getByRole("button", { name: "Undo", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await page.waitForFunction(
+      () => document.querySelector(".app-toast")?.textContent?.includes("Local workspace restored."),
+    );
+
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
+    await page.getByRole("button", { name: "Clear workspace", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
     await page.reload();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(

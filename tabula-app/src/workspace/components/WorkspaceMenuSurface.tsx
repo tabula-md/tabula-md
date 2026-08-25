@@ -16,7 +16,8 @@ export type WorkspaceMenuSurfaceProps = {
   language: WorkspaceLanguage;
   preferencesOpen: boolean;
   theme: WorkspaceTheme;
-  canClearWorkspace: boolean;
+  canUseLocalWorkspaceActions: boolean;
+  canClearBrowserWorkspace: boolean;
   canExportFile: boolean;
   canExportWorkspace: boolean;
   onAddFile: () => void;
@@ -46,7 +47,8 @@ export function WorkspaceMenuSurface({
   language,
   preferencesOpen,
   theme,
-  canClearWorkspace,
+  canUseLocalWorkspaceActions,
+  canClearBrowserWorkspace,
   canExportFile,
   canExportWorkspace,
   onAddFile,
@@ -70,11 +72,15 @@ export function WorkspaceMenuSurface({
 }: WorkspaceMenuSurfaceProps) {
   const copy = getWorkspaceMenuCopy(language);
   const interfaceCopy = getWorkspaceInterfaceCopy(language);
-  const [clearWorkspaceOpen, setClearWorkspaceOpen] = useState(false);
-  const closeClearWorkspace = () => setClearWorkspaceOpen(false);
+  const [confirmation, setConfirmation] = useState<"clear" | "disconnect" | null>(null);
+  const closeConfirmation = () => setConfirmation(null);
   const confirmClearWorkspace = () => {
     onClearWorkspace();
-    closeClearWorkspace();
+    closeConfirmation();
+  };
+  const confirmDisconnectFolder = () => {
+    onDisconnectLiveWorkspace?.();
+    closeConfirmation();
   };
   return (
     <>
@@ -108,21 +114,24 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           importInputRef.current?.click();
         }}
-        onImportWorkspace={canClearWorkspace ? () => {
+        onImportWorkspace={canUseLocalWorkspaceActions ? () => {
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         } : undefined}
-        onOpenLiveWorkspace={canClearWorkspace
+        onOpenLiveWorkspace={canUseLocalWorkspaceActions
           ? onOpenLiveWorkspace
           : undefined}
-        onSaveLiveWorkspace={canClearWorkspace
+        onSaveLiveWorkspace={canUseLocalWorkspaceActions
           ? onSaveLiveWorkspace
           : undefined}
-        onDisconnectLiveWorkspace={canClearWorkspace
-          ? onDisconnectLiveWorkspace
+        onDisconnectLiveWorkspace={onDisconnectLiveWorkspace
+          ? () => {
+              onCloseChrome();
+              setConfirmation("disconnect");
+            }
           : undefined}
         liveFolderAutoSave={liveFolderAutoSave}
-        onToggleLiveFolderAutoSave={canClearWorkspace
+        onToggleLiveFolderAutoSave={canUseLocalWorkspaceActions
           ? onToggleLiveFolderAutoSave
           : undefined}
         contextSummary={contextSummary}
@@ -136,18 +145,47 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           onExportWorkspace();
         }}
-        onClearWorkspace={canClearWorkspace ? () => {
+        onClearWorkspace={canClearBrowserWorkspace ? () => {
           onCloseChrome();
-          setClearWorkspaceOpen(true);
+          setConfirmation("clear");
         } : undefined}
         onOpenAbout={onOpenAbout}
         onOpenHelp={onOpenHelp}
       />
-      {clearWorkspaceOpen && canClearWorkspace && (
+      {confirmation === "disconnect" && onDisconnectLiveWorkspace && (
+        <ModalSurface
+          ariaLabelledBy="disconnect-folder-title"
+          className="clear-workspace-modal"
+          onClose={closeConfirmation}
+        >
+          <header className="share-modal-header compact">
+            <h2 id="disconnect-folder-title">{copy.disconnectFolder.title}</h2>
+            <p>{copy.disconnectFolder.description}</p>
+          </header>
+          <div className="share-modal-actions clear-workspace-actions">
+            <button
+              type="button"
+              className="share-modal-secondary"
+              data-modal-initial-focus
+              onClick={closeConfirmation}
+            >
+              {copy.disconnectFolder.cancel}
+            </button>
+            <button
+              type="button"
+              className="share-modal-primary"
+              onClick={confirmDisconnectFolder}
+            >
+              {copy.disconnectFolder.confirm}
+            </button>
+          </div>
+        </ModalSurface>
+      )}
+      {confirmation === "clear" && canClearBrowserWorkspace && (
         <ModalSurface
           ariaLabelledBy="clear-workspace-title"
           className="clear-workspace-modal"
-          onClose={closeClearWorkspace}
+          onClose={closeConfirmation}
         >
           <header className="share-modal-header compact">
             <h2 id="clear-workspace-title">{copy.clearWorkspace.title}</h2>
@@ -158,7 +196,7 @@ export function WorkspaceMenuSurface({
               type="button"
               className="share-modal-secondary"
               data-modal-initial-focus
-              onClick={closeClearWorkspace}
+              onClick={closeConfirmation}
             >
               {copy.clearWorkspace.cancel}
             </button>
