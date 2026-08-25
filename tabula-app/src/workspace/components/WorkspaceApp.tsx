@@ -7,6 +7,8 @@ import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
+import { WorkspaceAssetViewer } from "./WorkspaceAssetViewer";
 
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
 const DocumentWorkbench = lazy(() => import("../../document/DocumentWorkbench").then(
@@ -32,6 +34,10 @@ export function WorkspaceApp() {
     workspaceSession,
   } = useWorkspaceRuntime();
   const { activeFile, ...documentWorkbenchProps } = documentRuntime.workbench;
+  const activeFilePresentation = activeFile
+    ? getWorkspaceFilePresentation(activeFile)
+    : undefined;
+  const assetOpen = activeFilePresentation?.kind === "asset";
   const [workspaceMenuMounted, setWorkspaceMenuMounted] = useState(false);
 
   useEffect(() => {
@@ -72,7 +78,9 @@ export function WorkspaceApp() {
           <MemoWorkspaceTopChrome {...chrome.top} />
 
           <section
-            className={documentRuntime.surface.fileShellClassName}
+            className={`${documentRuntime.surface.fileShellClassName}${
+              assetOpen ? " asset-file-shell" : ""
+            }`}
             id={activeFile ? getWorkspaceTabPanelId(activeFile.id) : undefined}
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
@@ -80,14 +88,21 @@ export function WorkspaceApp() {
             {collaboration.liveRoomOpenState === "opening" ? (
               <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
-              <Suspense
-                fallback={<section className="workspace" aria-busy="true" />}
-              >
-                <DocumentWorkbench
-                  {...documentWorkbenchProps}
-                  activeFile={activeFile}
+              assetOpen ? (
+                <WorkspaceAssetViewer
+                  file={activeFile}
+                  language={documentWorkbenchProps.language}
                 />
-              </Suspense>
+              ) : (
+                <Suspense
+                  fallback={<section className="workspace" aria-busy="true" />}
+                >
+                  <DocumentWorkbench
+                    {...documentWorkbenchProps}
+                    activeFile={activeFile}
+                  />
+                </Suspense>
+              )
             ) : (
               <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}

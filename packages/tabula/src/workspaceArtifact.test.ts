@@ -3,6 +3,8 @@ import {
   cloneWorkspaceArtifact,
   createWorkspaceArtifact,
   getWorkspaceArtifactBytes,
+  getWorkspaceArtifactKind,
+  getWorkspaceArtifactMediaType,
 } from "./workspaceArtifact";
 
 describe("workspace artifacts", () => {
@@ -60,5 +62,14 @@ describe("workspace artifacts", () => {
       mediaType: "image/png",
       editable: false,
     });
+  });
+
+  it("classifies common audio and video formats as previewable assets", () => {
+    expect(getWorkspaceArtifactMediaType("recording.mp3")).toBe("audio/mpeg");
+    expect(getWorkspaceArtifactMediaType("recording.m4a")).toBe("audio/mp4");
+    expect(getWorkspaceArtifactMediaType("demo.mp4")).toBe("video/mp4");
+    expect(getWorkspaceArtifactMediaType("demo.webm")).toBe("video/webm");
+    expect(getWorkspaceArtifactKind("recording.mp3")).toBe("asset");
+    expect(getWorkspaceArtifactKind("demo.mp4")).toBe("asset");
   });
 });

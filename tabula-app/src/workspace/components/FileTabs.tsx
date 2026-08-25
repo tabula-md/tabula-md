@@ -15,6 +15,8 @@ import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { getWorkspaceFileIconKind } from "../workspaceFilePresentation";
+import { WorkspaceFileTypeIcon } from "./WorkspaceFileTypeIcon";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -42,7 +44,7 @@ const emptyTabScrollState: TabScrollState = {
   canScrollRight: false,
 };
 
-const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
+const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown|mdx)$/i, "");
 
 export const getDocumentCollaborators = (
   collaborators: readonly Collaborator[],
@@ -258,6 +260,7 @@ export function FileTabs({
             fullPath: file.title,
           };
           const tabDisplayTitle = getTabDisplayTitle(tabLabel.displayTitle);
+          const fileIconKind = getWorkspaceFileIconKind(file);
           return (
             <div
               className={`tab-item ${isActiveFile ? "active" : ""} ${
@@ -349,6 +352,11 @@ export function FileTabs({
                       tabLabel.locationLabel ? " has-location" : ""
                     }`}
                   >
+                    {fileIconKind !== "markdown" && (
+                      <span className="tab-file-type-icon" aria-hidden="true">
+                        <WorkspaceFileTypeIcon kind={fileIconKind} size={14} />
+                      </span>
+                    )}
                     <span className="tab-title">{tabDisplayTitle}</span>
                     {tabLabel.locationLabel && (
                       <span className="tab-location" aria-hidden="true">
