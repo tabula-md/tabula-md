@@ -631,10 +631,6 @@ export function useWorkspaceFileIoController({
     return () => window.clearTimeout(timer);
   }, [files, folders, isRoomSession, liveFolderAutoSave, workspaceSourceKind]);
 
-  useEffect(() => {
-    if (isRoomSession) disconnectLiveWorkspaceFolder();
-  }, [isRoomSession]);
-
   const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
     return Array.from(event.dataTransfer.files).find(isSupportedImportFileDescriptor);
   };

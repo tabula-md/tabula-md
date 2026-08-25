@@ -21,6 +21,7 @@ import type { useWorkspaceChromeController } from "./useWorkspaceChromeControlle
 import type { useWorkspaceRoomController } from "./useWorkspaceRoomController";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import type { WorkspaceSessionHost } from "./session/WorkspaceSessionHost";
+import { getRoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
 import {
   createRoomWorkspaceState,
   createStarterWorkspaceState,
@@ -173,6 +174,16 @@ export function useWorkspaceLiveSessionController({
     room.hydrationStatus,
   ]);
 
+  const restorePersistedLocalWorkspace = useEventCallback(() => {
+    void readIndexedDbWorkspace()
+      .then((storedWorkspace) => {
+        const nextStoredWorkspace = storedWorkspace ?? createStarterWorkspaceState();
+        getWorkspaceStoreForMode("local").getState().replaceWorkspace(nextStoredWorkspace);
+        comments.replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
+      })
+      .catch(handlePersistenceError);
+  });
+
   const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
     pendingCreatedRoomIdRef.current = null;
     setIsStartingLive(false);
@@ -183,13 +194,7 @@ export function useWorkspaceLiveSessionController({
     sessionHost.openLocal();
     setLiveRoomOpenFailure(null);
     syncUrlForLocalWorkspace("replace");
-    void readIndexedDbWorkspace()
-      .then((storedWorkspace) => {
-        const nextStoredWorkspace = storedWorkspace ?? createStarterWorkspaceState();
-        getWorkspaceStoreForMode("local").getState().replaceWorkspace(nextStoredWorkspace);
-        comments.replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
-      })
-      .catch(handlePersistenceError);
+    restorePersistedLocalWorkspace();
   });
   const copyShareUrlWithPendingCommit = useEventCallback(async () => {
     flushPendingEditorCommit();
@@ -251,13 +256,23 @@ export function useWorkspaceLiveSessionController({
     pendingCreatedRoomIdRef.current = null;
     setIsStartingLive(false);
     flushPendingEditorCommit();
-    getWorkspaceStoreForMode("local").getState().replaceWorkspace(getWorkspaceSnapshot());
+    const roomExitStrategy = getRoomExitLocalWorkspaceStrategy(
+      sessionHost.getSnapshot(),
+    );
+    const roomWorkspace = roomExitStrategy === "adopt-room"
+      ? getWorkspaceSnapshot()
+      : null;
     stopSession();
     room.resetCollaborationState("idle");
     roomDocumentProjectionStore.clear();
     syncUrlForLocalWorkspace("replace");
     sessionHost.openLocal();
     setLiveRoomOpenFailure(null);
+    if (roomWorkspace) {
+      getWorkspaceStoreForMode("local").getState().replaceWorkspace(roomWorkspace);
+      return;
+    }
+    restorePersistedLocalWorkspace();
   });
   const handleLiveRoomConnectionFailed = useEventCallback(() => {
     chrome.setTopPopover(null);
