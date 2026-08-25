@@ -8,6 +8,8 @@ import {
   FolderArchive,
   FolderSync,
   FolderInput,
+  FolderOpen,
+  HardDrive,
   HelpCircle,
   Github,
   Info,
@@ -18,6 +20,7 @@ import {
   Sun,
   Trash2,
   Unplug,
+  Users,
 } from "lucide-react";
 import type {
   WorkspaceLanguage,
@@ -27,6 +30,7 @@ import {
   getWorkspaceMenuCopy,
   WORKSPACE_LANGUAGE_OPTIONS,
 } from "../workspaceLocale";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 type WorkspaceMenuProps = {
   isOpen: boolean;
@@ -44,6 +48,7 @@ type WorkspaceMenuProps = {
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
+  contextSummary: WorkspaceContextSummaryViewModel;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -140,6 +145,7 @@ export function WorkspaceMenu({
   onDisconnectLiveWorkspace,
   liveFolderAutoSave = false,
   onToggleLiveFolderAutoSave,
+  contextSummary,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -153,6 +159,7 @@ export function WorkspaceMenu({
   }
 
   const copy = getWorkspaceMenuCopy(language);
+  const primaryContext = contextSummary.primary;
 
   const renderSegment = <Value extends string>(
     currentValue: Value,
@@ -182,6 +189,22 @@ export function WorkspaceMenu({
       role="dialog"
       aria-label={copy.aria.workspaceMenu}
     >
+      <div
+        className={`workspace-menu-context${primaryContext.attention ? " attention" : ""}`}
+      >
+        {primaryContext.kind === "folder" ? (
+          <FolderOpen size={16} />
+        ) : primaryContext.kind === "collaboration" ? (
+          <Users size={16} />
+        ) : (
+          <HardDrive size={16} />
+        )}
+        <span>
+          <strong>{primaryContext.title}</strong>
+          <small>{primaryContext.description}</small>
+        </span>
+      </div>
+      <div className="workspace-menu-divider" role="separator" />
       <nav className="workspace-menu-list" aria-label={copy.aria.workspaceActions}>
         <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
           {copy.actions.newFile}

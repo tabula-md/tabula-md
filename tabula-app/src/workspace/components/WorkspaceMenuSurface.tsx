@@ -7,6 +7,7 @@ import type {
 } from "../state/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 export type WorkspaceMenuSurfaceProps = {
   importInputRef: RefObject<HTMLInputElement | null>;
@@ -29,6 +30,7 @@ export type WorkspaceMenuSurfaceProps = {
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
+  contextSummary: WorkspaceContextSummaryViewModel;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -58,6 +60,7 @@ export function WorkspaceMenuSurface({
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
+  contextSummary,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -122,6 +125,7 @@ export function WorkspaceMenuSurface({
         onToggleLiveFolderAutoSave={canClearWorkspace
           ? onToggleLiveFolderAutoSave
           : undefined}
+        contextSummary={contextSummary}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
         onExportFile={() => {

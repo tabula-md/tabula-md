@@ -13,6 +13,7 @@ import type {
   WorkspacePreferences,
   WorkspaceTheme,
 } from "./state/useWorkspacePreferences";
+import type { WorkspaceContextSummaryViewModel } from "./workspaceContextSummary";
 
 type UseWorkspaceMenuControllerOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
@@ -33,6 +34,7 @@ type UseWorkspaceMenuControllerOptions = {
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
+  contextSummary: WorkspaceContextSummaryViewModel;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -61,6 +63,7 @@ export function useWorkspaceMenuController({
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
+  contextSummary,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -106,6 +109,7 @@ export function useWorkspaceMenuController({
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
+      contextSummary,
       onClearWorkspace,
       onExportFile,
       onExportWorkspace,
@@ -136,6 +140,7 @@ export function useWorkspaceMenuController({
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
+      contextSummary,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

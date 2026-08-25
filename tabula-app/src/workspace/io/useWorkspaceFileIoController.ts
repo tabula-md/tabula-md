@@ -203,6 +203,7 @@ export function useWorkspaceFileIoController({
   const liveFolderWriteQueueRef = useRef(Promise.resolve());
   const [workspaceSourceKind, setWorkspaceSourceKind] =
     useState<WorkspaceSourceKind>("browser-copy");
+  const [workspaceSourceLabel, setWorkspaceSourceLabel] = useState<string>();
   const [liveFolderAutoSave, setLiveFolderAutoSave] = useState(false);
   const [liveFolderConflict, setLiveFolderConflict] =
     useState<LiveFolderConflictReview | null>(null);
@@ -330,6 +331,7 @@ export function useWorkspaceFileIoController({
     setLiveFolderAutoSave(false);
     setLiveFolderConflict(null);
     setWorkspaceSourceKind("browser-copy");
+    setWorkspaceSourceLabel(undefined);
   };
 
   const openLiveWorkspaceFolder = () => {
@@ -408,10 +410,12 @@ export function useWorkspaceFileIoController({
           baseline,
         };
         setWorkspaceSourceKind("live-folder");
+        setWorkspaceSourceLabel(pendingLiveFolder.adapter.source.label);
       });
     } else {
       activeLiveFolderRef.current = null;
       setWorkspaceSourceKind("browser-copy");
+      setWorkspaceSourceLabel(undefined);
     }
     pendingLiveFolderRef.current = null;
     setWorkspaceFolderImport(null);
@@ -672,6 +676,7 @@ export function useWorkspaceFileIoController({
     isLiveFolderSupported: isLiveFolderSupported(),
     workspaceFolderImport,
     workspaceSourceKind,
+    workspaceSourceLabel,
     liveFolderAutoSave,
     liveFolderConflict,
     copyFile,

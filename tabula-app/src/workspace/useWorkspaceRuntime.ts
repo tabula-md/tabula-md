@@ -81,6 +81,7 @@ import {
   type WorkspaceSessionHost,
 } from "./session/WorkspaceSessionHost";
 import type { WorkspaceInfoDialogKind } from "./components/WorkspaceInfoDialog";
+import { getWorkspaceContextSummary } from "./workspaceContextSummary";
 import {
   useWorkspaceRoomController,
   type RoomCommentActions,
@@ -628,6 +629,7 @@ export function useWorkspaceRuntime() {
     useExternalLiveFolderVersion,
     workspaceFolderImport,
     workspaceSourceKind,
+    workspaceSourceLabel,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoController({
@@ -830,6 +832,28 @@ export function useWorkspaceRuntime() {
     onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder"
       ? toggleLiveFolderAutoSave
       : undefined,
+    contextSummary: getWorkspaceContextSummary(workspacePreferences.language, {
+      runtime: activeRoom ? { kind: "room" } : { kind: "local" },
+      browserPersistence: {
+        state: activeRoom
+          ? "suspended"
+          : localWorkspacePersistence.pending
+            ? "saving"
+            : "saved",
+      },
+      folderBinding: workspaceSourceKind === "live-folder"
+        ? {
+            label: workspaceSourceLabel,
+            writeMode: liveFolderAutoSave ? "automatic" : "manual",
+            status: activeRoom
+              ? "suspended"
+              : liveFolderConflict
+                ? "conflict"
+                : "ready",
+          }
+        : null,
+      collaboration: activeRoom ? { connectionStatus } : null,
+    }),
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
