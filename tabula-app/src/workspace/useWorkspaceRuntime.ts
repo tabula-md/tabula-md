@@ -21,13 +21,11 @@ import {
   projectWorkspaceRoomComments,
 } from "../collaboration/workspaceRoomProjection";
 import {
-  createStarterWorkspaceState,
   createWorkspaceFile,
-  getWorkspaceName,
+  getWorkspacePresentation,
   randomId,
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
-  syncUrlForLocalWorkspace,
   type FileViewMode,
   type WorkspaceState,
 } from "./workspaceStorage";
@@ -51,6 +49,7 @@ import { useSelectionActionDismissal } from "../document/useSelectionActionDismi
 import { useWorkspaceEditorDocumentRuntimeOwner } from "../document/editorDocumentRuntimeOwner";
 import { useWorkspaceActiveFileEditor } from "../document/useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "./useWorkspaceChromeController";
+import type { WorkspaceShellSize } from "./workspaceShellLayout";
 import { useWorkspaceCommentActions } from "../comments/useWorkspaceCommentActions";
 import { useWorkspaceDocumentRuntime } from "../document/useWorkspaceDocumentRuntime";
 import { useWorkspaceFileActions } from "./useWorkspaceFileActions";
@@ -82,8 +81,6 @@ import {
   type WorkspaceSessionHost,
 } from "./session/WorkspaceSessionHost";
 import type { WorkspaceInfoDialogKind } from "./components/WorkspaceInfoDialog";
-import { getWorkspaceContextSummary } from "./workspaceContextSummary";
-import { getWorkspaceBoundaryCapabilities } from "./workspaceBoundaryPolicy";
 import {
   useWorkspaceRoomController,
   type RoomCommentActions,
@@ -91,12 +88,9 @@ import {
 import { useWorkspaceLiveSessionController } from "./useWorkspaceLiveSessionController";
 import { useWorkspaceWorkbenchSurfaceController } from "../document/useWorkspaceWorkbenchSurfaceController";
 import { getWorkspaceSurfaceCopy } from "./workspaceSurfaceLocale";
-import type { MarkdownPreviewWorkspaceLink } from "../preview/markdownPreviewTypes";
-import {
-  decodeMarkdownPreviewFragment,
-  resolveMarkdownPreviewWorkspaceLink,
-} from "../preview/workspacePreviewLinks";
 import { getAmbiguousWorkspaceLinkResolutionEdit } from "./workspaceLinkResolution";
+import { useWorkspacePreviewNavigation } from "./useWorkspacePreviewNavigation";
+import { useWorkspaceBoundaryController } from "./useWorkspaceBoundaryController";
 
 const FRONTMATTER_SNAPSHOT_PATTERN =
   /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/;
@@ -104,7 +98,7 @@ const FRONTMATTER_SNAPSHOT_PATTERN =
 const getFrontmatterSnapshot = (markdown: string) =>
   FRONTMATTER_SNAPSHOT_PATTERN.exec(markdown)?.[0] ?? "";
 
-export function useWorkspaceRuntime() {
+export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
   const [initialWorkspaceSnapshot] = useState(() =>
     readInitialWorkspaceSnapshot(),
   );
@@ -198,14 +192,11 @@ export function useWorkspaceRuntime() {
     documentId: string;
     requestId: number;
   } | null>(null);
-  const [pendingPreviewNavigation, setPendingPreviewNavigation] = useState<{
-    documentId: string;
-    fragment: string;
-    sourceLineNumber?: number;
-  } | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const [roomDocumentProjectionStore] = useState(() =>
     createActiveRoomDocumentProjectionStore());
+  const hasConnectedFolderRef = useRef(false);
+  const disconnectConnectedFolderRef = useRef<() => void>(() => undefined);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -310,6 +301,9 @@ export function useWorkspaceRuntime() {
       return {
         ...materializedWorkspace,
         commentsByFileId: projectWorkspaceRoomComments(roomSnapshot.commentsByFileId),
+        presentation: getWorkspacePresentation(materializedWorkspace.files.find(
+          (file) => file.id === materializedWorkspace.activeFileId,
+        )),
       };
     }
     return {
@@ -321,6 +315,9 @@ export function useWorkspaceRuntime() {
           )
         : workspaceSnapshot.files,
       commentsByFileId,
+      presentation: getWorkspacePresentation(
+        activeFileSnapshot ?? workspaceSnapshot.files.find((file) => file.id === workspaceSnapshot.activeFileId),
+      ),
       ...(localPersistenceEnabled && knowledgeBaseline
         ? { knowledgeBaseline }
         : {}),
@@ -384,6 +381,7 @@ export function useWorkspaceRuntime() {
     workspaceRef,
   } = documentRuntime;
   const workspaceChrome = useWorkspaceChromeController({
+    shellSize,
     selectionActionPosition,
     setCopiedFileId,
     setSelectionActionPosition,
@@ -395,6 +393,7 @@ export function useWorkspaceRuntime() {
       openFileIds,
       activeFileId,
       commentsByFileId,
+      presentation: getWorkspacePresentation(activeFile),
       ...(knowledgeBaseline ? { knowledgeBaseline } : {}),
     }),
     [
@@ -404,6 +403,7 @@ export function useWorkspaceRuntime() {
       folders,
       knowledgeBaseline,
       openFileIds,
+      activeFile,
     ],
   );
   const {
@@ -427,6 +427,8 @@ export function useWorkspaceRuntime() {
     setLauncherOpen,
     closeFloatingChrome,
     openFilesPanel,
+    openLeftPanel,
+    openRightPanel,
     toggleWorkspaceMenu,
     toggleLeftPanel,
     toggleRightPanel,
@@ -559,6 +561,8 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit,
     getActiveFileSnapshot,
     getWorkspaceSnapshot,
+    hasConnectedFolder: () => hasConnectedFolderRef.current,
+    disconnectConnectedFolder: () => disconnectConnectedFolderRef.current(),
     handlePersistenceError,
     liveRoomOpenFailure,
     onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
@@ -593,15 +597,19 @@ export function useWorkspaceRuntime() {
     showToast(
       liveRoomOpenState === "expired"
         ? surfaceCopy.roomExpiredTitle
-        : surfaceCopy.roomUnavailableTitle,
+        : isStartingLive
+          ? workspaceShareCopy.live.unavailable
+          : surfaceCopy.roomUnavailableTitle,
       "error",
     );
     openLocalWorkspaceAfterRoomFailure();
   }, [
     activeRoom,
+    isStartingLive,
     liveRoomOpenState,
     openLocalWorkspaceAfterRoomFailure,
     showToast,
+    workspaceShareCopy.live.unavailable,
     workspacePreferences.language,
   ]);
 
@@ -665,6 +673,8 @@ export function useWorkspaceRuntime() {
     showToast,
     workspaceSource: initialWorkspaceSnapshot.source,
   });
+  hasConnectedFolderRef.current = workspaceSourceKind === "live-folder";
+  disconnectConnectedFolderRef.current = disconnectLiveWorkspaceFolder;
   const {
     selectFile,
     addFile,
@@ -776,13 +786,12 @@ export function useWorkspaceRuntime() {
     previewSurfaceRef,
     largeDocumentMode: activeDocument.largeDocumentMode,
     onBeforeCreateComment: handleUserWorkspaceBoundary,
+    openRightPanel,
     selectFile,
     selectedCharacterCount,
     setActiveFileBookmarks,
     setCenterPopover,
     setFocusedCommentId,
-    setRightPanelOpen,
-    setRightPanelView,
     setSelectionActionPosition,
     setTopPopover,
     showToast,
@@ -801,81 +810,46 @@ export function useWorkspaceRuntime() {
     consumeSelectionCommentRequest,
     startCommentReply,
   } = workspaceCommentActions;
-  const workspaceBoundaryCapabilities = getWorkspaceBoundaryCapabilities({
-    hasActiveRoom: Boolean(activeRoom),
-    hasLiveFolderBinding: workspaceSourceKind === "live-folder",
+  const {
+    capabilities: workspaceBoundaryCapabilities,
+    clearLocalWorkspace,
+    contextSummary: workspaceContextSummary,
+    disconnectLocalFolder,
+  } = useWorkspaceBoundaryController({
+    activeRoom: Boolean(activeRoom),
+    browserPersistence: localWorkspacePersistence,
+    clearFileHistory,
+    closeFloatingChrome,
+    collaboration: activeRoom ? {
+      connectionStatus,
+      durability: roomDurability,
+      recoveryMode: roomRecoveryMode,
+    } : null,
+    copy: workspaceMenuCopy,
+    disconnectFolder: disconnectLiveWorkspaceFolder,
+    folderBinding: workspaceSourceKind === "live-folder" ? {
+      autoSave: liveFolderAutoSave,
+      label: workspaceSourceLabel,
+      saveStatus: liveFolderSaveStatus,
+    } : null,
+    getWorkspaceSnapshot,
+    language: workspacePreferences.language,
+    onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
+    replaceCommentsByFileId,
+    replaceKnowledgeBaseline: setKnowledgeBaseline,
+    replaceWorkspace,
+    showToast,
   });
-  const disconnectLocalFolder = useEventCallback(() => {
-    if (!workspaceBoundaryCapabilities.canUseLocalWorkspaceActions) return;
-    disconnectLiveWorkspaceFolder();
-    showToast(workspaceMenuCopy.disconnectFolder.disconnected);
-  });
-  const clearLocalWorkspace = useEventCallback(() => {
-    if (!workspaceBoundaryCapabilities.canClearBrowserWorkspace) return;
-    const previousWorkspace = getWorkspaceSnapshot();
-    handleUserWorkspaceBoundary();
-    const starterWorkspace = createStarterWorkspaceState();
-    replaceWorkspace(starterWorkspace);
-    replaceCommentsByFileId({});
-    setKnowledgeBaseline(undefined);
-    clearFileHistory();
-    localWorkspacePersistence.persistNow(starterWorkspace);
-    closeFloatingChrome();
-    syncUrlForLocalWorkspace("replace");
-    showToast(workspaceMenuCopy.clearWorkspace.cleared, "neutral", {
-      actionLabel: workspaceMenuCopy.clearWorkspace.undo,
-      onAction: () => {
-        handleUserWorkspaceBoundary();
-        replaceWorkspace(previousWorkspace);
-        replaceCommentsByFileId(previousWorkspace.commentsByFileId);
-        setKnowledgeBaseline(previousWorkspace.knowledgeBaseline);
-        clearFileHistory();
-        localWorkspacePersistence.persistNow(previousWorkspace);
-        closeFloatingChrome();
-        syncUrlForLocalWorkspace("replace");
-        showToast(workspaceMenuCopy.clearWorkspace.restored);
-      },
-    });
-  });
-  const workspaceContextSummary = getWorkspaceContextSummary(
-    workspacePreferences.language,
-    {
-      runtime: activeRoom ? { kind: "room" } : { kind: "local" },
-      browserPersistence: {
-        state: activeRoom
-          ? "suspended"
-          : localWorkspacePersistence.saveState,
-      },
-      folderBinding: workspaceSourceKind === "live-folder"
-        ? {
-            label: workspaceSourceLabel,
-            writeMode: liveFolderAutoSave ? "automatic" : "manual",
-            status: activeRoom
-              ? "suspended"
-              : liveFolderSaveStatus,
-          }
-        : null,
-      collaboration: activeRoom ? {
-        connectionStatus,
-        durability: roomDurability,
-        recoveryMode: roomRecoveryMode,
-      } : null,
-    },
-  );
-  const workspaceName = getWorkspaceName(folders);
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
     isOpen: workspaceMenuOpen,
-    onAddFile: addRootFile,
     canUseLocalWorkspaceActions:
       workspaceBoundaryCapabilities.canUseLocalWorkspaceActions,
     canClearBrowserWorkspace:
       workspaceBoundaryCapabilities.canClearBrowserWorkspace,
-    canExportFile: Boolean(activeFile),
     canExportWorkspace: files.length > 0,
     onClearWorkspace: clearLocalWorkspace,
-    onExportFile: downloadCurrentFile,
     onExportWorkspace: downloadWorkspaceArchive,
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
@@ -897,20 +871,17 @@ export function useWorkspaceRuntime() {
     onToggleLiveFolderAutoSave: workspaceSourceKind === "live-folder" && !liveFolderConflict
       ? toggleLiveFolderAutoSave
       : undefined,
-    contextSummary: workspaceContextSummary,
     collaborationActive: Boolean(activeRoom),
     onRetryCollaboration:
       activeRoom && (connectionStatus === "disconnected" || connectionStatus === "failed")
         ? retryCollaborationConnection
         : undefined,
-    workspaceName,
-    onOpenAbout: openAbout,
-    onOpenHelp: openHelp,
     preferences: workspacePreferences,
     preferencesOpen,
     setPreferences: setWorkspacePreferences,
     setPreferencesOpen,
     setTopPopover,
+    workspaceContextSummary,
   });
   const { knowledgeIndex, leftPanelProps, rightPanelProps } =
     useWorkspaceRightPanelController({
@@ -930,6 +901,9 @@ export function useWorkspaceRuntime() {
       identityName: identity.name,
       isLive: isLiveChromeVisible,
       language: workspacePreferences.language,
+      shellSize,
+      workspaceContextSummary,
+      workspaceMenuOpen,
       leftPanelOpen,
       leftPanelView,
       onAddComment: addFileComment,
@@ -946,6 +920,15 @@ export function useWorkspaceRuntime() {
       onIdentityNameChange: updateIdentityName,
       onIdentityNameCommit: normalizeIdentityName,
       onImportFile: () => importInputRef.current?.click(),
+      onCloseWorkspaceMenu: () => {
+        setPreferencesOpen(false);
+        setWorkspaceMenuOpen(false);
+      },
+      onToggleWorkspaceMenu: toggleWorkspaceMenu,
+      onOpenPreferences: () => {
+        setWorkspaceMenuOpen(false);
+        setPreferencesOpen(true);
+      },
       onNewFile: addFile,
       onNewFolder: addWorkspaceFolder,
       onRenameFile: renameWorkspaceFileAction,
@@ -973,106 +956,21 @@ export function useWorkspaceRuntime() {
       setLeftPanelOpen,
       setLeftPanelView,
       text,
-      workspaceName,
-      workspaceContextSummary,
     });
-  const resolveWorkspaceLink = useMemo(
-    () => (
-      target: string,
-      syntax?: "markdown" | "wikilink",
-      context?: {
-        relation?: "link" | "embed";
-        sourceDocumentId?: string;
-      },
-    ) => resolveMarkdownPreviewWorkspaceLink(
-      knowledgeIndex,
-      context?.sourceDocumentId ?? activeFileId,
-      target,
-      syntax,
-      context?.relation,
-    ),
-    [activeFileId, knowledgeIndex],
-  );
-  const resolveWorkspaceDocument = useMemo(
-    () => (documentId: string) => {
-      const document = knowledgeIndex?.documentsById.get(documentId);
-      const analysis = knowledgeIndex?.analysesByDocumentId.get(documentId);
-      return document && analysis
-        ? { ...document, headings: analysis.headings }
-        : undefined;
-    },
-    [knowledgeIndex],
-  );
-  const openPreviewWorkspaceLink = useEventCallback((
-    link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
-  ) => {
-    const decodedFragment = link.fragment
-      ? decodeMarkdownPreviewFragment(link.fragment)
-      : "";
-    setPendingPreviewNavigation(
-      decodedFragment
-        ? {
-            documentId: link.targetDocumentId,
-            fragment: decodedFragment,
-            sourceLineNumber: link.sourceLineNumber,
-          }
-        : null,
-    );
-
-    if (link.targetDocumentId === activeFileId) {
-      return;
-    }
-
-    selectFile(link.targetDocumentId);
-    setWorkspaceFileViewMode(activeViewMode === "split" ? "split" : "preview");
-  });
-  useEffect(() => {
-    if (
-      !pendingPreviewNavigation ||
-      pendingPreviewNavigation.documentId !== activeFileId ||
-      activeViewMode === "edit" ||
-      activeViewMode === "visual"
-    ) {
-      return undefined;
-    }
-
-    let frameId = 0;
-    let attempts = 0;
-    const scrollToFragment = () => {
-      const target = Array.from(
-        previewSurfaceRef.current?.querySelectorAll<HTMLElement>("[id]") ?? [],
-      ).find((element) =>
-        element.id === pendingPreviewNavigation.fragment &&
-        !element.closest(".preview-workspace-embed-body")
-      );
-      if (target) {
-        target.scrollIntoView({ block: "start", behavior: "smooth" });
-        setPendingPreviewNavigation(null);
-        return;
-      }
-      attempts += 1;
-      if (attempts === 1 && pendingPreviewNavigation.sourceLineNumber) {
-        previewRef.current?.followEditorPosition({
-          atDocumentEnd: false,
-          lineNumber: pendingPreviewNavigation.sourceLineNumber,
-          lineOffsetRatio: 0,
-        });
-      }
-      if (attempts < 90) {
-        frameId = window.requestAnimationFrame(scrollToFragment);
-      } else {
-        setPendingPreviewNavigation(null);
-      }
-    };
-    frameId = window.requestAnimationFrame(scrollToFragment);
-    return () => window.cancelAnimationFrame(frameId);
-  }, [
+  const {
+    openPreviewWorkspaceLink,
+    resolveWorkspaceDocument,
+    resolveWorkspaceLink,
+  } = useWorkspacePreviewNavigation({
     activeFileId,
     activeViewMode,
-    pendingPreviewNavigation,
+    knowledgeIndex,
+    previewBody: renderedPreview.body,
+    previewRef,
     previewSurfaceRef,
-    renderedPreview.body,
-  ]);
+    onSelectFile: selectFile,
+    onSetViewMode: setWorkspaceFileViewMode,
+  });
   const { shareOpen, topChromeProps } = useWorkspaceTopChromeController({
     activeFile,
     activeText: text,
@@ -1090,16 +988,15 @@ export function useWorkspaceRuntime() {
     isLiveConnected,
     jsonShare,
     language: workspacePreferences.language,
+    workspaceContextSummary,
     openFiles,
     lastClosedFile,
     room: activeRoom,
     roomExitStrategy,
+    shellSize,
     leftPanelOpen,
     rightPanelOpen,
     topPopover,
-    workspaceMenuOpen,
-    workspaceName,
-    workspaceContextSummary,
     onAddFile: addRootFile,
     onChangeUserName: updateIdentityName,
     onCloseAllFiles: closeAllFiles,
@@ -1136,7 +1033,6 @@ export function useWorkspaceRuntime() {
     onOpenWorkspaceLauncher: () => setLauncherOpen(true),
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
-    onToggleWorkspaceMenu: toggleWorkspaceMenu,
     setCenterPopover,
     setPreferencesOpen,
     setTopPopover,
@@ -1167,9 +1063,21 @@ export function useWorkspaceRuntime() {
   const setViewModeWithPendingCommit = useEventCallback((viewMode: FileViewMode) => {
     const requestId = viewModeRequestRef.current + 1;
     viewModeRequestRef.current = requestId;
+    // Commit editor text before preview loading begins. Committing inside the
+    // resolved loader callback changed the file and the view in the same tick,
+    // so a newly-authored document could render one stale empty preview frame.
+    flushPendingEditorCommit();
+    if (activeRoom && activeFile) {
+      const latestEditorText = editorRef.current?.getValue();
+      if (
+        typeof latestEditorText === "string" &&
+        roomDocumentProjectionStore.set(activeFile.id, latestEditorText)
+      ) {
+        bumpVisibleTextRevision();
+      }
+    }
     const applyViewMode = () => {
       if (viewModeRequestRef.current !== requestId) return;
-      flushPendingEditorCommit();
       documentWorkbenchController.onSetViewMode(viewMode);
     };
     if (viewMode === "edit" || viewMode === "visual") {
@@ -1232,6 +1140,7 @@ export function useWorkspaceRuntime() {
     language: workspacePreferences.language,
     onOpenWorkspaceLink: openPreviewWorkspaceLink,
     onPropertyAddRequestHandled: handlePropertyAddRequest,
+    onExportDocument: activeFile ? downloadCurrentFile : undefined,
     onSetViewMode: setViewModeWithPendingCommit,
     previewRef,
     room: roomController,
@@ -1289,10 +1198,10 @@ export function useWorkspaceRuntime() {
     panels: {
       left: {
         ...leftPanelProps,
-        workspaceMenuOpen,
-        onToggleWorkspaceMenu: toggleWorkspaceMenu,
       },
-      right: rightPanelProps,
+      right: {
+        ...rightPanelProps,
+      },
     },
     overlays: {
       workspace: {
@@ -1316,37 +1225,23 @@ export function useWorkspaceRuntime() {
           onNewFolder: () => { addWorkspaceFolder(); },
           onImportFile: () => importInputRef.current?.click(),
           onImportWorkspace: () => workspaceImportInputRef.current?.click(),
+          onExportFile: activeFile ? downloadCurrentFile : undefined,
+          onExportWorkspace: downloadWorkspaceArchive,
           onAddProperty: canAddPropertyToActiveFile ? requestAddProperty : undefined,
           onOpenFiles: () => {
-            setLeftPanelView("files");
-            setLeftPanelOpen(true);
-            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-              setRightPanelOpen(false);
-            }
+            openLeftPanel("files");
           },
           onOpenComments: () => {
-            setRightPanelView("comments");
-            setRightPanelOpen(true);
-            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-              setLeftPanelOpen(false);
-            }
+            openRightPanel("comments");
           },
-          onOpenProperties: () => {
-            setRightPanelView("properties");
-            setRightPanelOpen(true);
-            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-              setLeftPanelOpen(false);
-            }
+          onOpenMetadata: () => {
+            openRightPanel("metadata");
           },
           onOpenPreferences: () => {
-            setLeftPanelOpen(true);
-            setLeftPanelView("files");
-            if (typeof window !== "undefined" && window.innerWidth <= 1160) {
-              setRightPanelOpen(false);
-            }
-            setWorkspaceMenuOpen(true);
             setPreferencesOpen(true);
           },
+          onOpenHelp: openHelp,
+          onOpenAbout: openAbout,
         } : undefined,
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,

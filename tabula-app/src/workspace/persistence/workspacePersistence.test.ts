@@ -5,7 +5,7 @@ import {
   writeWorkspaceToPrimaryStore,
 } from "./workspacePersistence";
 import { getWorkspacePersistenceFlushSnapshot } from "./useQueuedWorkspacePersistence";
-import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "../workspaceStorage";
+import { createWorkspaceFile, createWorkspaceRootFolder, DEFAULT_WORKSPACE_PRESENTATION, type WorkspaceState } from "../workspaceStorage";
 import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
 
 vi.mock("./workspaceIndexedDb", () => ({
@@ -18,6 +18,7 @@ const createWorkspace = (text: string): WorkspaceState => ({
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},
+  presentation: DEFAULT_WORKSPACE_PRESENTATION,
 });
 
 describe("workspace persistence queue", () => {
@@ -115,6 +116,33 @@ describe("workspace persistence queue", () => {
     await firstWrite;
     await vi.waitFor(() => expect(writeWorkspace).toHaveBeenCalledTimes(2));
     expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Latest"));
+  });
+
+  it("resolves immediate persistence only after serialized writes become durable", async () => {
+    let finishFirstWrite: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirstWrite = resolve;
+    });
+    const writeWorkspace = vi.fn()
+      .mockReturnValueOnce(firstWrite)
+      .mockResolvedValue(undefined);
+    const queue = createWorkspacePersistenceQueue({ writeWorkspace });
+    let settled = false;
+
+    const persisted = queue.persistNow(createWorkspace("# First"));
+    queue.persistNow(createWorkspace("# Latest"));
+    void persisted.then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    finishFirstWrite?.();
+    await persisted;
+
+    expect(writeWorkspace).toHaveBeenCalledTimes(2);
+    expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Latest"));
+    expect(settled).toBe(true);
   });
 
   it("reports pending work until the latest serialized write succeeds", async () => {

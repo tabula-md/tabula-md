@@ -25,6 +25,7 @@ type ShareLinkPanelProps = {
   exportPanel: ReactNode;
   choiceLocked: boolean;
   isLive: boolean;
+  isStartingLive: boolean;
   shareView: ShareViewModel;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
@@ -35,6 +36,11 @@ type ShareLinkPanelProps = {
   onStopSession: () => void;
 };
 
+export const shouldExposeLiveInvite = (
+  connectionStatus: ConnectionStatus,
+  isStartingLive: boolean,
+) => !isStartingLive && connectionStatus !== "idle" && connectionStatus !== "connecting";
+
 export function ShareLinkPanel({
   agentInviteCopied,
   copied,
@@ -44,6 +50,7 @@ export function ShareLinkPanel({
   exportPanel,
   choiceLocked,
   isLive,
+  isStartingLive,
   shareView,
   onChangeUserName,
   onCommitUserName,
@@ -88,11 +95,13 @@ export function ShareLinkPanel({
           <ShareResultDetails
             copied={copied}
             copy={copy}
-            link={{
-              canCopy: shareView.live.link.canCopy,
-              display: shareView.live.link.display,
-              disabledTitle: copy.live.invalidInviteTitle,
-            }}
+            link={shouldExposeLiveInvite(connectionStatus, isStartingLive)
+              ? {
+                  canCopy: shareView.live.link.canCopy,
+                  display: shareView.live.link.display,
+                  disabledTitle: copy.live.invalidInviteTitle,
+                }
+              : undefined}
             linkActions={(
               <button
                 className="share-copy-prompt"

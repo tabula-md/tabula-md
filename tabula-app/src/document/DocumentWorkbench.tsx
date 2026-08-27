@@ -106,6 +106,7 @@ export type DocumentWorkbenchProps = {
   onEditorSelectionActionPositionChange: (position: MarkdownSelectionActionPosition | null) => void;
   onEditorSelectionChange: (selection?: LiveSelection) => void;
   onFormat: (command: MarkdownFormatCommand) => void;
+  onExportDocument?: () => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
   onPropertyAddRequestHandled?: () => void;
@@ -208,6 +209,7 @@ export function DocumentWorkbench({
   onEditorSelectionActionPositionChange,
   onEditorSelectionChange,
   onFormat,
+  onExportDocument,
   onLineAction,
   onOpenComment,
   onPropertyAddRequestHandled,
@@ -301,6 +303,7 @@ export function DocumentWorkbench({
           metadataOpen={metadataEditorOpen}
           searchOpen={searchOpen}
           onSetViewMode={onSetViewMode}
+          onExportDocument={onExportDocument}
           onPreparePreview={prepareMarkdownPreview}
           onToggleViewOptions={onToggleViewOptions}
           onSetReadingWidth={onSetReadingWidth}

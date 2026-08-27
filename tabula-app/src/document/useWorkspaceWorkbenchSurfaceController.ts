@@ -30,6 +30,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   focusedCommentId: string | null;
   language: WorkspaceLanguage;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
+  onExportDocument?: () => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
   onPropertyAddRequestHandled?: () => void;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
@@ -62,6 +63,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   onOpenWorkspaceLink,
   onPropertyAddRequestHandled,
   onSetViewMode,
+  onExportDocument,
   previewRef,
   room,
   surface,
@@ -164,6 +166,7 @@ export function useWorkspaceWorkbenchSurfaceController({
         room.stopFollowing("local-edit");
         documentWorkbenchController.onFormat(command);
       },
+      onExportDocument,
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,

@@ -22,7 +22,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
   en: {
     close: "Close",
     about: {
-      title: "About Tabula.md",
+      title: "About Tabula",
       description: "Open a Markdown folder, share one link, and edit together with people or AI.",
       points: [
         "Markdown files remain the primary unit of work.",
@@ -36,14 +36,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "Create a new document",
       openMarkdown: "Open a Markdown file",
       browseFiles: "Browse workspace files",
-      editModes: "Switch between Edit, Split, and Preview",
+      editModes: "Switch between Write, Source, and Read",
       share: "Use Share for live collaboration or export",
     },
   },
   ko: {
     close: "닫기",
     about: {
-      title: "Tabula.md 소개",
+      title: "Tabula 소개",
       description: "Markdown 폴더를 열고 링크 하나로 사람이나 AI와 함께 편집하세요.",
       points: [
         "Markdown 파일이 작업의 기본 단위입니다.",
@@ -57,14 +57,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "새 문서 만들기",
       openMarkdown: "Markdown 파일 열기",
       browseFiles: "워크스페이스 파일 찾아보기",
-      editModes: "편집, 분할, 미리보기 전환",
+      editModes: "쓰기, 소스, 읽기 전환",
       share: "공유에서 실시간 협업 또는 내보내기",
     },
   },
   ja: {
     close: "閉じる",
     about: {
-      title: "Tabula.md について",
+      title: "Tabula について",
       description: "Markdown フォルダーを開き、リンクを共有して、人や AI と一緒に編集できます。",
       points: [
         "Markdown ファイルが作業の基本単位です。",
@@ -78,14 +78,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "新しいドキュメントを作成",
       openMarkdown: "Markdown ファイルを開く",
       browseFiles: "ワークスペースのファイルを参照",
-      editModes: "編集、分割、プレビューを切り替える",
+      editModes: "書き込み、ソース、閲覧を切り替える",
       share: "共有からライブ共同編集またはエクスポート",
     },
   },
   zh: {
     close: "关闭",
     about: {
-      title: "关于 Tabula.md",
+      title: "关于 Tabula",
       description: "打开 Markdown 文件夹，分享一个链接，即可与他人或 AI 一起编辑。",
       points: [
         "Markdown 文件是工作的基本单位。",
@@ -99,14 +99,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "新建文档",
       openMarkdown: "打开 Markdown 文件",
       browseFiles: "浏览工作区文件",
-      editModes: "切换编辑、分栏和预览",
+      editModes: "切换写作、源代码和阅读",
       share: "通过共享进行实时协作或导出",
     },
   },
   es: {
     close: "Cerrar",
     about: {
-      title: "Acerca de Tabula.md",
+      title: "Acerca de Tabula",
       description: "Abre una carpeta Markdown, comparte un enlace y edita con personas o IA.",
       points: [
         "Los archivos Markdown son la unidad principal de trabajo.",
@@ -120,14 +120,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "Crear un documento",
       openMarkdown: "Abrir un archivo Markdown",
       browseFiles: "Explorar archivos del espacio",
-      editModes: "Cambiar entre Edición, División y Vista previa",
+      editModes: "Cambiar entre Escribir, Código fuente y Leer",
       share: "Usar Compartir para colaborar o exportar",
     },
   },
   fr: {
     close: "Fermer",
     about: {
-      title: "À propos de Tabula.md",
+      title: "À propos de Tabula",
       description: "Ouvrez un dossier Markdown, partagez un lien et modifiez-le avec des personnes ou une IA.",
       points: [
         "Les fichiers Markdown restent l’unité de travail principale.",
@@ -141,14 +141,14 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "Créer un document",
       openMarkdown: "Ouvrir un fichier Markdown",
       browseFiles: "Parcourir les fichiers de l’espace",
-      editModes: "Basculer entre Édition, Fractionné et Aperçu",
+      editModes: "Basculer entre Écriture, Source et Lecture",
       share: "Utiliser Partager pour collaborer ou exporter",
     },
   },
   de: {
     close: "Schließen",
     about: {
-      title: "Über Tabula.md",
+      title: "Über Tabula",
       description: "Öffne einen Markdown-Ordner, teile einen Link und bearbeite ihn gemeinsam mit Menschen oder KI.",
       points: [
         "Markdown-Dateien bleiben die zentrale Arbeitseinheit.",
@@ -162,7 +162,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
       newDocument: "Neues Dokument erstellen",
       openMarkdown: "Markdown-Datei öffnen",
       browseFiles: "Workspace-Dateien durchsuchen",
-      editModes: "Zwischen Bearbeiten, Teilen und Vorschau wechseln",
+      editModes: "Zwischen Schreiben, Quelltext und Lesen wechseln",
       share: "Teilen für Zusammenarbeit oder Export verwenden",
     },
   },

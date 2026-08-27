@@ -81,7 +81,7 @@ export async function run(ctx) {
     expect(
       splitSearchAlignment.barLeft >= splitSearchAlignment.rowLeft &&
         splitSearchAlignment.barRight <= splitSearchAlignment.rowRight,
-      "Split view should keep Document Search inside its source or preview lane.",
+      `Split view should keep Document Search inside its source or preview lane: ${JSON.stringify(splitSearchAlignment)}`,
     );
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -121,11 +121,10 @@ export async function run(ctx) {
       await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
       await page.locator(".left-panel").waitFor({ state: "visible" });
     }
-    const workspaceMenuTrigger = page.locator(".left-panel .left-panel-menu");
-    await workspaceMenuTrigger.click();
-    await page.getByRole("button", { name: "Preferences", exact: true }).click();
-    expect((await page.getByRole("button", { name: "Light", exact: true }).count()) === 1, "Workspace preferences should remain interactive above an open Search row.");
-    await workspaceMenuTrigger.click();
+    await page.locator(".left-panel").getByRole("button", { name: "Preferences", exact: true }).click();
+    await page.getByRole("button", { name: "Light", exact: true }).waitFor();
+    expect((await page.getByRole("button", { name: "Light", exact: true }).count()) === 1, "App preferences should remain interactive above an open Search row.");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor controls are opened.");

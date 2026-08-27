@@ -4,21 +4,40 @@ export type WorkspaceBoundaryCapabilities = {
   mustDisconnectFolderBeforeClearing: boolean;
 };
 
-export function getWorkspaceBoundaryCapabilities({
+/**
+ * The single authority that currently accepts workspace writes.
+ *
+ * Browser persistence remains a recovery layer for folder work, while a live
+ * room temporarily owns writes and suspends local-folder synchronization.
+ */
+export type WorkspaceAuthority =
+  | { kind: "browser" }
+  | { kind: "folder" }
+  | { kind: "live" };
+
+export function resolveWorkspaceAuthority({
   hasActiveRoom,
   hasLiveFolderBinding,
 }: {
   hasActiveRoom: boolean;
   hasLiveFolderBinding: boolean;
-}): WorkspaceBoundaryCapabilities {
-  const canUseLocalWorkspaceActions = !hasActiveRoom;
+}): WorkspaceAuthority {
+  if (hasActiveRoom) return { kind: "live" };
+  if (hasLiveFolderBinding) return { kind: "folder" };
+  return { kind: "browser" };
+}
+
+export function getWorkspaceBoundaryCapabilities(
+  authority: WorkspaceAuthority,
+): WorkspaceBoundaryCapabilities {
+  const canUseLocalWorkspaceActions = authority.kind !== "live";
   const mustDisconnectFolderBeforeClearing =
-    canUseLocalWorkspaceActions && hasLiveFolderBinding;
+    authority.kind === "folder";
 
   return {
     canUseLocalWorkspaceActions,
     canClearBrowserWorkspace:
-      canUseLocalWorkspaceActions && !hasLiveFolderBinding,
+      authority.kind === "browser",
     mustDisconnectFolderBeforeClearing,
   };
 }

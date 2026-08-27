@@ -19,13 +19,10 @@ type UseWorkspaceMenuControllerOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
   workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
-  onAddFile: () => void;
   canUseLocalWorkspaceActions: boolean;
   canClearBrowserWorkspace: boolean;
-  canExportFile: boolean;
   canExportWorkspace: boolean;
-  onClearWorkspace: () => void;
-  onExportFile: () => void;
+  onClearWorkspace: () => void | Promise<void>;
   onExportWorkspace: () => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
@@ -36,30 +33,24 @@ type UseWorkspaceMenuControllerOptions = {
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
-  contextSummary: WorkspaceContextSummaryViewModel;
   collaborationActive?: boolean;
   onRetryCollaboration?: () => void;
-  workspaceName: string;
-  onOpenAbout: () => void;
-  onOpenHelp: () => void;
   preferences: WorkspacePreferences;
   preferencesOpen: boolean;
   setPreferences: Dispatch<SetStateAction<WorkspacePreferences>>;
   setPreferencesOpen: Dispatch<SetStateAction<boolean>>;
   setTopPopover: (popover: TopPopover) => void;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
 };
 
 export function useWorkspaceMenuController({
   importInputRef,
   workspaceImportInputRef,
   isOpen,
-  onAddFile,
   canUseLocalWorkspaceActions,
   canClearBrowserWorkspace,
-  canExportFile,
   canExportWorkspace,
   onClearWorkspace,
-  onExportFile,
   onExportWorkspace,
   onCloseChrome,
   onImportFileChange,
@@ -70,17 +61,14 @@ export function useWorkspaceMenuController({
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
-  contextSummary,
   collaborationActive,
   onRetryCollaboration,
-  workspaceName,
-  onOpenAbout,
-  onOpenHelp,
   preferences,
   preferencesOpen,
   setPreferences,
   setPreferencesOpen,
   setTopPopover,
+  workspaceContextSummary,
 }: UseWorkspaceMenuControllerOptions) {
   const setTheme = useCallback((theme: WorkspaceTheme) => {
     setPreferences((currentPreferences) => ({
@@ -111,7 +99,6 @@ export function useWorkspaceMenuController({
       workspaceImportInputRef,
       canUseLocalWorkspaceActions,
       canClearBrowserWorkspace,
-      canExportFile,
       canExportWorkspace,
       onImportFileChange,
       onImportWorkspaceChange,
@@ -121,32 +108,24 @@ export function useWorkspaceMenuController({
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
-      contextSummary,
       collaborationActive,
       onRetryCollaboration,
-      workspaceName,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
       onChangeTheme: setTheme,
       onChangeLanguage: setLanguage,
-      onAddFile,
-      onOpenAbout,
-      onOpenHelp,
+      workspaceContextSummary,
     }),
     [
       importInputRef,
       workspaceImportInputRef,
       isOpen,
-      onAddFile,
       canUseLocalWorkspaceActions,
       canClearBrowserWorkspace,
-      canExportFile,
       canExportWorkspace,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
       onCloseChrome,
       onImportFileChange,
@@ -157,18 +136,15 @@ export function useWorkspaceMenuController({
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
-      contextSummary,
       collaborationActive,
       onRetryCollaboration,
-      workspaceName,
-      onOpenAbout,
-      onOpenHelp,
       preferences.language,
       preferences.theme,
       preferencesOpen,
       setLanguage,
       setTheme,
       togglePreferences,
+      workspaceContextSummary,
     ],
   );
 

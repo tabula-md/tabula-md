@@ -105,6 +105,9 @@
   cursor: col-resize;
 }
 
+/* Panel docking follows the viewport shell contract. Split composition is a
+   document-lane concern, so it responds to the actual workbench width. An
+   overlay panel must not collapse a still-wide editor and preview. */
 @container (max-width: 860px) {
   .center-workbench.view-split,
   .file-shell.view-split {

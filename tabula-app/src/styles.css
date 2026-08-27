@@ -16,6 +16,7 @@
 @import "./styles/split-view.css";
 @import "./styles/editor-selection.css";
 @import "./styles/preview.css";
+@import "./styles/side-panel.css";
 @import "./styles/right-panel.css";
 @import "./styles/panel-layout.css";
 @import "./styles/status-bar.css";

@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { getWorkspaceBoundaryCapabilities } from "./workspaceBoundaryPolicy";
+import {
+  getWorkspaceBoundaryCapabilities,
+  resolveWorkspaceAuthority,
+} from "./workspaceBoundaryPolicy";
 
 describe("workspace boundary policy", () => {
   it("allows clearing a standalone browser workspace", () => {
-    expect(getWorkspaceBoundaryCapabilities({
+    const authority = resolveWorkspaceAuthority({
       hasActiveRoom: false,
       hasLiveFolderBinding: false,
-    })).toEqual({
+    });
+    expect(authority).toEqual({ kind: "browser" });
+    expect(getWorkspaceBoundaryCapabilities(authority)).toEqual({
       canUseLocalWorkspaceActions: true,
       canClearBrowserWorkspace: true,
       mustDisconnectFolderBeforeClearing: false,
@@ -14,10 +19,12 @@ describe("workspace boundary policy", () => {
   });
 
   it("requires an explicit folder disconnect before clearing", () => {
-    expect(getWorkspaceBoundaryCapabilities({
+    const authority = resolveWorkspaceAuthority({
       hasActiveRoom: false,
       hasLiveFolderBinding: true,
-    })).toEqual({
+    });
+    expect(authority).toEqual({ kind: "folder" });
+    expect(getWorkspaceBoundaryCapabilities(authority)).toEqual({
       canUseLocalWorkspaceActions: true,
       canClearBrowserWorkspace: false,
       mustDisconnectFolderBeforeClearing: true,
@@ -25,10 +32,12 @@ describe("workspace boundary policy", () => {
   });
 
   it("suspends local boundary actions inside a live room", () => {
-    expect(getWorkspaceBoundaryCapabilities({
+    const authority = resolveWorkspaceAuthority({
       hasActiveRoom: true,
       hasLiveFolderBinding: true,
-    })).toEqual({
+    });
+    expect(authority).toEqual({ kind: "live" });
+    expect(getWorkspaceBoundaryCapabilities(authority)).toEqual({
       canUseLocalWorkspaceActions: false,
       canClearBrowserWorkspace: false,
       mustDisconnectFolderBeforeClearing: false,

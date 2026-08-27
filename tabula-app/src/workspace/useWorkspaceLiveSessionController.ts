@@ -23,7 +23,9 @@ import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import type { WorkspaceSessionHost } from "./session/WorkspaceSessionHost";
 import {
   canChooseRoomExitLocalWorkspaceStrategy,
+  createWorkspaceSessionBoundaryState,
   getRoomExitLocalWorkspaceStrategy,
+  transitionWorkspaceSessionBoundary,
   type RoomExitLocalWorkspaceStrategy,
 } from "./workspaceSessionTransition";
 import {
@@ -48,9 +50,11 @@ type UseWorkspaceLiveSessionControllerOptions = {
   >;
   comments: Pick<FileCommentsController, "commentsByFileId" | "replaceCommentsByFileId">;
   copy: WorkspaceShareCopy;
+  disconnectConnectedFolder: () => void;
   flushPendingEditorCommit: () => void;
   getActiveFileSnapshot: () => WorkspaceFile | undefined;
   getWorkspaceSnapshot: () => WorkspaceState;
+  hasConnectedFolder: () => boolean;
   handlePersistenceError: (error: unknown) => void;
   liveRoomOpenFailure: LiveRoomOpenFailure | null;
   onBeforeWorkspaceBoundary: () => void;
@@ -77,9 +81,11 @@ export function useWorkspaceLiveSessionController({
   chrome,
   comments,
   copy,
+  disconnectConnectedFolder,
   flushPendingEditorCommit,
   getActiveFileSnapshot,
   getWorkspaceSnapshot,
+  hasConnectedFolder,
   handlePersistenceError,
   liveRoomOpenFailure,
   onBeforeWorkspaceBoundary,
@@ -192,6 +198,8 @@ export function useWorkspaceLiveSessionController({
     pendingCreatedRoomIdRef.current = null;
     setIsStartingLive(false);
     flushPendingEditorCommit();
+    chrome.setTopPopover(null);
+    chrome.setCenterPopover(null);
     room.resetCollaborationState("idle");
     roomDocumentProjectionStore.clear();
     setCopiedFileId(null);
@@ -265,6 +273,14 @@ export function useWorkspaceLiveSessionController({
     const roomExitStrategy = getRoomExitLocalWorkspaceStrategy(
       sessionHost.getSnapshot(),
       requestedStrategy,
+      { hasConnectedFolder: hasConnectedFolder() },
+    );
+    const exitTransition = transitionWorkspaceSessionBoundary(
+      createWorkspaceSessionBoundaryState({
+        hasActiveRoom: true,
+        hasConnectedFolder: hasConnectedFolder(),
+      }),
+      { type: "exit-live", strategy: roomExitStrategy },
     );
     const roomWorkspace = roomExitStrategy === "adopt-room"
       ? getWorkspaceSnapshot()
@@ -275,6 +291,9 @@ export function useWorkspaceLiveSessionController({
     syncUrlForLocalWorkspace("replace");
     sessionHost.openLocal();
     setLiveRoomOpenFailure(null);
+    if (exitTransition.effects.includes("disconnect-folder")) {
+      disconnectConnectedFolder();
+    }
     if (roomWorkspace) {
       getWorkspaceStoreForMode("local").getState().replaceWorkspace(roomWorkspace);
       return;
@@ -285,6 +304,7 @@ export function useWorkspaceLiveSessionController({
     activeRoom,
     connectionStatus: room.connectionStatus,
     hydrationStatus: room.hydrationStatus,
+    isStartingLive,
   });
   const handleRouteWorkspaceChange = useEventCallback(() => {
     chrome.setTopPopover(null);
@@ -310,7 +330,9 @@ export function useWorkspaceLiveSessionController({
 
   return {
     canChooseRoomExitStrategy:
-      canChooseRoomExitLocalWorkspaceStrategy(activeRoomSession),
+      canChooseRoomExitLocalWorkspaceStrategy(activeRoomSession, {
+        hasConnectedFolder: hasConnectedFolder(),
+      }),
     copyShareUrl: copyShareUrlWithPendingCommit,
     isStartingLive,
     isLiveChromeVisible:
@@ -321,7 +343,11 @@ export function useWorkspaceLiveSessionController({
       !timedOut,
     jsonShare,
     liveRoomOpenTimedOut: timedOut,
-    roomExitStrategy: getRoomExitLocalWorkspaceStrategy(activeRoomSession),
+    roomExitStrategy: getRoomExitLocalWorkspaceStrategy(
+      activeRoomSession,
+      undefined,
+      { hasConnectedFolder: hasConnectedFolder() },
+    ),
     openLocalWorkspaceAfterRoomFailure,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,

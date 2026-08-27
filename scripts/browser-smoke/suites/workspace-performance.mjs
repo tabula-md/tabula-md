@@ -80,10 +80,7 @@ export async function run(ctx) {
     async (page) => {
       await page.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(page, { mode: "visual" });
-      await page.waitForSelector(
-        '.workspace-identity-trigger[data-workspace-context="browser"][data-workspace-state="steady"]',
-        { state: "visible" },
-      );
+      await page.waitForSelector(".top-chrome", { state: "visible" });
       await focusMarkdownEditor(page);
       await page.evaluate(() => {
         const originalPut = IDBObjectStore.prototype.put;

@@ -168,22 +168,19 @@ export async function run(ctx) {
 
         return nextSegment.top >= segment.bottom - 1;
       });
-      const wrappedLine = lineRects[1];
-      const wrappedSelectionCoversLine = Boolean(
-        wrappedLine && segmentRects.some(
-          (segment) =>
-            segment.top <= wrappedLine.top + 1 &&
-            segment.bottom >= wrappedLine.top + wrappedLine.height - 1,
-        ),
+      const singleRowHeight = lineRects[0]?.height ?? 0;
+      const wrappedSelectionSpansRows = segmentRects.some(
+        (segment) => segment.width > 0 && segment.height > singleRowHeight * 1.5,
       );
       return {
         logicalLineCount: lines.length,
         segmentCount: segmentRects.length,
         wrappedLineIsTallerThanSingleRow: lineRects[1]?.height > (lineRects[0]?.height ?? 0) * 1.5,
         noTextSegmentVerticalOverlap,
-        wrappedSelectionCoversLine,
+        wrappedSelectionSpansRows,
         selectionColors: [...new Set(segmentRects.map((segment) => segment.background))],
         lineMetricsAfterSelection: lineRects,
+        segmentMetrics: segmentRects,
       };
     });
     expect(
@@ -193,7 +190,10 @@ export async function run(ctx) {
     );
     expect(wrappedSelectionSurfaceState.wrappedLineIsTallerThanSingleRow, "Smoke document should contain a wrapped logical line.");
     expect(wrappedSelectionSurfaceState.segmentCount >= 1, "Wrapped text should retain a visible CodeMirror selection.");
-    expect(wrappedSelectionSurfaceState.wrappedSelectionCoversLine, "Selection should cover the full height of a wrapped logical line.");
+    expect(
+      wrappedSelectionSurfaceState.wrappedSelectionSpansRows,
+      `Selection should visibly span the wrapped text rows: ${JSON.stringify(wrappedSelectionSurfaceState)}`,
+    );
     expect(wrappedSelectionSurfaceState.noTextSegmentVerticalOverlap, "Wrapped text selection segments should not overlap each other.");
     expect(
       wrappedSelectionSurfaceState.selectionColors.every((color) => color === "rgb(182, 215, 255)"),

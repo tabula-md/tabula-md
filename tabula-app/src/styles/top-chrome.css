@@ -1,6 +1,8 @@
 .top-chrome {
   position: relative;
   z-index: var(--layer-chrome);
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
@@ -22,56 +24,6 @@
   height: var(--control-size-row);
   min-width: 0;
   overflow: visible;
-}
-
-.workspace-identity-trigger {
-  display: grid;
-  grid-template-columns: 16px minmax(0, auto) minmax(0, auto);
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  max-width: min(360px, 36vw);
-  height: var(--control-size-compact);
-  padding: 0 var(--space-2);
-  overflow: hidden;
-  color: var(--text-soft);
-  background: transparent;
-  border-radius: var(--radius-control);
-  font-size: var(--font-ui-body);
-  text-align: left;
-}
-
-.workspace-identity-trigger:hover,
-.workspace-identity-trigger:focus-visible,
-.workspace-identity-trigger.active {
-  color: var(--text-primary);
-  background: var(--surface-hover);
-}
-
-.workspace-identity-trigger.attention {
-  color: var(--danger-text);
-}
-
-.workspace-identity-trigger > svg {
-  flex: 0 0 auto;
-}
-
-.workspace-identity-name,
-.workspace-identity-context {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.workspace-identity-name {
-  color: var(--text-primary);
-  font-weight: var(--weight-ui-medium);
-}
-
-.workspace-identity-context {
-  color: var(--text-muted);
-  font-size: var(--font-ui-caption);
 }
 
 .workspace-identity-spinner {
@@ -149,30 +101,39 @@
 }
 
 .share-trigger.live.connected {
-  color: var(--text-primary);
-  background: var(--success-soft);
+  color: var(--text-inverse);
+  background: var(--accent);
 }
 
 .share-trigger.live.connected:hover,
 .share-trigger.live.connected.active {
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--success) 18%, var(--surface-hover));
+  color: var(--text-inverse);
+  background: color-mix(in srgb, var(--accent) 88%, var(--text-primary));
 }
 
 .share-trigger.live.reconnecting,
-.share-trigger.live.suspended,
-.share-trigger.live.disconnected {
-  color: var(--text-primary);
-  background: var(--surface-muted);
+.share-trigger.live.suspended {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .share-trigger.live.reconnecting:hover,
 .share-trigger.live.reconnecting.active,
 .share-trigger.live.suspended:hover,
-.share-trigger.live.suspended.active,
+.share-trigger.live.suspended.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-hover));
+}
+
+.share-trigger.live.disconnected {
+  color: var(--danger-text);
+  background: var(--danger-background);
+}
+
 .share-trigger.live.disconnected:hover,
 .share-trigger.live.disconnected.active {
-  background: var(--surface-hover);
+  color: var(--danger-text-strong);
+  background: var(--danger-background-hover);
 }
 
 .share-label-visible {
@@ -182,11 +143,32 @@
 }
 
 .panel-toggle {
+  position: relative;
   flex: 0 0 var(--control-size-compact);
   width: var(--control-size-compact);
   height: var(--control-size-compact);
   border-radius: var(--radius-control);
   background: transparent;
+}
+
+.top-workspace-status-dot {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--status-dot-connected);
+  box-shadow: 0 0 0 2px var(--app-background);
+  pointer-events: none;
+}
+
+.top-workspace-status-dot.working {
+  background: var(--accent);
+}
+
+.top-workspace-status-dot.attention {
+  background: var(--danger-text);
 }
 
 .panel-toggle:hover,
@@ -726,8 +708,8 @@
 }
 
 .share-modal-field > input:focus {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: 0;
+  background: var(--surface-hover);
 }
 
 .share-link-display {
@@ -824,8 +806,8 @@
 }
 
 .share-live-name-row input:focus {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: 0;
+  background: var(--surface-hover);
 }
 
 .share-live-session-actions {
@@ -1072,16 +1054,13 @@
     padding: var(--space-2) var(--space-3);
   }
 
-  .workspace-identity-context {
-    display: none;
-  }
 }
 
 @media (max-width: 560px) {
   .top-chrome {
     grid-template-columns: max-content minmax(0, 1fr);
     height: 60px;
-    padding: var(--space-2);
+    padding: var(--space-2) var(--space-3);
   }
 
   .top-left-zone {
@@ -1153,7 +1132,6 @@
 
   .share-label-visible,
   .workspace-identity-name,
-  .workspace-identity-context,
   .presence {
     display: none;
   }

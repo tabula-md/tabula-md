@@ -3,143 +3,70 @@ import { describe, expect, it } from "vitest";
 import { WorkspaceMenu } from "./WorkspaceMenu";
 
 const noop = () => undefined;
+const workspaceContextSummary = {
+  primary: {
+    kind: "browser" as const,
+    title: "This browser",
+    description: "Saved automatically here.",
+    state: "steady" as const,
+    attention: false,
+  },
+  items: [{
+    kind: "browser" as const,
+    title: "This browser",
+    description: "Saved automatically here.",
+    state: "steady" as const,
+    attention: false,
+  }],
+};
 
 describe("WorkspaceMenu", () => {
-  it("shows every storage context with the active runtime first", () => {
+  it("keeps workspace operations in the contextual menu", () => {
     const html = renderToStaticMarkup(
       <WorkspaceMenu
         isOpen
-        preferencesOpen={false}
-        theme="system"
         language="en"
-        onTogglePreferences={noop}
-        onChangeTheme={noop}
-        onChangeLanguage={noop}
-        onAddFile={noop}
-        onImportFile={noop}
-        workspaceName="Handbook"
-        contextSummary={{
-          primary: {
-            kind: "collaboration",
-            title: "Live collaboration",
-            description: "Changes are synchronized with everyone in this room.",
-            state: "steady",
-            attention: false,
-          },
-          items: [
-            {
-              kind: "browser",
-              title: "This browser",
-              description: "Browser persistence is paused.",
-              state: "paused",
-              attention: false,
-            },
-            {
-              kind: "folder",
-              title: "Connected folder",
-              description: "Saving to this folder is paused.",
-              state: "paused",
-              attention: false,
-            },
-            {
-              kind: "collaboration",
-              title: "Live collaboration",
-              description: "Changes are synchronized with everyone in this room.",
-              state: "steady",
-              attention: false,
-            },
-          ],
-        }}
-        onExportFile={noop}
+        workspaceContextSummary={workspaceContextSummary}
+        onImportWorkspace={noop}
+        onOpenLiveWorkspace={noop}
         onExportWorkspace={noop}
-        canExportFile
-        canExportWorkspace
-        onOpenAbout={noop}
-        onOpenHelp={noop}
+        onClearWorkspace={noop}
       />,
     );
 
-    expect(html.indexOf("Live collaboration")).toBeLessThan(
-      html.indexOf("This browser"),
-    );
-    expect(html).toContain("Handbook");
-    expect(html.indexOf("This browser")).toBeLessThan(
-      html.indexOf("Connected folder"),
-    );
-    expect(html).toContain('aria-label="Documents"');
-    expect(html).toContain('aria-label="Workspace"');
-    expect(html).not.toContain("Save to folder");
+    expect(html).toContain("Import folder copy");
+    expect(html).toContain("Connect local folder");
+    expect(html).toContain("Export workspace");
+    expect(html).toContain("Clear local workspace");
+    expect(html).not.toContain("Workspace settings");
+    expect(html).not.toContain("New document");
+    expect(html).not.toContain("Help");
+    expect(html).not.toContain("GitHub");
   });
 
-  it("keeps collaboration recovery available outside the share dialog", () => {
+  it("keeps collaboration recovery available from the compact popover", () => {
     const html = renderToStaticMarkup(
       <WorkspaceMenu
         isOpen
-        preferencesOpen={false}
-        theme="system"
         language="en"
-        onTogglePreferences={noop}
-        onChangeTheme={noop}
-        onChangeLanguage={noop}
-        onAddFile={noop}
-        onImportFile={noop}
-        workspaceName="Handbook"
-        contextSummary={{
-          primary: {
-            kind: "collaboration",
-            title: "Live collaboration",
-            description: "Offline changes are only in this tab.",
-            state: "attention",
-            attention: true,
-          },
-          items: [],
-        }}
+        workspaceContextSummary={workspaceContextSummary}
         collaborationActive
         onRetryCollaboration={noop}
-        onExportFile={noop}
-        onExportWorkspace={noop}
-        canExportFile
-        canExportWorkspace
-        onOpenAbout={noop}
-        onOpenHelp={noop}
       />,
     );
 
     expect(html).toContain("Retry");
-    expect(html).not.toContain("lucide-radio");
+    expect(html).toContain("attention");
   });
 
-  it("replaces folder save controls with a persistent conflict review action", () => {
+  it("shows conflict review without exposing folder save controls", () => {
     const html = renderToStaticMarkup(
       <WorkspaceMenu
         isOpen
-        preferencesOpen={false}
-        theme="system"
         language="en"
-        onTogglePreferences={noop}
-        onChangeTheme={noop}
-        onChangeLanguage={noop}
-        onAddFile={noop}
-        onImportFile={noop}
-        workspaceName="Handbook"
-        contextSummary={{
-          primary: {
-            kind: "folder",
-            title: "Connected folder",
-            description: "Saving is paused until the folder conflict is resolved.",
-            state: "attention",
-            attention: true,
-          },
-          items: [],
-        }}
-        onSaveLiveWorkspace={noop}
+        workspaceContextSummary={workspaceContextSummary}
         onReviewLiveFolderConflict={noop}
-        onExportFile={noop}
-        onExportWorkspace={noop}
-        canExportFile
-        canExportWorkspace
-        onOpenAbout={noop}
-        onOpenHelp={noop}
+        onSaveLiveWorkspace={noop}
       />,
     );
 

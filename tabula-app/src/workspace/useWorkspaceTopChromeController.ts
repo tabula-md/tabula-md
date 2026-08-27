@@ -8,10 +8,10 @@ import type { JsonShareController } from "../share/useJsonShareController";
 import type { RenameFileResult } from "./state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 import type { TopPopover } from "../ui/uiTypes";
-import type { LeftPanelView } from "../ui/uiTypes";
 import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
 import type { FollowState } from "../collaboration/followModel";
 import type { RoomExitLocalWorkspaceStrategy } from "./workspaceSessionTransition";
+import type { WorkspaceShellSize } from "./workspaceShellLayout";
 import type { WorkspaceContextSummaryViewModel } from "./workspaceContextSummary";
 
 type SetTopPopover = (popover: TopPopover) => void;
@@ -36,16 +36,15 @@ type UseWorkspaceTopChromeControllerOptions = {
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   roomExitStrategy: RoomExitLocalWorkspaceStrategy;
+  shellSize: WorkspaceShellSize;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
-  workspaceMenuOpen: boolean;
-  workspaceName: string;
-  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   onAddFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseAllFiles: () => void;
@@ -64,11 +63,10 @@ type UseWorkspaceTopChromeControllerOptions = {
   onStartSession: () => void;
   onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
   onRetrySession: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
   onOpenWorkspaceLauncher: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
-  onToggleWorkspaceMenu: () => void;
   setCenterPopover: SetCenterPopover;
   setPreferencesOpen: SetPreferencesOpen;
   setTopPopover: SetTopPopover;
@@ -92,16 +90,15 @@ export function useWorkspaceTopChromeController({
   isLiveConnected,
   jsonShare,
   language,
+  workspaceContextSummary,
   lastClosedFile,
   openFiles,
   room,
   roomExitStrategy,
+  shellSize,
   leftPanelOpen,
   rightPanelOpen,
   topPopover,
-  workspaceMenuOpen,
-  workspaceName,
-  workspaceContextSummary,
   onAddFile,
   onChangeUserName,
   onCloseAllFiles,
@@ -124,7 +121,6 @@ export function useWorkspaceTopChromeController({
   onOpenWorkspaceLauncher,
   onToggleRightPanel,
   onToggleFollowing,
-  onToggleWorkspaceMenu,
   setCenterPopover,
   setPreferencesOpen,
   setTopPopover,
@@ -186,16 +182,15 @@ export function useWorkspaceTopChromeController({
     isLiveConnected,
     jsonShare,
     language,
+    workspaceContextSummary,
     lastClosedFile,
     openFiles,
     room,
     roomExitStrategy,
+    shellSize,
     leftPanelOpen,
     rightPanelOpen,
     shareOpen,
-    workspaceMenuOpen,
-    workspaceName,
-    workspaceContextSummary,
     onAddFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,
@@ -219,7 +214,6 @@ export function useWorkspaceTopChromeController({
     onToggleRightPanel,
     onToggleFollowing,
     onToggleShare: toggleShare,
-    onToggleWorkspaceMenu,
   };
 
   return {

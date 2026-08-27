@@ -1,21 +1,17 @@
-import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { resolveSiblingServiceRepo } from "./scripts/browser-smoke/support/service-repo-discovery.mjs";
 
 const externalUrl = process.env.TABULA_TEST_URL?.replace(/\/$/, "");
 const localUrl = "http://127.0.0.1:5187";
-const siblingRoomRepoDir = path.resolve(process.cwd(), "../tabula-room");
-const roomRepoDir =
-  process.env.TABULA_ROOM_REPO_DIR ??
-  (fs.existsSync(path.join(siblingRoomRepoDir, "package.json"))
-    ? siblingRoomRepoDir
-    : undefined);
-const siblingJsonRepoDir = path.resolve(process.cwd(), "../tabula-json");
-const jsonRepoDir =
-  process.env.TABULA_JSON_REPO_DIR ??
-  (fs.existsSync(path.join(siblingJsonRepoDir, "package.json"))
-    ? siblingJsonRepoDir
-    : undefined);
+const roomRepoDir = resolveSiblingServiceRepo({
+  explicitPath: process.env.TABULA_ROOM_REPO_DIR,
+  serviceName: "tabula-room",
+});
+const jsonRepoDir = resolveSiblingServiceRepo({
+  explicitPath: process.env.TABULA_JSON_REPO_DIR,
+  serviceName: "tabula-json",
+});
 const roomUrl = "http://127.0.0.1:3012";
 const jsonUrl = "http://127.0.0.1:3014";
 const jsonDataDir = path.resolve(process.cwd(), "output/playwright/json-data");

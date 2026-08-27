@@ -6,12 +6,13 @@ import {
   useState,
 } from "react";
 import {
-  Braces,
   Check,
   Code2,
   ChevronLeft,
   ChevronRight,
+  Download,
   Eye,
+  Info,
   ListChecks,
   MoreHorizontal,
   PencilLine,
@@ -32,6 +33,7 @@ import {
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import { PopoverContent, PopoverRoot, PopoverTrigger } from "../ui/Popover";
 
@@ -49,6 +51,7 @@ type DocumentControlsProps = {
   showSearch?: boolean;
   showSyncScrolling?: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
+  onExportDocument?: () => void;
   onPreparePreview: () => void;
   onToggleViewOptions: () => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
@@ -102,6 +105,7 @@ export function DocumentControls({
   showSearch = true,
   showSyncScrolling = true,
   onSetViewMode,
+  onExportDocument,
   onPreparePreview,
   onToggleViewOptions,
   onSetReadingWidth,
@@ -112,6 +116,7 @@ export function DocumentControls({
   onToggleSearch,
 }: DocumentControlsProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
+  const menuCopy = getWorkspaceMenuCopy(language);
   const surfaceCopy = getWorkspaceSurfaceCopy(language);
   const controls = buildDocumentControlsModel({
     activeEditingMode,
@@ -163,7 +168,7 @@ export function DocumentControls({
               aria-pressed={metadataOpen}
               onClick={onToggleMetadata}
             >
-              <Braces size={16} />
+              <Info size={16} />
             </button>
           )}
           {showSearch && (
@@ -188,8 +193,8 @@ export function DocumentControls({
               <button
                 className={`ui-icon-button tool-button document-options-button ${centerPopover === "view" ? "active" : ""}`}
                 type="button"
-                aria-label={controls.controlsLabel}
-                data-tooltip={controls.controlsLabel}
+                aria-label={copy.editorControls}
+                data-tooltip={copy.editorControls}
               >
                 <MoreHorizontal size={16} />
               </button>
@@ -197,7 +202,7 @@ export function DocumentControls({
             <PopoverContent
               className="document-controls-popover editor-controls-popover"
               role="dialog"
-              aria-label={controls.controlsLabel}
+              aria-label={copy.editorControls}
               onOpenAutoFocus={(event) => event.preventDefault()}
             >
               {controls.showEditorToggles && (
@@ -277,6 +282,26 @@ export function DocumentControls({
                   </div>
                 </div>
               </section>
+              {onExportDocument && (
+                <>
+                  <div className="editor-controls-divider" role="separator" />
+                  <section className="editor-controls-section">
+                    <button
+                      className="editor-controls-row"
+                      type="button"
+                      onClick={() => {
+                        onExportDocument();
+                        onToggleViewOptions();
+                      }}
+                    >
+                      <span className="editor-controls-check">
+                        <Download size={15} />
+                      </span>
+                      <span>{menuCopy.actions.exportFile}</span>
+                    </button>
+                  </section>
+                </>
+              )}
             </PopoverContent>
           </PopoverRoot>
         </div>

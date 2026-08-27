@@ -17,6 +17,7 @@ import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceFileIconKind } from "../workspaceFilePresentation";
 import { WorkspaceFileTypeIcon } from "./WorkspaceFileTypeIcon";
+import type { WorkspaceShellSize } from "../workspaceShellLayout";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -30,6 +31,7 @@ type FileTabsProps = {
   collaborators: Collaborator[];
   roomId?: string;
   language: WorkspaceLanguage;
+  shellSize: WorkspaceShellSize;
   leadingControl?: ReactNode;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
@@ -61,6 +63,7 @@ export function FileTabs({
   collaborators,
   roomId,
   language,
+  shellSize,
   leadingControl,
   onAddFile,
   onSelectFile,
@@ -112,7 +115,7 @@ export function FileTabs({
     const scrollPadding = Math.min(44, Math.floor(element.clientWidth * 0.2));
     const activeLeft = activeTabElement.offsetLeft;
     const activeRight = activeLeft + activeTabElement.offsetWidth;
-    const isTouchLayout = window.matchMedia("(max-width: 560px)").matches;
+    const isTouchLayout = shellSize === "narrow";
     const visibleLeft = element.scrollLeft + scrollPadding;
     const visibleRight = element.scrollLeft + element.clientWidth - scrollPadding;
     let nextScrollLeft = visibleLeft;

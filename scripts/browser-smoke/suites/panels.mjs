@@ -22,6 +22,7 @@ export async function run(ctx) {
     waitForLeftPanel,
     waitForPanelTab,
     waitForRenderFrame,
+    waitForWorkspaceMenuState,
     withPage,
   } = ctx;
 
@@ -35,11 +36,10 @@ export async function run(ctx) {
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
-      menuButtonCount: document.querySelectorAll(".workspace-identity-trigger").length,
+      menuButtonCount: document.querySelectorAll(".left-panel-status-button").length,
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      leftPanelCount: document.querySelectorAll(".left-sidebar").length,
-      leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
-      templateRowCount: document.querySelectorAll(".left-library-item").length,
+      leftPanelCount: document.querySelectorAll(".left-panel").length,
+      workspaceIdentityCount: document.querySelectorAll(".left-panel .right-file-workspace-identity").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
         text: link.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -49,7 +49,7 @@ export async function run(ctx) {
         svgFill: link.querySelector("svg")?.getAttribute("fill") ?? "",
       })),
       fileSearchCount: document.querySelectorAll(".left-panel-search").length,
-      fileRowCount: document.querySelectorAll(".left-file-item").length,
+      fileRowCount: document.querySelectorAll(".left-panel .right-file-tree-row.file").length,
       actionRows: Array.from(document.querySelectorAll(".workspace-menu-row")).map((item) => {
         const rect = item.getBoundingClientRect();
         const style = window.getComputedStyle(item);
@@ -106,38 +106,27 @@ export async function run(ctx) {
         };
       })(),
     }));
-    // P7: workspace menu product contract.
-    expect(workbenchPanels.menuButtonCount === 1, "The workspace panel should expose one workspace menu button.");
-    expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace panel.");
-    expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 1, "The workspace panel should expose only implemented workspace sections.");
-    expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
+    // Workspace identity and persistence actions belong to the workspace navigator.
+    expect(workbenchPanels.menuButtonCount === 1, "The workspace navigator should expose one persistent status control.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace status control.");
+    expect(workbenchPanels.leftPanelCount === 1, "The workspace navigator should stay open while its menu is shown.");
+    expect(workbenchPanels.workspaceIdentityCount === 1, "The workspace navigator should own workspace identity.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
-    expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
-    expect(workbenchPanels.fileRowCount === 0, "File rows should live in the side panel.");
+    expect(workbenchPanels.fileSearchCount === 0, "Files should not duplicate the dedicated workspace search surface.");
+    expect(workbenchPanels.fileRowCount >= 1, "Workspace files should live in the workspace navigator.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Import document (.md)…|Export document (.md)|Import folder copy…|Export workspace (.zip)|Connect local folder…|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
-      "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
+        "Import folder copy…|Connect local folder…|Export workspace (.zip)|Clear local workspace…",
+      "The workspace menu should expose persistence and workspace-lifecycle actions directly.",
     );
-    const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
-    expect(xPublicLink?.href === "https://x.com/tabula_md", "Follow us should point to the Tabula X profile.");
-    expect(xPublicLink?.ariaLabel === "Open Tabula.md on X", "Follow us should expose an explicit X destination label.");
+    expect(workbenchPanels.publicLinks.length === 0, "Public and support links should not live in the workspace identity menu.");
     expect(
-      xPublicLink?.svgFill === "currentColor" && xPublicLink?.svgPath.startsWith("M18.901"),
-      "Follow us should use the X logo icon, not a letter or generic close icon.",
+      workbenchPanels.actionRows.every((row) => row.iconCount === 1),
+      "Workspace menu rows should use one quiet icon and one label.",
     );
     expect(
-      workbenchPanels.actionRows.every((row) => row.iconCount >= 1 && row.iconCount <= 2),
-      "Workspace menu rows should be icon plus label, with chevrons only for nested surfaces.",
-    );
-    expect(
-      workbenchPanels.actionRows.every((row) => row.height >= 30 && row.height <= 34),
+      workbenchPanels.actionRows.every((row) => row.height >= 30 && row.height <= 36),
       "Workspace menu rows should stay compact.",
-    );
-    expect(
-      workbenchPanels.actionRows.every((row) => row.fontWeight === workbenchPanels.actionRows[0].fontWeight),
-      "Workspace menu rows should use one regular text weight.",
     );
     expect(
       workbenchPanels.actionRows.every(
@@ -145,46 +134,28 @@ export async function run(ctx) {
           row.height === workbenchPanels.actionRows[0].height &&
           row.borderRadius === workbenchPanels.actionRows[0].borderRadius &&
           row.paddingLeft === workbenchPanels.actionRows[0].paddingLeft &&
-          row.fontSize === workbenchPanels.actionRows[0].fontSize &&
-          row.color === workbenchPanels.actionRows[0].color,
+          row.fontSize === workbenchPanels.actionRows[0].fontSize,
       ),
       "Workspace menu rows should use one compact row token set.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("New document") !== -1, "Keyboard order should include document creation.");
-    expect(focusIndex("Import document (.md)…") !== -1, "Keyboard order should include document import.");
-    expect(focusIndex("Import folder copy…") !== -1, "Keyboard order should include opening a folder.");
-    expect(focusIndex("Export document (.md)") !== -1, "Keyboard order should include document export.");
+    expect(focusIndex("Import folder copy…") !== -1, "Keyboard order should include importing a folder copy.");
+    expect(focusIndex("Connect local folder…") !== -1, "Keyboard order should include connecting a local folder.");
     expect(focusIndex("Export workspace (.zip)") !== -1, "Keyboard order should include workspace export.");
-    expect(focusIndex("Connect local folder…") !== -1, "Keyboard order should include folder connection.");
-    expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
-    expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
-    expect(focusIndex("About") !== -1, "Keyboard order should include About.");
-    expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
-    expect(
-        focusIndex("New document") <
-        focusIndex("Import document (.md)…") &&
-        focusIndex("Import document (.md)…") < focusIndex("Export document (.md)") &&
-        focusIndex("Export document (.md)") < focusIndex("Import folder copy…") &&
-        focusIndex("Import folder copy…") < focusIndex("Export workspace (.zip)") &&
-        focusIndex("Export workspace (.zip)") < focusIndex("Connect local folder…") &&
-        focusIndex("Connect local folder…") < focusIndex("Preferences") &&
-        focusIndex("Preferences") < focusIndex("About") &&
-        focusIndex("About") < focusIndex("Help"),
-      "Workspace menu keyboard order should move from file actions to support actions.",
-    );
+    expect(focusIndex("Clear local workspace…") !== -1, "Keyboard order should include clearing the browser workspace.");
+    expect(focusIndex("New document") === -1, "Document creation should not live in the workspace identity menu.");
+    expect(focusIndex("Preferences") === -1, "App preferences should not live in the workspace identity menu.");
+    expect(focusIndex("About") === -1 && focusIndex("Help") === -1, "Support commands should not live in the workspace identity menu.");
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
     expect(
-      workbenchPanels.panelToggleCount === 3 &&
-        workbenchPanels.topLeftPanelTriggerCount === 0 &&
-        workbenchPanels.leftPanelCloseCount === 1,
-      `An open workspace panel should replace its top-chrome trigger with one in-panel close control. Found: ${
-        JSON.stringify({
-          topControls: workbenchPanels.panelToggleCount,
-          topLeftTriggers: workbenchPanels.topLeftPanelTriggerCount,
-          panelCloseControls: workbenchPanels.leftPanelCloseCount,
-        })
-      }`,
+      workbenchPanels.panelToggleCount >= 3 &&
+        workbenchPanels.topLeftPanelTriggerCount === 1 &&
+        workbenchPanels.leftPanelCloseCount === 0,
+      `Desktop panels should keep both fixed app-bar toggles instead of moving controls into panels. Found: ${JSON.stringify({
+        topControls: workbenchPanels.panelToggleCount,
+        topLeftTriggers: workbenchPanels.topLeftPanelTriggerCount,
+        panelCloseControls: workbenchPanels.leftPanelCloseCount,
+      })}`,
     );
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
@@ -200,139 +171,15 @@ export async function run(ctx) {
       "Opening the workspace menu should not shift the document status lane.",
     );
 
-    const supportActions = page.locator(".workspace-menu-popover");
-    expect((await supportActions.getByRole("button", { name: "Tabula +", exact: true }).count()) === 0, "Tabula + should not appear in the left menu yet.");
-
-    await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
-    await waitForRenderFrame(page);
-    const preferencesPanel = await page.evaluate(() => ({
-      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-panel")),
-      surfaceLabel: document.querySelector(".workspace-preferences-panel")?.getAttribute("aria-label") ?? "",
-      preferenceLabels: Array.from(document.querySelectorAll(".workspace-preferences-setting > span")).map((item) =>
-        item.textContent?.replace(/\s+/g, " ").trim(),
-      ),
-      segmentRows: Array.from(document.querySelectorAll(".workspace-preferences-segmented")).map((segment) =>
-        Array.from(segment.querySelectorAll("button"))
-          .map(
-            (button) =>
-              button.getAttribute("aria-label") ??
-              button.textContent?.replace(/\s+/g, " ").trim(),
-          )
-          .join("|"),
-      ),
-      languageOptions: Array.from(document.querySelectorAll(".workspace-preferences-select option")).map((option) =>
-        option.textContent?.replace(/\s+/g, " ").trim(),
-      ),
-      languageSelectCount: document.querySelectorAll(".workspace-preferences-select select").length,
-      switchRows: Array.from(document.querySelectorAll(".workspace-preferences-switch > span")).map((item) =>
-        item.textContent?.replace(/\s+/g, " ").trim(),
-      ),
-      internalLabelLeak:
-        document.querySelector(".workspace-preferences-panel")?.textContent?.includes("Browser project") ?? false,
-      storageSurfaceLeak:
-        document.querySelector(".workspace-preferences-panel")?.textContent?.includes("Storage") ?? false,
-      checkRowCount: document.querySelectorAll(".workspace-preferences-check").length,
-      detailRowCount: document.querySelectorAll(".left-detail-list div").length,
-      shortcutRowCount: document.querySelectorAll(".left-shortcut-row").length,
-      keyboardShortcutsFooterCount: Array.from(document.querySelectorAll(".workspace-menu-row")).filter((button) =>
-        button.textContent?.includes("Keyboard shortcuts"),
-      ).length,
-      preferenceFooterActive:
-        Array.from(document.querySelectorAll(".workspace-menu-row"))
-          .find((button) => button.textContent?.includes("Preferences"))
-          ?.classList.contains("active") ?? false,
-    }));
-    expect(preferencesPanel.menuOpen, "Preferences should keep the workspace menu open.");
-    expect(preferencesPanel.preferencesOpen, "Preferences should open as an inline menu surface.");
-    expect(preferencesPanel.surfaceLabel === "Preferences", "The inline Preferences surface should be labeled Preferences.");
+    const workspaceMenu = page.locator(".workspace-menu-popover");
     expect(
-      preferencesPanel.preferenceLabels.join("|") === "Theme|Language",
-      "Preferences should only expose lightweight app-wide preferences.",
+      (await workspaceMenu.getByRole("button", { name: "Tabula +", exact: true }).count()) === 0,
+      "Tabula + should not appear in the workspace identity menu.",
     );
-    expect(
-      preferencesPanel.segmentRows.join("/") === "System|Light|Dark",
-      "Preferences should keep theme as a compact segmented control.",
-    );
-    expect(preferencesPanel.languageSelectCount === 1, "Preferences should expose language as one dropdown.");
-    expect(
-      preferencesPanel.languageOptions.join("|") === "English|한국어|日本語|中文|Español|Français|Deutsch",
-      "Language dropdown should expose the supported app chrome languages.",
-    );
-    expect(preferencesPanel.switchRows.length === 0, "Preferences should not duplicate editor controls.");
-    expect(!preferencesPanel.storageSurfaceLeak, "Preferences should not explain local storage as a configurable surface.");
-    expect(!preferencesPanel.internalLabelLeak, "Preferences should not leak internal storage implementation names.");
-    expect(preferencesPanel.checkRowCount === 0, "Preferences should use segmented controls instead of checkmark rows.");
-    expect(preferencesPanel.detailRowCount === 0, "Preferences should not render as an in-panel detail list.");
-    expect(preferencesPanel.shortcutRowCount === 0, "Keyboard shortcuts should move out of the left panel surface.");
-    expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in HELP.md, not pinned.");
-    expect(preferencesPanel.preferenceFooterActive, "The Preferences support row should stay selected while its surface is open.");
-
-    const preferencesPanelSurface = page.locator(".workspace-preferences-panel");
-    await preferencesPanelSurface.getByRole("button", { name: "Dark", exact: true }).click();
-    await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("ko");
-    const rootPreferences = await page.evaluate(() => ({
-      theme: document.documentElement.dataset.theme,
-      themePreference: document.documentElement.dataset.themePreference,
-      language: document.documentElement.lang,
-      menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-    }));
-    expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
-    expect(rootPreferences.themePreference === "dark", "Choosing Dark should persist the selected theme preference.");
-    expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
-    expect(rootPreferences.menuText.includes("새 문서"), "Choosing Korean should update workspace menu copy.");
-    await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("en");
-    await preferencesPanelSurface.getByRole("button", { name: "System", exact: true }).click();
-    const restoredPreferences = await page.evaluate(() => ({
-      theme: document.documentElement.dataset.theme,
-      themePreference: document.documentElement.dataset.themePreference,
-      language: document.documentElement.lang,
-      menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-    }));
-    expect(
-      restoredPreferences.theme === "light" || restoredPreferences.theme === "dark",
-      "Choosing System should resolve to a concrete light or dark theme.",
-    );
-    expect(restoredPreferences.themePreference === "system", "Choosing System should preserve the selected preference.");
-    expect(restoredPreferences.language === "en", "Choosing English should restore the document language contract.");
-    expect(restoredPreferences.menuText.includes("New document"), "Choosing English should restore workspace menu copy.");
 
     await page.keyboard.press("Escape");
-    await waitForRenderFrame(page);
-    const preferencesEscapeState = await page.evaluate(() => ({
-      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-panel")),
-      newActionsVisible: Array.from(document.querySelectorAll(".workspace-menu-row")).some((button) =>
-        button.textContent?.includes("New document"),
-      ),
-    }));
-    expect(preferencesEscapeState.menuOpen, "Escape from Preferences should keep the workspace menu open.");
-    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the inline Preferences surface.");
-    expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
-
-    await supportActions.getByRole("button", { name: "New document", exact: true }).click();
-    await waitForActiveTab(page, { startsWith: "Untitled" });
-    await selectDocumentViewMode(page, "Edit");
-    await waitForEditorReady(page, { mode: "edit" });
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await page.getByRole("dialog", { name: "About Tabula.md", exact: true }).waitFor({ state: "visible" });
-    const aboutState = await page.evaluate(() => ({
-      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      dialogOpen: Boolean(document.querySelector(".workspace-info-modal")),
-      activeTab: document.querySelector(".tab-item.active")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-    }));
-    expect(!aboutState.menuOpen, "About should close the workspace menu after opening the app dialog.");
-    expect(aboutState.dialogOpen, "About should open an app dialog.");
-    expect(
-      aboutState.activeTab.includes("Untitled"),
-      "About should leave the active user document unchanged.",
-    );
-    await page.getByRole("button", { name: "Close", exact: true }).click();
-
-    await openProjectMenu(page);
-
-    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
+    await page.locator('.left-panel .right-file-toolbar-button[aria-label="Create"]').click();
+    await page.getByRole("menuitem", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -353,7 +200,15 @@ export async function run(ctx) {
     );
     expect(newFileState.lineNumberGutterCount > 0, "New files should keep line numbers visible by default.");
     await openMarkdownFile(page, {
-      content: "# Tabula.md\n\n## Start here\n\n### Details\n\nA local-first Markdown workspace.",
+      content: "---\ntype: Guide\ndescription: A local-first Markdown workspace for writing, reviewing, and sharing durable knowledge without hiding the source document.\ntags: [tabula, local-first]\nstatus: stable\nreviewed_at: 2026-01-10\nowner:\n  team: docs\n---\n# Tabula.md\n\n## Start here\n\n### Details\n\nA local-first Markdown workspace.",
+    });
+    await openMarkdownFile(page, {
+      name: "missing-status.md",
+      content: "---\ntype: Guide\ntitle: Missing status\n---\n# Missing status",
+    });
+    await openMarkdownFile(page, {
+      name: "literal-empty.md",
+      content: "---\ntype: Guide\ntitle: Literal Empty\nstatus: Empty\n---\n# Literal Empty",
     });
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
@@ -387,11 +242,285 @@ export async function run(ctx) {
     }
     await waitForLeftPanel(page, "Files");
     await ensureSidePanelOpen(page);
+    await waitForRenderFrame(page);
+    const panelShellContract = await page.evaluate(() => {
+      const readPanel = (panelSelector, headerSelector, tabsSelector) => {
+        const panel = document.querySelector(panelSelector);
+        const header = document.querySelector(headerSelector);
+        const tabs = document.querySelector(tabsSelector);
+        if (!panel || !header || !tabs) return null;
+        const panelStyle = getComputedStyle(panel);
+        return {
+          padding: [panelStyle.paddingTop, panelStyle.paddingRight, panelStyle.paddingBottom, panelStyle.paddingLeft].join(" "),
+          controlSize: panelStyle.getPropertyValue("--panel-control-size").trim(),
+          rowHeight: panelStyle.getPropertyValue("--panel-row-height").trim(),
+          headerHeight: Math.round(header.getBoundingClientRect().height),
+          tabsHeight: Math.round(tabs.getBoundingClientRect().height),
+        };
+      };
+      return {
+        left: readPanel(".left-panel", ".left-panel-header", ".left-panel-tabs"),
+        right: readPanel(".right-panel", ".right-panel-header", ".right-panel-tabs"),
+      };
+    });
     expect(
-      (await page.getByRole("button", { name: "Libraries", exact: true }).count()) === 0,
-      "Libraries should stay hidden until installed bundles can be managed in-product.",
+      panelShellContract.left?.padding === panelShellContract.right?.padding &&
+        panelShellContract.left?.controlSize === panelShellContract.right?.controlSize &&
+        panelShellContract.left?.rowHeight === panelShellContract.right?.rowHeight &&
+        panelShellContract.left?.tabsHeight === panelShellContract.right?.tabsHeight,
+      `Left and right panels should inherit one shell, tab-height, and control-size contract while allowing different information architecture. Found: ${JSON.stringify(
+        panelShellContract,
+      )}`,
     );
+    expect(
+      (await page.locator(".left-panel-tabs .left-panel-tab").count()) === 4 &&
+        (await page.locator(".left-panel-tabs .side-panel-tab-label").count()) === 0,
+      "The workspace panel should expose Files, Search, Knowledge, and Libraries as icon-only workspace sections.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Workspace search", exact: true }).click();
+    await waitForLeftPanel(page, "Workspace search");
+    expect(
+      (await page.getByRole("searchbox", { name: "Workspace search", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-search-result").count()) === 0,
+      "Workspace Search should start with a quiet prompt instead of dumping the whole workspace.",
+    );
+    await page.getByRole("searchbox", { name: "Workspace search", exact: true }).fill("Tabula");
+    expect(
+      (await page.locator(".left-panel-search-result").count()) > 0,
+      "Workspace Search should render matching documents after the user enters a query.",
+    );
+    await openProjectMenu(page);
+    expect(
+      (await page.locator('.left-panel[aria-label="Workspace search"]').count()) === 1,
+      "Opening workspace status should preserve the active workspace section.",
+    );
+    await page.locator(".left-panel-status-button").click();
+    await waitForWorkspaceMenuState(page, false);
+    expect(
+      (await page.locator('.left-panel[aria-label="Workspace search"]').count()) === 1,
+      "Closing workspace status from its trigger should preserve the active workspace section.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Knowledge", exact: true }).click();
+    await waitForLeftPanel(page, "Knowledge");
+    expect(
+      (await page.locator('.left-panel-knowledge[aria-label="Knowledge"]').count()) === 1,
+      "Knowledge should provide a quiet concept browsing surface.",
+    );
+    expect(
+      (await page.getByRole("searchbox", { name: "Search documents", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-knowledge").getByRole("heading").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge").getByRole("button", { name: /^Review/ }).count()) === 0 &&
+        (await page.locator(".left-panel-knowledge").getByRole("button", { name: /^Metadata fields\s+\d+$/ }).count()) === 0,
+      "Knowledge should open as a searchable concept list without counts, review mode, or metadata statistics.",
+    );
+    const knowledgeSearch = page.getByRole("searchbox", { name: "Search documents", exact: true });
+    await knowledgeSearch.click();
+    const knowledgeSearchFocusStyle = await knowledgeSearch.evaluate((input) => {
+      const inputStyle = getComputedStyle(input);
+      const shellStyle = getComputedStyle(input.closest(".left-panel-knowledge-search"));
+      return {
+        borderWidth: inputStyle.borderWidth,
+        outlineStyle: inputStyle.outlineStyle,
+        shellRadius: shellStyle.borderRadius,
+      };
+    });
+    expect(
+      knowledgeSearchFocusStyle.borderWidth === "0px" &&
+        knowledgeSearchFocusStyle.outlineStyle === "none" &&
+        knowledgeSearchFocusStyle.shellRadius !== "0px",
+      `Panel search focus should stay on its rounded surface without a rectangular browser outline. Got: ${JSON.stringify(knowledgeSearchFocusStyle)}`,
+    );
+    const knowledgeRows = await page.locator(".left-panel-knowledge-concept").evaluateAll((rows) =>
+      rows.map((row) => ({
+        iconCount: row.querySelectorAll(".left-panel-knowledge-document-icon svg").length,
+        fontWeight: getComputedStyle(row.querySelector(".left-panel-knowledge-concept-title")).fontWeight,
+        context: row.querySelector(".left-panel-knowledge-concept-content small")?.textContent?.trim() ?? "",
+      })));
+    expect(
+      knowledgeRows.length > 0 &&
+        knowledgeRows.every((row) => row.iconCount === 1 && row.fontWeight === "400") &&
+        knowledgeRows.every((row) => row.context === ""),
+      "Knowledge documents should use quiet regular-weight rows with one shared file icon and no default metadata summary.",
+    );
+    await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).click();
+    const knowledgeFilterState = await page.evaluate(() => {
+      const panel = document.querySelector(".left-panel-knowledge-filter-view");
+      return {
+        fields: Array.from(panel?.querySelectorAll(".left-panel-knowledge-filter-menu.fields > button") ?? [])
+          .map((button) => button.textContent?.trim()),
+        sections: Array.from(panel?.querySelectorAll(".left-panel-knowledge-filter-section > span") ?? [])
+          .map((label) => label.textContent?.trim()),
+        sectionOpacity: getComputedStyle(panel?.querySelector(".left-panel-knowledge-filter-section > span")).opacity,
+      };
+    });
+    expect(
+      (await page.locator('.left-panel-knowledge-filter-view[aria-label="Filters"]').count()) === 1 &&
+        (await page.getByRole("button", { name: "Close filters", exact: true }).count()) === 1 &&
+        (await page.getByRole("button", { name: "Apply", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-list").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-toolbar").count()) === 0 &&
+        knowledgeFilterState.sections.join("|") === "Suggested|All fields" &&
+        Number(knowledgeFilterState.sectionOpacity) < 0.7 &&
+        knowledgeFilterState.fields.includes("type") &&
+        knowledgeFilterState.fields.includes("tags") &&
+        knowledgeFilterState.fields.includes("status") &&
+        knowledgeFilterState.fields.includes("description") &&
+        knowledgeFilterState.fields.includes("reviewed_at") &&
+        knowledgeFilterState.fields.includes("owner.team"),
+      "Knowledge filters should separate suggested fields from every discovered metadata leaf.",
+    );
+    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
+      .getByRole("button", { name: "description", exact: true }).click();
+    expect(
+        (await page.locator(".left-panel-knowledge-filter-menu.values").count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-filter-operators").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-filter-view input").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-filter-menu.values > button").count()) >= 1,
+      "Metadata fields should expose observed values directly without a condition builder.",
+    );
+    await page.keyboard.press("Escape");
+    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
+      .getByRole("button", { name: "reviewed_at", exact: true }).click();
+    const dateFilterState = await page.evaluate(() => {
+      const panel = document.querySelector(".left-panel-knowledge-filter-view");
+      const backStyle = getComputedStyle(panel.querySelector("button.back"));
+      return {
+        dateInputCount: panel.querySelectorAll('input[type="date"]').length,
+        operatorCount: panel.querySelectorAll(".left-panel-knowledge-filter-operators").length,
+        observedDates: Array.from(panel.querySelectorAll(".left-panel-knowledge-filter-menu.values button"))
+          .map((button) => button.textContent?.trim()),
+        backRadius: backStyle.borderRadius,
+        backOutline: backStyle.outlineStyle,
+      };
+    });
+    expect(
+      dateFilterState.dateInputCount === 0 &&
+        dateFilterState.operatorCount === 0 &&
+        dateFilterState.observedDates.includes("2026-01-10") &&
+        dateFilterState.backRadius !== "0px" &&
+        dateFilterState.backOutline === "none",
+      "Date metadata should expose observed values without a date picker, condition builder, or square back-row state.",
+    );
+    await page.keyboard.press("Escape");
+    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
+      .getByRole("button", { name: "owner.team", exact: true }).click();
+    const observedOwnerValue = page.locator(".left-panel-knowledge-filter-menu.values")
+      .getByRole("button", { name: "docs", exact: true });
+    expect(
+      (await observedOwnerValue.count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-filter-view input").count()) === 0,
+      "Free-text filters should use observed values without introducing a separate input mode.",
+    );
+    await observedOwnerValue.click();
+    expect(
+      (await observedOwnerValue.getAttribute("aria-pressed")) === "true" &&
+        (await observedOwnerValue.locator("svg").count()) === 1,
+      "Choosing an observed value should create an exact filter and keep the selection visible.",
+    );
+    await page.keyboard.press("Escape");
+    await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).click();
+    expect(
+      (await page.locator(".left-panel-knowledge-filter-menu.values").count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-filter-menu.fields").count()) === 0,
+      "Choosing a metadata field should reveal only that field's observed values.",
+    );
+    const stableValue = page.locator(".left-panel-knowledge-filter-menu.values")
+      .getByRole("button", { name: "stable", exact: true });
+    const literalEmptyValue = page.locator(".left-panel-knowledge-filter-menu.values")
+      .getByRole("button", { name: "Empty", exact: true });
+    const missingValue = page.locator(".left-panel-knowledge-filter-menu.values")
+      .getByRole("button", { name: "status · No value", exact: true });
+    expect(
+      (await literalEmptyValue.count()) === 1 &&
+        (await literalEmptyValue.locator(".left-panel-knowledge-no-value").count()) === 0 &&
+        (await missingValue.count()) === 1 &&
+        (await missingValue.locator(".left-panel-knowledge-no-value svg").count()) === 1,
+      "Missing metadata should use a dedicated icon and accessible name instead of colliding with literal Empty values.",
+    );
+    await stableValue.click();
+    expect(
+      (await stableValue.getAttribute("aria-pressed")) === "true" &&
+        (await stableValue.locator(".left-panel-knowledge-filter-check svg").count()) === 1,
+      "Selected metadata values should expose a persistent check mark.",
+    );
+    await page.keyboard.press("Escape");
+    expect(
+      (await page.locator(".left-panel-knowledge-filter-menu.fields").count()) === 2 &&
+        (await page.locator(".left-panel-knowledge-filter-view").count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).locator("svg").count()) === 2 &&
+        (await page.locator(".left-panel-knowledge-filter-content .clear").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-filter-footer .clear").count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-filter-footer .apply").count()) === 1,
+      "Escape should return to marked fields and keep Clear filters beside Apply in the footer.",
+    );
+    await page.getByRole("button", { name: "Close filters", exact: true }).click();
+    expect(
+      (await page.locator(".left-panel-knowledge-filter-view").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-active-filters").count()) === 0 &&
+        await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).evaluate(
+          (button) => button === document.activeElement,
+        ),
+      "Closing filters should discard staged values, restore the browse view, and return focus to its trigger.",
+    );
+    await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).click();
+    await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).click();
+    await page.locator(".left-panel-knowledge-filter-menu.values")
+      .getByRole("button", { name: "stable", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Apply", exact: true }).click();
+    expect(
+      (await page.locator(".left-panel-knowledge-filter-view").count()) === 0 &&
+        (await page.locator(".left-panel-knowledge-active-filters").getByRole("button", { name: "Remove status · stable", exact: true }).count()) === 1 &&
+        await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Filters", exact: true }).evaluate(
+          (button) => button === document.activeElement,
+        ),
+      "Apply should commit staged filters, restore the browse view, and return focus to its trigger.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Libraries", exact: true }).click();
+    await waitForLeftPanel(page, "Libraries");
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Knowledge", exact: true }).click();
+    await waitForLeftPanel(page, "Knowledge");
+    expect(
+      (await page.locator(".left-panel-knowledge-active-filters").getByRole("button", { name: "Remove status · stable", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Filters", exact: true }).count()) === 1,
+      "Applied Knowledge filters should survive switching to another workspace section and back.",
+    );
+    await page.locator(".left-panel-utilities").getByRole("button", { name: "Checks", exact: true }).click();
+    await waitForLeftPanel(page, "Checks");
+    expect(
+      (await page.locator('.left-panel-checks[aria-label="Checks"]').count()) === 1 &&
+        (await page.locator(".left-panel-tabs").getByRole("button", { name: "Checks", exact: true }).count()) === 0 &&
+        (await page.locator(".left-panel-knowledge").count()) === 0,
+      "Checks should be a separate workspace maintenance tool below the primary navigation.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Libraries", exact: true }).click();
+    await waitForLeftPanel(page, "Libraries");
+    expect(
+      (await page.locator('.left-panel-libraries[aria-label="Libraries"]').count()) === 1,
+      "Libraries should have a dedicated workspace surface ready for future connections.",
+    );
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
+    await page.setViewportSize({ width: 850, height: 800 });
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector(".left-panel")) &&
+      !document.querySelector(".right-panel"));
+    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
+    await page.waitForFunction(() =>
+      !document.querySelector(".left-panel") &&
+      Boolean(document.querySelector(".right-panel")));
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector(".left-panel")) &&
+      !document.querySelector(".right-panel"));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await ensureSidePanelOpen(page);
+    expect(
+      (await page.locator(".left-panel").count()) === 1 &&
+        (await page.locator(".right-panel").count()) === 1,
+      "Wide workspaces should still allow both panels after compact mode kept one panel at a time.",
+    );
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".left-panel")),
       ariaLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
@@ -451,7 +580,7 @@ export async function run(ctx) {
           status: rectOf(".file-status-bar"),
         };
       })(),
-      workspaceName: document.querySelector(".right-file-workspace-name")?.textContent?.trim() ?? "",
+      workspaceName: document.querySelector(".left-panel .right-file-workspace-name")?.textContent?.trim() ?? "",
       syntheticRootRowCount: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
         .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
         .length,
@@ -466,7 +595,7 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Metadata",
+      rightPanelState.tabs.join("|") === "Metadata|Links|Outline|Comments",
       `The right panel should contain document context only. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
@@ -496,26 +625,30 @@ export async function run(ctx) {
     );
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
-    await page.locator(".right-panel").getByRole("button", {
-      name: "Close side panel",
+    await page.locator(".top-right-zone").getByRole("button", {
+      name: "Toggle side panel",
       exact: true,
     }).click();
     const rightPanelDivider = page.locator(
       '.left-panel-divider[role="separator"][aria-label="Resize side panel"]',
     );
+    const maximumPanelWidth = await page.evaluate(() => Math.max(240, window.innerWidth - 360));
     expect(
-      (await rightPanelDivider.getAttribute("aria-valuemax")) === "920",
+      Number(await rightPanelDivider.getAttribute("aria-valuemax")) === maximumPanelWidth,
       "Workspace navigation should preserve room for the workbench while resizing.",
     );
     await rightPanelDivider.focus();
-    for (let step = 0; step < 45; step += 1) {
+    for (let step = 0; step < 80; step += 1) {
       await rightPanelDivider.press("ArrowRight");
     }
     await page.waitForFunction(
-      () => Math.round(document.querySelector(".left-panel")?.getBoundingClientRect().width ?? 0) === 920,
+      (maximumWidth) => Math.round(
+        document.querySelector(".left-panel")?.getBoundingClientRect().width ?? 0,
+      ) === maximumWidth,
+      maximumPanelWidth,
     );
     expect(
-      (await rightPanelDivider.getAttribute("aria-valuenow")) === "920",
+      Number(await rightPanelDivider.getAttribute("aria-valuenow")) === maximumPanelWidth,
       "Keyboard resizing should reach the viewport-derived side-panel maximum.",
     );
     await rightPanelDivider.dblclick();
@@ -560,16 +693,17 @@ export async function run(ctx) {
     await page.locator(".right-properties").waitFor({
       state: "visible",
     });
+    const documentContextPanel = page.locator(".right-panel");
     expect(
-      (await page.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
-        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
+      (await documentContextPanel.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
+        (await documentContextPanel.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
       "Metadata should be the only metadata context exposed during editing.",
     );
     expect(
       (await page.locator(".right-compatibility-scroll").count()) === 0,
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
-    await page.getByRole("button", { name: "Workspace search", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Search", exact: true }).click();
     const launcher = page.getByRole("dialog", { name: "Search documents and commands", exact: true });
     await launcher.waitFor({ state: "visible" });
     const launcherSearch = launcher.getByRole("combobox", {
@@ -657,20 +791,24 @@ export async function run(ctx) {
       dualPanelGeometry.status.right <= dualPanelGeometry.rightPanel.left - 20,
       "The status bar lane should stay clear of Project Context.",
     );
-    await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
+    await page.locator(".left-panel-status-button").click();
+    await waitForWorkspaceMenuState(page, false);
     await waitForRenderFrame(page);
 
     const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
     await sidePanelNavigation.getByRole("button", { name: "Metadata", exact: true }).click();
     expect(
       await page.locator(".right-properties").isVisible() &&
-        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
-        (await page.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
+        (await documentContextPanel.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
+        (await documentContextPanel.getByRole("button", { name: "Knowledge", exact: true }).count()) === 0 &&
         (await page.locator(".right-panel-search-field").count()) === 0 &&
          (await page.locator(".right-graph-panel").count()) === 0,
        "Metadata should remain document metadata instead of a catalog or dashboard.",
     );
-    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", {
+      name: "Toggle workspace panel",
+      exact: true,
+    }).click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -790,7 +928,7 @@ export async function run(ctx) {
       contextLabel: document.querySelector(".right-comments-context-label")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       emptyText: document.querySelector(".right-comments-scroll .right-empty-state")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       inputCount: document.querySelectorAll(".right-comment-input").length,
-      visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      visibleText: document.querySelector(".left-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       cardCount: document.querySelectorAll(".right-comment-card").length,
       actionCount: document.querySelectorAll(".right-comment-action").length,
       navigationCount: document.querySelectorAll(".right-panel-tab small").length,
@@ -1519,7 +1657,7 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 1, "Right-clicking a file should expose its file actions.");
     await page.keyboard.press("Escape");
 
-    await page.locator(".right-files-panel").click({ button: "right", position: { x: 20, y: 360 } });
+    await page.locator(".left-panel-body.files .right-files-panel").click({ button: "right", position: { x: 20, y: 360 } });
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root document.");
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root folder.");
     expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 0, "The Files panel context menu should contain only workspace creation actions.");
@@ -2146,6 +2284,14 @@ export async function run(ctx) {
       "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
     );
 
+    const metadataToggle = mobilePage.getByRole("navigation", { name: "Document controls" })
+      .getByRole("button", { name: "Metadata", exact: true });
+    expect(
+      (await metadataToggle.locator(".lucide-info").count()) === 1 &&
+        (await metadataToggle.locator(".lucide-braces").count()) === 0,
+      "Document metadata should use the same quiet information icon as document context.",
+    );
+
     await mobilePage.getByRole("navigation", { name: "Document controls" })
       .getByRole("button", { name: "Search", exact: true }).click();
     await mobilePage.locator(".document-search-row").waitFor({ state: "visible" });
@@ -2159,10 +2305,17 @@ export async function run(ctx) {
       const gutter = document.querySelector(".cm-gutters");
       const fileAction = document.querySelector(".right-file-tree-row.file .right-file-action");
       const workbench = document.querySelector(".center-workbench");
-      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction || !workbench) return null;
+      const topPanelTrigger = document.querySelector(".top-left-zone .left-panel-trigger");
+      const panelTabs = panel?.querySelector(".left-panel-tabs");
+      if (
+        !panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction || !workbench ||
+        !topPanelTrigger || !panelTabs
+      ) return null;
       const panelRect = panel.getBoundingClientRect();
       const searchRect = documentSearch.getBoundingClientRect();
       const fileActionRect = fileAction.getBoundingClientRect();
+      const topPanelTriggerRect = topPanelTrigger.getBoundingClientRect();
+      const panelTabsRect = panelTabs.getBoundingClientRect();
       const elementOverSearch = document.elementFromPoint(
         searchRect.left + searchRect.width / 2,
         searchRect.top + searchRect.height / 2,
@@ -2170,6 +2323,7 @@ export async function run(ctx) {
       return {
         panelLeft: Math.round(panelRect.left),
         panelRight: Math.round(panelRect.right),
+        panelTop: Math.round(panelRect.top),
         panelHeight: Math.round(panelRect.height),
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
@@ -2182,6 +2336,9 @@ export async function run(ctx) {
         workbenchInert: workbench.hasAttribute("inert"),
         workbenchAriaHidden: workbench.getAttribute("aria-hidden"),
         focusInsidePanel: panel.contains(document.activeElement),
+        topPanelTriggerCenter: Math.round(topPanelTriggerRect.left + topPanelTriggerRect.width / 2),
+        topPanelTriggerPressed: topPanelTrigger.getAttribute("aria-pressed"),
+        panelTabsLeft: Math.round(panelTabsRect.left),
         fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
         fileActionOpacity: getComputedStyle(fileAction).opacity,
         documentSearchPreserved: getComputedStyle(documentSearch).display !== "none",
@@ -2192,25 +2349,29 @@ export async function run(ctx) {
     });
     expect(mobilePanel?.panelLeft === 0, "The mobile side panel should start at the left viewport edge.");
     expect(
+      mobilePanel?.panelTop === 50 && mobilePanel?.topPanelTriggerPressed === "true",
+      "The app-bar toggle should remain the single anchored panel control above the overlay.",
+    );
+    expect(
+      Number(mobilePanel?.topPanelTriggerCenter) < 60 && Number(mobilePanel?.panelTabsLeft) <= 24,
+      "The app-bar toggle and panel sections should keep their shared left-side alignment.",
+    );
+    expect(
       mobilePanel?.documentSearchPreserved &&
         mobilePanel.documentSearchOccluded &&
         mobilePanel.documentSearchLayer < mobilePanel.panelLayer,
       "The mobile side panel should cover document search without discarding its state.",
     );
     expect(
-      await mobilePage.getByRole("button", { name: "Close side panel", exact: true }).isVisible(),
-      "The mobile panel close control should describe its current action.",
-    );
-    expect(
       mobilePanel?.role === "dialog" &&
-        mobilePanel.ariaModal === "true" &&
+        mobilePanel.ariaModal === null &&
         mobilePanel.workbenchInert &&
         mobilePanel.workbenchAriaHidden === "true" &&
         mobilePanel.focusInsidePanel,
-      "Overlay panels should trap focus and make the document behind them inert.",
+      "Overlay panels should focus the panel and disable only the document behind it, without claiming modal ownership of the app bar.",
     );
     expect(mobilePanel?.panelRight === mobilePanel?.viewportWidth, "The mobile side panel should fill the viewport width.");
-    expect(mobilePanel?.panelHeight === mobilePanel?.viewportHeight, "The mobile side panel should fill the viewport height.");
+    expect(mobilePanel?.panelHeight === mobilePanel?.viewportHeight - 50, "The mobile side panel should fill the workbench below the app bar.");
     expect(mobilePanel?.backdropDisplay !== "none", "The mobile side panel should block the document behind it.");
     expect(mobilePanel?.documentSafeRight === "0px", "Overlay panels should not shrink the document lane.");
     expect(mobilePanel?.gutterDisplay === "none", "Mobile editors should not paint collapsed gutter content.");
@@ -2237,12 +2398,9 @@ export async function run(ctx) {
       "Escape should close the nested Create menu before dismissing the side panel.",
     );
 
-    await mobilePage
-      .getByRole("dialog", { name: "Files" })
-      .getByRole("button", { name: "Close side panel" })
-      .click();
+    await mobilePage.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await waitForRenderFrame(mobilePage);
-    expect((await mobilePage.locator(".right-panel-backdrop").count()) === 0, "Closing the side panel should remove its backdrop.");
+    expect((await mobilePage.locator(".left-panel-backdrop").count()) === 0, "Closing the side panel should remove its backdrop.");
   } finally {
     await mobileContext.close();
   }

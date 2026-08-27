@@ -4,6 +4,7 @@ import {
   closeAllWorkspaceFiles,
   closeOtherWorkspaceFiles,
   closeWorkspaceFile,
+  clampSplitEditorRatio,
   createWorkspaceModelState,
   deleteWorkspaceFile,
   getActiveWorkspaceFile,
@@ -248,34 +249,55 @@ const updateFileInState = (
   };
 };
 
-const getWorkspaceViewState = (
+type WorkspacePresentationState = Pick<
+  WorkspaceFile,
+  | "editingMode"
+  | "viewMode"
+  | "readingWidth"
+  | "splitRatio"
+  | "lineWrapping"
+  | "lineNumbers"
+>;
+
+const getWorkspacePresentationState = (
   files: readonly WorkspaceFile[],
   activeFileId: string,
-) => {
+): WorkspacePresentationState => {
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
   const viewMode = activeFile?.viewMode ?? "visual";
   return activeFile
     ? {
         editingMode: viewMode === "split" ? "source" as const : getFileEditingMode(activeFile),
         viewMode,
+        readingWidth: activeFile.readingWidth,
+        splitRatio: activeFile.splitRatio,
+        lineWrapping: activeFile.lineWrapping,
+        lineNumbers: activeFile.lineNumbers,
       }
-    : { editingMode: "visual" as const, viewMode: "visual" as const };
+    : {
+        editingMode: "visual" as const,
+        viewMode: "visual" as const,
+        readingWidth: "wide" as const,
+        splitRatio: undefined,
+        lineWrapping: true,
+        lineNumbers: true,
+      };
 };
 
-const applyWorkspaceViewState = (
+const applyWorkspacePresentationState = (
   files: readonly WorkspaceFile[],
-  viewState: ReturnType<typeof getWorkspaceViewState>,
-) => files.map((file) => ({ ...file, ...viewState }));
+  presentation: WorkspacePresentationState,
+) => files.map((file) => ({ ...file, ...presentation }));
 
 export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
   initializeWorkspace: ({ createFile, folders, readmeFileId, ...workspace }) => {
     const nextWorkspace = createWorkspaceModelState(workspace);
-    const viewState = getWorkspaceViewState(nextWorkspace.files, nextWorkspace.activeFileId);
+    const presentation = getWorkspacePresentationState(nextWorkspace.files, nextWorkspace.activeFileId);
     set({
       ...nextWorkspace,
-      files: applyWorkspaceViewState(nextWorkspace.files, viewState),
+      files: applyWorkspacePresentationState(nextWorkspace.files, presentation),
       createFile,
       folders,
       initialized: true,
@@ -286,10 +308,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   replaceWorkspace: (workspace) => {
     const nextWorkspace = createWorkspaceModelState(workspace);
-    const viewState = getWorkspaceViewState(nextWorkspace.files, nextWorkspace.activeFileId);
+    const presentation = getWorkspacePresentationState(nextWorkspace.files, nextWorkspace.activeFileId);
     const normalizedWorkspace = {
       ...nextWorkspace,
-      files: applyWorkspaceViewState(nextWorkspace.files, viewState),
+      files: applyWorkspacePresentationState(nextWorkspace.files, presentation),
     };
     set((state) => ({
       ...state,
@@ -318,12 +340,12 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFile: (overrides) => {
     const state = get();
-    const viewState = getWorkspaceViewState(state.files, state.activeFileId);
+    const presentation = getWorkspacePresentationState(state.files, state.activeFileId);
     const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const requestedTitle = overrides?.title?.trim();
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
-      ...viewState,
+      ...presentation,
       parentId,
       title: getAvailableFileTitle(state.files, requestedTitle || "Untitled.md", parentId),
     });
@@ -336,15 +358,16 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFileFromContent: (title, text, viewMode = "visual", overrides) => {
     const state = get();
-    const viewState = getWorkspaceViewState(state.files, state.activeFileId);
+    const presentation = getWorkspacePresentationState(state.files, state.activeFileId);
     const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
       parentId,
       title: getAvailableFileTitle(state.files, title, parentId),
       text,
-      editingMode: viewState.editingMode,
-      viewMode: state.files.length > 0 ? viewState.viewMode : overrides?.viewMode ?? viewMode,
+      ...(state.files.length > 0 ? presentation : {}),
+      editingMode: state.files.length > 0 ? presentation.editingMode : overrides?.editingMode,
+      viewMode: state.files.length > 0 ? presentation.viewMode : overrides?.viewMode ?? viewMode,
     });
     set((currentState) => ({
       ...currentState,
@@ -589,25 +612,53 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
               : "visual";
       return {
         ...state,
-        files: applyWorkspaceViewState(state.files, { editingMode, viewMode }),
+        files: applyWorkspacePresentationState(state.files, {
+          ...getWorkspacePresentationState(state.files, state.activeFileId),
+          editingMode,
+          viewMode,
+        }),
       };
     });
   },
 
   setActiveFileReadingWidth: (readingWidth) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileReadingWidth", readingWidth }));
+    set((state) => ({
+      ...state,
+      files: applyWorkspacePresentationState(state.files, {
+        ...getWorkspacePresentationState(state.files, state.activeFileId),
+        readingWidth,
+      }),
+    }));
   },
 
   setActiveFileLineWrapping: (lineWrapping) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileLineWrapping", lineWrapping }));
+    set((state) => ({
+      ...state,
+      files: applyWorkspacePresentationState(state.files, {
+        ...getWorkspacePresentationState(state.files, state.activeFileId),
+        lineWrapping,
+      }),
+    }));
   },
 
   setActiveFileLineNumbers: (lineNumbers) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileLineNumbers", lineNumbers }));
+    set((state) => ({
+      ...state,
+      files: applyWorkspacePresentationState(state.files, {
+        ...getWorkspacePresentationState(state.files, state.activeFileId),
+        lineNumbers,
+      }),
+    }));
   },
 
   commitActiveFileSplitRatio: (splitRatio) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileSplitRatio", splitRatio }));
+    set((state) => ({
+      ...state,
+      files: applyWorkspacePresentationState(state.files, {
+        ...getWorkspacePresentationState(state.files, state.activeFileId),
+        splitRatio: clampSplitEditorRatio(splitRatio),
+      }),
+    }));
   },
 
   addFolder: (title = "New folder", parentId = WORKSPACE_ROOT_FOLDER_ID) => {

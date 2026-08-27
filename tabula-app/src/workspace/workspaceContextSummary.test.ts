@@ -6,7 +6,7 @@ import {
 } from "./workspaceContextSummary";
 
 const browserContext = (): WorkspaceContextState => ({
-  runtime: { kind: "local" },
+  authority: { kind: "browser" },
   browserPersistence: { state: "saved" },
   folderBinding: null,
   collaboration: null,
@@ -56,7 +56,7 @@ describe("workspace context summary", () => {
 
   it("represents a connected folder and collaboration at the same time", () => {
     const summary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "room" },
+      authority: { kind: "live" },
       browserPersistence: { state: "suspended" },
       folderBinding: {
         label: "Handbook",
@@ -92,7 +92,7 @@ describe("workspace context summary", () => {
 
   it("marks persistence, folder, and room failures independently", () => {
     const summary = getWorkspaceContextSummary("ko", {
-      runtime: { kind: "room" },
+      authority: { kind: "live" },
       browserPersistence: { state: "error" },
       folderBinding: {
         writeMode: "automatic",
@@ -114,7 +114,7 @@ describe("workspace context summary", () => {
 
   it("explains where offline room changes remain", () => {
     const durable = getWorkspaceContextSummary("en", {
-      runtime: { kind: "room" },
+      authority: { kind: "live" },
       browserPersistence: { state: "suspended" },
       folderBinding: null,
       collaboration: {
@@ -124,7 +124,7 @@ describe("workspace context summary", () => {
       },
     });
     const temporary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "room" },
+      authority: { kind: "live" },
       browserPersistence: { state: "suspended" },
       folderBinding: null,
       collaboration: {

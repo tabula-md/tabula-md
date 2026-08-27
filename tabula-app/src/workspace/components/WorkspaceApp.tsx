@@ -9,6 +9,7 @@ import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
 import { WorkspaceAssetViewer } from "./WorkspaceAssetViewer";
+import { useWorkspaceShellSize } from "../workspaceShellLayout";
 
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
 const DocumentWorkbench = lazy(() => import("../../document/DocumentWorkbench").then(
@@ -25,6 +26,7 @@ const WorkspaceLeftPanel = lazy(() => import("../../left-panel/WorkspaceLeftPane
 ));
 
 export function WorkspaceApp() {
+  const shellSize = useWorkspaceShellSize();
   const {
     collaboration,
     chrome,
@@ -32,7 +34,7 @@ export function WorkspaceApp() {
     overlays,
     panels,
     workspaceSession,
-  } = useWorkspaceRuntime();
+  } = useWorkspaceRuntime(shellSize);
   const { activeFile, ...documentWorkbenchProps } = documentRuntime.workbench;
   const activeFilePresentation = activeFile
     ? getWorkspaceFilePresentation(activeFile)
@@ -41,8 +43,10 @@ export function WorkspaceApp() {
   const [workspaceMenuMounted, setWorkspaceMenuMounted] = useState(false);
 
   useEffect(() => {
-    if (chrome.menu.isOpen) setWorkspaceMenuMounted(true);
-  }, [chrome.menu.isOpen]);
+    if (chrome.menu.isOpen || chrome.menu.preferencesOpen) {
+      setWorkspaceMenuMounted(true);
+    }
+  }, [chrome.menu.isOpen, chrome.menu.preferencesOpen]);
 
   if (workspaceSession.localOpening) {
     return (
@@ -56,7 +60,7 @@ export function WorkspaceApp() {
   return (
     <main className="app-shell">
       <WorkspaceOverlaySurface {...overlays.workspace} />
-      <section className={chrome.mainPanelClassName}>
+      <section className={chrome.mainPanelClassName} data-shell-size={shellSize}>
         <WorkspaceImportInputs
           importInputRef={chrome.menu.importInputRef}
           workspaceImportInputRef={chrome.menu.workspaceImportInputRef}
@@ -70,13 +74,13 @@ export function WorkspaceApp() {
           </Suspense>
         )}
 
+        <MemoWorkspaceTopChrome {...chrome.top} />
+
         <Suspense fallback={null}>
           <WorkspaceLeftPanel {...panels.left} />
         </Suspense>
 
         <section className={documentRuntime.surface.centerWorkbenchClassName}>
-          <MemoWorkspaceTopChrome {...chrome.top} />
-
           <section
             className={`${documentRuntime.surface.fileShellClassName}${
               assetOpen ? " asset-file-shell" : ""

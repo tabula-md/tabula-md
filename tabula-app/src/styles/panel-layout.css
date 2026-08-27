@@ -1,55 +1,64 @@
-/* Keep both side panels on one responsive layout policy. */
-@media (max-width: 1160px) {
-  .main-panel.left-panel-open,
-  .main-panel.right-panel-open,
-  .main-panel.left-panel-open.right-panel-open {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .main-panel.left-panel-open .center-workbench,
-  .main-panel.left-panel-open.right-panel-open .center-workbench {
-    grid-column: 1;
-  }
-
-  .left-panel-backdrop,
-  .right-panel-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: var(--layer-panel);
-    display: block;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    background: var(--overlay-scrim);
-  }
-
-  .left-panel,
-  .right-panel {
-    position: fixed;
-    top: 0;
-    width: min(360px, calc(100vw - 48px));
-    height: 100dvh;
-    box-shadow: var(--shadow-popover);
-  }
-
-  .left-panel {
-    left: 0;
-  }
-
-  .right-panel {
-    right: 0;
-  }
-
-  .left-panel-divider,
-  .right-panel-divider {
-    display: none;
-  }
+/* The shell assigns one viewport class; panels and the center consume it. */
+.main-panel[data-shell-size="narrow"]:is(
+  .left-panel-open,
+  .right-panel-open,
+  .left-panel-open.right-panel-open
+) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-@media (max-width: 560px) {
-  .left-panel,
+/* Keep the app-level panel triggers reachable above the scrim. The panel
+   itself is rendered later at the same layer, so its own header still wins
+   where the two surfaces overlap. */
+.main-panel[data-shell-size="narrow"]
+  > .top-chrome {
+  z-index: calc(var(--layer-panel) + 1);
+}
+
+.main-panel[data-shell-size="narrow"].left-panel-open
+  .center-workbench,
+.main-panel[data-shell-size="narrow"].left-panel-open.right-panel-open
+  .center-workbench {
+  grid-column: 1;
+}
+
+.main-panel[data-shell-size="narrow"]
+  :is(.left-panel-backdrop, .right-panel-backdrop) {
+  position: fixed;
+  inset: 50px 0 0;
+  z-index: var(--layer-panel);
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0;
+  background: var(--overlay-scrim);
+}
+
+.main-panel[data-shell-size="narrow"]
+  :is(.left-panel, .right-panel) {
+  position: fixed;
+  top: 50px;
+  width: min(360px, calc(100vw - 48px));
+  height: calc(100dvh - 50px);
+  box-shadow: var(--shadow-popover);
+}
+
+.main-panel[data-shell-size="narrow"]
+  .left-panel {
+  left: 0;
+}
+
+.main-panel[data-shell-size="narrow"]
   .right-panel {
-    width: 100vw;
-    max-width: none;
-  }
+  right: 0;
+}
+
+.main-panel[data-shell-size="narrow"]
+  :is(.left-panel-divider, .right-panel-divider) {
+  display: none;
+}
+
+.main-panel[data-shell-size="narrow"] :is(.left-panel, .right-panel) {
+  width: 100vw;
+  max-width: none;
 }

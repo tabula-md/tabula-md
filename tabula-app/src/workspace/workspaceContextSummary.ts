@@ -4,6 +4,7 @@ import type {
   RoomRecoveryMode,
 } from "../collaboration/liveCollaboration";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
+import type { WorkspaceAuthority } from "./workspaceBoundaryPolicy";
 
 export type BrowserPersistenceState =
   | "saving"
@@ -21,7 +22,7 @@ export type FolderBindingStatus =
   | "suspended";
 
 export type WorkspaceContextState = {
-  runtime: { kind: "local" } | { kind: "room" };
+  authority: WorkspaceAuthority;
   browserPersistence: {
     state: BrowserPersistenceState;
   };
@@ -380,7 +381,7 @@ export const getWorkspaceContextSummary = (
   const items = [browser, folder, collaboration].filter(
     (item): item is WorkspaceContextSummaryItem => Boolean(item),
   );
-  const primary = context.runtime.kind === "room" && collaboration
+  const primary = context.authority.kind === "live" && collaboration
     ? collaboration
     : folder ?? browser;
 

@@ -68,14 +68,13 @@ type UseWorkspaceCommentActionsArgs = {
   previewSurfaceRef: RefObject<HTMLElement | null>;
   largeDocumentMode: boolean;
   onBeforeCreateComment?: () => void;
+  openRightPanel: (view: "comments") => void;
   queueEditorTextRange: QueueEditorTextRange;
   selectFile: (fileId: string) => void;
   selectedCharacterCount: number;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setCenterPopover: (popover: null) => void;
   setFocusedCommentId: (commentId: string | null) => void;
-  setRightPanelOpen: (isOpen: boolean) => void;
-  setRightPanelView: (view: "comments") => void;
   setSelectionActionPosition: (position: MarkdownSelectionActionPosition | null) => void;
   setTopPopover: (popover: null) => void;
   showToast: ShowToast;
@@ -101,14 +100,13 @@ export function useWorkspaceCommentActions({
   previewSurfaceRef,
   largeDocumentMode,
   onBeforeCreateComment,
+  openRightPanel,
   queueEditorTextRange,
   selectFile,
   selectedCharacterCount,
   setActiveFileBookmarks,
   setCenterPopover,
   setFocusedCommentId,
-  setRightPanelOpen,
-  setRightPanelView,
   setSelectionActionPosition,
   setTopPopover,
   showToast,
@@ -155,8 +153,7 @@ export function useWorkspaceCommentActions({
   }, [activeFile?.id]);
 
   const openCommentsPanel = useCallback((commentId?: string) => {
-    setRightPanelOpen(true);
-    setRightPanelView("comments");
+    openRightPanel("comments");
     setTopPopover(null);
     setCenterPopover(null);
 
@@ -170,10 +167,9 @@ export function useWorkspaceCommentActions({
     }
   }, [
     queueAnimationFrameTask,
+    openRightPanel,
     setCenterPopover,
     setFocusedCommentId,
-    setRightPanelOpen,
-    setRightPanelView,
     setTopPopover,
   ]);
 

@@ -167,9 +167,15 @@ export async function run(ctx) {
       "Live rooms should not replace the shared workspace through folder import.",
     );
     expect(
-      (await firstPage.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 1 &&
+      (await firstPage.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 0 &&
         (await firstPage.getByRole("button", { name: "Export workspace (.zip)", exact: true }).count()) === 1,
-      "Live rooms should allow local document and workspace exports.",
+      "The workspace menu should keep only the workspace-scoped export action.",
+    );
+    await firstPage.keyboard.press("Escape");
+    await firstPage.getByRole("button", { name: "Editor controls", exact: true }).click();
+    expect(
+      (await firstPage.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 1,
+      "Live rooms should keep document export in the document-scoped controls.",
     );
     await firstPage.keyboard.press("Escape");
     await clickTabByFileName(firstPage, secondaryFileName);
@@ -201,7 +207,7 @@ export async function run(ctx) {
       (await firstPage.locator(".right-file-icon-live-dot").count()) === 0,
       "The workspace panel should carry live context without repeating it on every file.",
     );
-    await firstPage.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await firstPage.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
       const avatar = document.querySelector(".avatar.self");
@@ -766,7 +772,7 @@ async function openFilesPanel(page) {
   if ((await filesTab.getAttribute("aria-pressed")) !== "true") {
     await filesTab.click();
   }
-  await page.locator(".left-panel .right-panel-body.files").waitFor({ state: "visible" });
+  await page.locator(".left-panel .left-panel-body.files").waitFor({ state: "visible" });
 }
 
 async function waitForRightPanelFile(page, fileName, timeout = 8_000) {

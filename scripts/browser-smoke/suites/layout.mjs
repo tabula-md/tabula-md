@@ -211,6 +211,8 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await openMarkdownFile(page);
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
     const chrome = await page.evaluate(() => {
       const readRect = (selector) => {
         const element = document.querySelector(selector);
@@ -397,7 +399,7 @@ export async function run(ctx) {
     const workspacePanelLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);
-    await page.locator(".left-panel .left-panel-close").click();
+    await page.locator(".top-left-zone .left-panel-trigger").click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
     await ensureSidePanelOpen(page);
     const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
@@ -467,9 +469,10 @@ export async function run(ctx) {
       "Opening Project Context should keep the document frame clear of the right panel.",
     );
     expect(
-      rightPanelLayout.documentZone.x + rightPanelLayout.documentZone.width <=
-        rightPanelLayout.rightPanel.x - 8,
-      "Opening Project Context should keep top chrome controls clear of the right panel.",
+      Math.abs(rightPanelLayout.documentZone.x - closedLayout.documentZone.x) <= 1 &&
+        Math.abs(rightPanelLayout.documentZone.width - closedLayout.documentZone.width) <= 1 &&
+        Math.abs(rightPanelLayout.right.x - closedLayout.right.x) <= 1,
+      "Opening Project Context should leave the global top chrome and fixed panel controls in place.",
     );
     expect(
       Math.abs(menuLayout.workspace.x - workspacePanelLayout.workspace.x) <= 1 &&
@@ -522,7 +525,7 @@ export async function run(ctx) {
           mainClass: document.querySelector(".main-panel")?.className ?? "",
           rightPanel: readRect(".right-panel"),
           rightPanelPosition: window.getComputedStyle(document.querySelector(".right-panel")).position,
-          backdropDisplay: window.getComputedStyle(document.querySelector(".right-panel-backdrop")).display,
+          backdropCount: document.querySelectorAll(".right-panel-backdrop").length,
           actionRow: readRect(".document-toolbar-row"),
           status: readRect(".file-status-bar"),
           workspace: readRect(".workspace.split"),
@@ -538,20 +541,22 @@ export async function run(ctx) {
         "Split layout smoke should run with Project Context open and no left side panel.",
       );
       expect(
-        splitLayout.rightPanelPosition === "fixed" && splitLayout.backdropDisplay === "block",
-        "Project Context should overlay compact desktop Split instead of consuming its document width.",
+        splitLayout.rightPanelPosition === "relative" && splitLayout.backdropCount === 0,
+        "Project Context should use a persistent grid column on medium desktop instead of masking the document.",
       );
       expect(
-        splitLayout.workspace?.display === "grid",
-        "Split should keep its two-pane grid while Project Context is open.",
+        splitLayout.workspace?.display === "block",
+        "A pushed medium desktop panel should let Split stack vertically when the document lane becomes narrow.",
       );
       expect(
         splitLayout.editor &&
           splitLayout.preview &&
-          splitLayout.preview.x >= splitLayout.editor.x + splitLayout.editor.width - 2 &&
-          Math.abs(splitLayout.preview.y - splitLayout.editor.y) <= 1 &&
-          Math.abs(splitLayout.preview.height - splitLayout.editor.height) <= 1,
-        "Compact desktop Split should keep editor and preview side by side.",
+          Math.abs(splitLayout.preview.x - splitLayout.editor.x) <= 1 &&
+          splitLayout.preview.y >= splitLayout.editor.y + splitLayout.editor.height - 2 &&
+          splitLayout.editor.width === splitLayout.preview.width &&
+          splitLayout.editor.height > 250 &&
+          splitLayout.preview.height > 120,
+        "Medium desktop Split should stack editor and preview into a readable lane when the panel pushes them.",
       );
       expect(
         splitLayout.actionRow &&

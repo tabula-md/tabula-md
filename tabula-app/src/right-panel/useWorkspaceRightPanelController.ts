@@ -26,6 +26,10 @@ import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferenc
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
 import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceContextSummary";
+import {
+  workspaceShellUsesOverlayPanels,
+  type WorkspaceShellSize,
+} from "../workspace/workspaceShellLayout";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -78,9 +82,15 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   identityName: string;
   isLive: boolean;
   language: WorkspaceLanguage;
+  shellSize: WorkspaceShellSize;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
+  workspaceMenuOpen: boolean;
   leftPanelOpen: boolean;
   leftPanelView: LeftPanelView;
   onImportFile: () => void;
+  onCloseWorkspaceMenu: () => void;
+  onToggleWorkspaceMenu: () => void;
+  onOpenPreferences: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -97,8 +107,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setLeftPanelOpen: (isOpen: boolean) => void;
   setLeftPanelView: (view: LeftPanelView) => void;
   text: string;
-  workspaceName: string;
-  workspaceContextSummary: WorkspaceContextSummaryViewModel;
 };
 
 export function useWorkspaceRightPanelController({
@@ -118,6 +126,9 @@ export function useWorkspaceRightPanelController({
   identityName,
   isLive,
   language,
+  shellSize,
+  workspaceContextSummary,
+  workspaceMenuOpen,
   leftPanelOpen,
   leftPanelView,
   onAddComment,
@@ -133,6 +144,9 @@ export function useWorkspaceRightPanelController({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onCloseWorkspaceMenu,
+  onToggleWorkspaceMenu,
+  onOpenPreferences,
   onNewFile,
   onNewFolder,
   onRenameFile,
@@ -161,8 +175,6 @@ export function useWorkspaceRightPanelController({
   setLeftPanelOpen,
   setLeftPanelView,
   text,
-  workspaceName,
-  workspaceContextSummary,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
@@ -242,30 +254,37 @@ export function useWorkspaceRightPanelController({
     [setRightPanelOpen],
   );
   const closeLeftPanel = useCallback(
-    () => setLeftPanelOpen(false),
-    [setLeftPanelOpen],
-  );
-  const setLeftPanelViewOnly = useCallback(
-    (view: LeftPanelView) => setLeftPanelView(view),
-    [setLeftPanelView],
+    () => {
+      onCloseWorkspaceMenu();
+      setLeftPanelOpen(false);
+    },
+    [onCloseWorkspaceMenu, setLeftPanelOpen],
   );
   const selectFromLeftPanel = useCallback((fileId: string) => {
     onSelectFile(fileId);
-    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+    if (workspaceShellUsesOverlayPanels(shellSize)) {
       setLeftPanelOpen(false);
     }
-  }, [onSelectFile, setLeftPanelOpen]);
+  }, [onSelectFile, setLeftPanelOpen, shellSize]);
+  const setLeftPanelSection = useCallback((nextView: LeftPanelView) => {
+    onCloseWorkspaceMenu();
+    setLeftPanelView(nextView);
+  }, [onCloseWorkspaceMenu, setLeftPanelView]);
   const leftPanelProps: WorkspaceLeftPanelProps = {
+    shellSize,
     isOpen: leftPanelOpen,
     view: leftPanelView,
     isLive,
     language,
+    workspaceContextSummary,
+    workspaceMenuOpen,
     files: visibleFiles,
     folders,
+    knowledgeIndex,
+    knowledgeIndexPending,
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     onClose: closeLeftPanel,
-    onViewChange: setLeftPanelViewOnly,
     onNewFile,
     onNewFolder,
     onImportFile,
@@ -279,11 +298,13 @@ export function useWorkspaceRightPanelController({
     onMoveFolder,
     onRenameFolder,
     onRenameWorkspace,
-    workspaceName,
-    workspaceContextSummary,
+    onSetView: setLeftPanelSection,
+    onToggleWorkspaceMenu,
+    onOpenPreferences,
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {
+    shellSize,
     isOpen: rightPanelOpen,
     view: rightPanelView,
     language,

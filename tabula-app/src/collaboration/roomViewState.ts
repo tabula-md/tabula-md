@@ -20,7 +20,7 @@ const isRightPanelView = (value: unknown): value is RightPanelView =>
   value === "outline" ||
   value === "links" ||
   value === "comments" ||
-  value === "properties";
+  value === "metadata";
 
 const getStorageKey = (roomId: string) => `${ROOM_VIEW_STATE_KEY_PREFIX}:${roomId}`;
 
@@ -31,10 +31,10 @@ export const parseRoomViewState = (value: unknown): RoomViewState | null => {
   const migratedLeftPanelView = storedRightPanelView === "files" || storedRightPanelView === "search";
   const rightPanelView = storedRightPanelView === "graph"
     ? "links"
-    : storedRightPanelView === "knowledge"
-      ? "properties"
+    : storedRightPanelView === "knowledge" || storedRightPanelView === "properties"
+      ? "metadata"
     : migratedLeftPanelView
-      ? "outline"
+      ? "metadata"
       : storedRightPanelView;
   if (!Array.isArray(candidate.openDocumentIds) || !isRightPanelView(rightPanelView)) {
     return null;

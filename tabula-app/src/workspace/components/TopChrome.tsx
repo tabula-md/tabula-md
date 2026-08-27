@@ -6,17 +6,15 @@ import type { FollowState } from "../../collaboration/followModel";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import type { LeftPanelView } from "../../ui/uiTypes";
+import { IconButton } from "../../ui/IconButton";
 import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
-import { WorkspaceIdentityTrigger } from "./WorkspaceIdentityTrigger";
+import { getWorkspaceStatusIndicator } from "../workspaceStatusIndicator";
 
 type TopChromeProps = {
-  workspaceMenuOpen: boolean;
-  workspaceName: string;
-  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   language: WorkspaceLanguage;
   identity: Collaborator;
   collaborators: Collaborator[];
@@ -25,20 +23,17 @@ type TopChromeProps = {
   activeText: string;
   fileTabs: ReactNode;
   shareControls: ReactNode;
-  onToggleWorkspaceMenu: () => void;
   onOpenWorkspaceLauncher: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
 };
 
 export function TopChrome({
-  workspaceMenuOpen,
-  workspaceName,
-  workspaceContextSummary,
   leftPanelOpen,
   rightPanelOpen,
   isLiveConnected,
+  workspaceContextSummary,
   language,
   identity,
   collaborators,
@@ -47,7 +42,6 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
-  onToggleWorkspaceMenu,
   onToggleLeftPanel,
   onOpenWorkspaceLauncher,
   onToggleRightPanel,
@@ -56,9 +50,10 @@ export function TopChrome({
   const copy = getWorkspaceChromeCopy(language).topChrome;
   const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
   const sidePanelLabel = copy.toggleSidePanel;
-  const workspaceMenuLabel = workspaceMenuOpen
-    ? copy.closeWorkspaceMenu
-    : copy.openWorkspaceMenu;
+  const workspaceStatus = getWorkspaceStatusIndicator(workspaceContextSummary);
+  const showWorkspaceStatus = workspaceStatus.kind !== "collaboration" && (
+    workspaceStatus.kind === "folder" || workspaceStatus.tone !== "quiet"
+  );
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
     (collaborator.name || "?").trim().slice(0, 1) || "?";
@@ -89,36 +84,30 @@ export function TopChrome({
   return (
     <header className="top-chrome">
       <div className="top-left-zone">
-        {!leftPanelOpen && (
-          <>
-            <button
-              className="panel-toggle top-panel-toggle left-panel-trigger"
-              type="button"
-              aria-label={copy.toggleWorkspacePanel}
-              data-tooltip={copy.toggleWorkspacePanel}
-              aria-pressed="false"
-              onClick={() => onToggleLeftPanel("files")}
-            >
-              <PanelLeft size={16} />
-            </button>
-            <WorkspaceIdentityTrigger
-              contextSummary={workspaceContextSummary}
-              isOpen={workspaceMenuOpen}
-              label={workspaceMenuLabel}
-              workspaceName={workspaceName}
-              onToggle={onToggleWorkspaceMenu}
+        <IconButton
+          className={`panel-toggle top-panel-toggle left-panel-trigger${leftPanelOpen ? " active" : ""}`}
+          label={copy.toggleWorkspacePanel}
+          tooltip={showWorkspaceStatus
+            ? `${copy.toggleWorkspacePanel} · ${workspaceStatus.description}`
+            : copy.toggleWorkspacePanel}
+          aria-pressed={leftPanelOpen}
+          onClick={onToggleLeftPanel}
+        >
+          <PanelLeft size={16} />
+          {showWorkspaceStatus && (
+            <span
+              className={`top-workspace-status-dot ${workspaceStatus.kind} ${workspaceStatus.tone}`}
+              aria-hidden="true"
             />
-          </>
-        )}
-        <button
+          )}
+        </IconButton>
+        <IconButton
           className="panel-toggle top-panel-toggle"
-          type="button"
-          aria-label={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
-          data-tooltip={`Workspace ${panelCopy.tabs.search.toLowerCase()}`}
+          label={panelCopy.tabs.search}
           onClick={onOpenWorkspaceLauncher}
         >
           <Search size={16} />
-        </button>
+        </IconButton>
       </div>
 
       <div className="top-document-zone">
@@ -165,18 +154,14 @@ export function TopChrome({
 
           {shareControls}
 
-          {!rightPanelOpen && (
-            <button
-              className="panel-toggle top-panel-toggle"
-              type="button"
-              aria-label={sidePanelLabel}
-              data-tooltip={sidePanelLabel}
-              aria-pressed="false"
-              onClick={onToggleRightPanel}
-            >
-              <PanelRight size={16} />
-            </button>
-          )}
+          <IconButton
+            className={`panel-toggle top-panel-toggle${rightPanelOpen ? " active" : ""}`}
+            label={sidePanelLabel}
+            aria-pressed={rightPanelOpen}
+            onClick={onToggleRightPanel}
+          >
+            <PanelRight size={16} />
+          </IconButton>
         </div>
       </div>
     </header>

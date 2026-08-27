@@ -5,7 +5,7 @@ import {
   shouldDeferIndexedDbWorkspacePersistence,
   shouldApplyIndexedDbWorkspaceHydration,
 } from "./useIndexedDbWorkspaceHydration";
-import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "../workspaceStorage";
+import { createWorkspaceFile, createWorkspaceRootFolder, DEFAULT_WORKSPACE_PRESENTATION, type WorkspaceState } from "../workspaceStorage";
 
 const createWorkspace = (text: string): WorkspaceState => ({
   folders: [createWorkspaceRootFolder()],
@@ -13,6 +13,7 @@ const createWorkspace = (text: string): WorkspaceState => ({
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},
+  presentation: DEFAULT_WORKSPACE_PRESENTATION,
 });
 
 describe("IndexedDB workspace hydration", () => {

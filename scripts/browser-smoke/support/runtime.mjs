@@ -8,6 +8,7 @@ import {
   getViewModeSlots,
   selectDocumentViewMode,
 } from "./view-mode.mjs";
+import { resolveSiblingServiceRepo } from "./service-repo-discovery.mjs";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
 const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
@@ -150,11 +151,7 @@ const waitForEditorReady = async (page, { mode } = {}) => {
 };
 
 const waitForSavedLocally = async (page) => {
-  await page.waitForFunction(() =>
-    Boolean(document.querySelector(
-      '.workspace-identity-trigger[data-workspace-context="browser"][data-workspace-state="steady"]',
-    )),
-  );
+  await page.waitForFunction(() => Boolean(document.querySelector(".top-chrome")));
 };
 
 const waitForSelectionLayer = async (page, { minSegments = 1, popoverVisible } = {}) => {
@@ -281,11 +278,15 @@ const focusMarkdownEditor = async (page) => {
 
 const openProjectMenu = async (page) => {
   if ((await page.locator(".workspace-menu-popover").count()) === 0) {
-    if ((await page.getByRole("button", { name: "Open Workspace menu", exact: true }).count()) === 0) {
+    if ((await page.locator(".left-panel").count()) === 0) {
       await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
       await waitForLeftPanel(page, "Files");
     }
-    await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
+    const workspaceStatus = page.locator(".left-panel-status-button");
+    if ((await workspaceStatus.count()) === 0) {
+      throw new Error("Workspace status control is unavailable.");
+    }
+    await workspaceStatus.click();
     await waitForWorkspaceMenuState(page, true);
   }
 };
@@ -311,10 +312,7 @@ const openMarkdownFile = async (
 
 const ensureSidePanelClosed = async (page) => {
   if ((await page.locator(".right-panel").count()) > 0) {
-    await page
-      .locator(".right-panel")
-      .getByRole("button", { name: "Close side panel", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
     await waitForProjectContextState(page, false);
   }
 };
@@ -387,7 +385,10 @@ export const createSmokeContext = (browser, controls = {}) => ({
 });
 
 const spawnRoomServer = async () => {
-  const roomRepoDir = process.env.TABULA_ROOM_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-room");
+  const roomRepoDir = resolveSiblingServiceRepo({
+    explicitPath: process.env.TABULA_ROOM_REPO_DIR,
+    serviceName: "tabula-room",
+  });
   const roomCommand = process.env.TABULA_ROOM_SERVER_COMMAND;
   const roomServer = roomCommand
     ? spawn(roomCommand, {
@@ -402,7 +403,7 @@ const spawnRoomServer = async () => {
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
       })
-    : fs.existsSync(path.join(roomRepoDir, "package.json"))
+    : roomRepoDir
       ? spawn(isWindows ? "npm.cmd" : "npm", ["run", "dev"], {
           cwd: roomRepoDir,
           env: {
@@ -424,14 +425,24 @@ const spawnRoomServer = async () => {
     });
     await waitForServer(`${roomUrl}/health`);
   } else {
-    await waitForServer(`${roomUrl}/health`);
+    if (process.env.VITE_TABULA_ROOM_URL) {
+      await waitForServer(`${roomUrl}/health`);
+      return null;
+    }
+    throw new Error(
+      `Tabula Room is required but no server or sibling repository was found. ` +
+      `Set TABULA_ROOM_SERVER_COMMAND or TABULA_ROOM_REPO_DIR.`,
+    );
   }
 
   return roomServer;
 };
 
 const spawnJsonServer = async () => {
-  const jsonRepoDir = process.env.TABULA_JSON_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-json");
+  const jsonRepoDir = resolveSiblingServiceRepo({
+    explicitPath: process.env.TABULA_JSON_REPO_DIR,
+    serviceName: "tabula-json",
+  });
   const jsonCommand = process.env.TABULA_JSON_SERVER_COMMAND;
   fs.rmSync(jsonDataDir, { recursive: true, force: true });
   const jsonServer = jsonCommand
@@ -447,7 +458,7 @@ const spawnJsonServer = async () => {
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
       })
-    : fs.existsSync(path.join(jsonRepoDir, "package.json"))
+    : jsonRepoDir
       ? spawn(isWindows ? "npm.cmd" : "npm", ["run", "dev"], {
           cwd: jsonRepoDir,
           env: {

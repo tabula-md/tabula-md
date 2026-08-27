@@ -583,10 +583,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }));
 
     useEffect(() => {
-      if (
-        !containerRef.current ||
-        (visualEditing && !createEditorVisualModeExtension)
-      ) {
+      if (!containerRef.current) {
         return;
       }
 
@@ -675,8 +672,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         activeSearchMatchIndex,
         copy: interfaceCopy,
         updateExtension,
-        visualModeExtension: visualEditing
-          ? createEditorVisualModeExtension!(interfaceCopy, {
+        // Mount the source editor immediately and layer the lazily-loaded
+        // Visual extension onto it later. Waiting for that chunk here left no
+        // editor at all when a user switched to Source during the load.
+        visualModeExtension: visualEditing && createEditorVisualModeExtension
+          ? createEditorVisualModeExtension(interfaceCopy, {
               resolveWorkspaceLink,
               sourceDocumentId: fileId,
             })
@@ -733,8 +733,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               createEditorSearchExtension(searchMatches, activeSearchMatchIndex),
             ),
             compartmentsRef.current.visualMode.reconfigure(
-              visualEditing
-                ? createEditorVisualModeExtension!(interfaceCopy, {
+              visualEditing && createEditorVisualModeExtension
+                ? createEditorVisualModeExtension(interfaceCopy, {
                     resolveWorkspaceLink,
                     sourceDocumentId: fileId,
                   })
@@ -829,7 +829,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         view.destroy();
         viewRef.current = null;
       };
-    }, [createEditorVisualModeExtension, fileId]);
+    }, [fileId]);
 
     useEffect(() => {
       const view = viewRef.current;

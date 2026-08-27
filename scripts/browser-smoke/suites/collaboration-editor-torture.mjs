@@ -67,7 +67,7 @@ const getPageDiagnostics = async (page) =>
     cmContentCount: document.querySelectorAll(".cm-content").length,
     fileShellClass: document.querySelector(".file-shell")?.className ?? null,
     activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? null,
-    liveStatus: document.querySelector(".workspace-identity-trigger")?.getAttribute("data-tooltip") ?? null,
+    liveStatus: document.querySelector(".left-panel-workspace-status")?.getAttribute("data-tooltip") ?? null,
   }));
 
 const getTextFingerprint = (text) => {

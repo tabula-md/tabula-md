@@ -1,0 +1,142 @@
+:is(.left-panel, .right-panel) {
+  --panel-x: 12px;
+  --panel-top: 8px;
+  --panel-bottom: 12px;
+  --panel-section-gap: 8px;
+  --panel-stack-gap: 8px;
+  --panel-tight-gap: 6px;
+  --panel-row-height: var(--control-size-row);
+  --panel-row-radius: var(--radius-control);
+  --panel-row-x: 8px;
+  --panel-row-gap: 8px;
+  --panel-row-text: var(--text-soft);
+  --panel-control-size: var(--control-size-compact);
+  --panel-chevron-size: var(--icon-size-small);
+  --panel-icon-size: var(--icon-size-medium);
+  --panel-card-pad: 8px;
+  --panel-card-gap: 7px;
+
+  /* Compatibility aliases for panel content that still uses the old names. */
+  --right-panel-x: var(--panel-x);
+  --right-panel-top: var(--panel-top);
+  --right-panel-bottom: var(--panel-bottom);
+  --right-section-gap: var(--panel-section-gap);
+  --right-stack-gap: var(--panel-stack-gap);
+  --right-tight-gap: var(--panel-tight-gap);
+  --right-row-height: var(--panel-row-height);
+  --right-row-radius: var(--panel-row-radius);
+  --right-row-x: var(--panel-row-x);
+  --right-row-gap: var(--panel-row-gap);
+  --right-row-text: var(--panel-row-text);
+  --right-control-size: var(--panel-control-size);
+  --right-chevron-size: var(--panel-chevron-size);
+  --right-icon-size: var(--panel-icon-size);
+  --right-card-pad: var(--panel-card-pad);
+  --right-card-gap: var(--panel-card-gap);
+
+  position: relative;
+  z-index: var(--layer-panel);
+  grid-row: 2;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  height: calc(100vh - 50px);
+  padding: var(--panel-top) var(--panel-x) var(--panel-bottom);
+  color: var(--text-primary);
+  background: var(--surface-workbench);
+  box-shadow: none;
+}
+
+:is(.left-panel-header, .right-panel-header) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--panel-tight-gap);
+  min-height: var(--control-size-row);
+  margin-bottom: var(--panel-section-gap);
+}
+
+:is(.left-panel-tabs, .right-panel-tabs) {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 3px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+}
+
+:is(.left-panel-tab, .right-panel-tab) {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--panel-control-size);
+  height: var(--panel-control-size);
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: transparent;
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+}
+
+:is(.left-panel-tab, .right-panel-tab) svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+:is(.left-panel-tab, .right-panel-tab):is(:hover, :focus-visible, .active) {
+  color: var(--text-primary);
+  background: var(--surface-active);
+}
+
+:is(.left-panel-tab, .right-panel-tab).active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 3px;
+  left: 8px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: "";
+}
+
+:is(.left-panel-close, .right-panel-overlay-toggle) {
+  display: grid;
+  flex: 0 0 var(--panel-control-size);
+  place-items: center;
+  width: var(--panel-control-size);
+  height: var(--panel-control-size);
+  padding: 0;
+  border-radius: var(--panel-row-radius);
+  color: var(--text-soft);
+  background: transparent;
+}
+
+:is(.left-panel-close, .right-panel-overlay-toggle):is(:hover, :focus-visible) {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+:is(.left-panel-backdrop, .right-panel-backdrop) {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  :is(.left-panel, .right-panel) {
+    --panel-control-size: var(--control-size-touch);
+    --panel-row-height: var(--control-size-touch);
+
+    padding-right: max(var(--panel-x), env(safe-area-inset-right));
+    padding-bottom: max(var(--panel-bottom), env(safe-area-inset-bottom));
+    padding-left: max(var(--panel-x), env(safe-area-inset-left));
+    box-shadow: none;
+  }
+
+  :is(.left-panel-header, .right-panel-header, .left-panel-tabs, .right-panel-tabs) {
+    min-height: var(--control-size-touch);
+  }
+}

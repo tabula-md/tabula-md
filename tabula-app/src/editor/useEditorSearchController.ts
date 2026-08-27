@@ -9,7 +9,10 @@ import {
   type SearchOptions,
 } from "./editorSearchModel";
 import { useAnimationFrameTask } from "../shared/useAnimationFrameTask";
-import { useWorkspaceUiStore } from "../workspace/state/workspaceUiStore";
+import {
+  selectSearchOpen,
+  useWorkspaceUiStore,
+} from "../workspace/state/workspaceUiStore";
 import type { FileViewMode } from "../workspace/workspaceStorage";
 
 export type SearchTarget = "source" | "preview";
@@ -87,7 +90,7 @@ export function useEditorSearchController({
   text,
   onFocusTextRange,
 }: UseEditorSearchControllerOptions) {
-  const searchOpen = useWorkspaceUiStore((state) => state.searchOpen);
+  const searchOpen = useWorkspaceUiStore(selectSearchOpen);
   const setSearchOpen = useWorkspaceUiStore((state) => state.setSearchOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [replaceQuery, setReplaceQuery] = useState("");

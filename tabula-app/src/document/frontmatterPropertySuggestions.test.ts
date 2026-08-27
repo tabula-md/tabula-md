@@ -54,6 +54,17 @@ describe("frontmatter property suggestions", () => {
     ]));
   });
 
+  it("marks workspace fields whose documents disagree about value type", () => {
+    expect(getWorkspaceFrontmatterPropertySuggestions([
+      "---\nowner: platform\n---",
+      "---\nowner: [platform]\n---",
+    ])[0]).toMatchObject({
+      key: "owner",
+      usageCount: 2,
+      hasMixedTypes: true,
+    });
+  });
+
   it("resets arbitrary keys to text and offers optional OKF structure templates", () => {
     expect(getSuggestedFrontmatterPropertyState("team_specific_signal")).toEqual({
       type: "text",

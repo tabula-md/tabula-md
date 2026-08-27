@@ -13,8 +13,6 @@ import {
   useState,
 } from "react";
 import {
-  ChevronsDownUp,
-  ChevronsUpDown,
   ClipboardCopy,
   Copy,
   Ellipsis,
@@ -23,17 +21,15 @@ import {
   FolderOpen,
   FolderPlus,
   PencilLine,
-  Plus,
   Trash2,
-  Upload,
 } from "lucide-react";
-import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
+import type { RenameFileResult } from "../state/useWorkspaceFiles";
 import {
   getWorkspaceName,
   WORKSPACE_ROOT_FOLDER_ID,
   type WorkspaceFile,
   type WorkspaceFolder,
-} from "../workspace/workspaceStorage";
+} from "../workspaceStorage";
 import {
   buildFileTree,
   flattenVisibleFileTree,
@@ -41,26 +37,27 @@ import {
   type DraggedTreeItem,
   type FileTreeNode,
 } from "./fileTreeModel";
-import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuRoot,
   ContextMenuTrigger,
-} from "../ui/ContextMenu";
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
-import { PanelEmptyState } from "./PanelEmptyState";
-import { getWorkspaceFileIconKind } from "../workspace/workspaceFilePresentation";
-import { WorkspaceFileTypeIcon } from "../workspace/components/WorkspaceFileTypeIcon";
+} from "../../ui/ContextMenu";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../../ui/Menu";
+import { PanelEmptyState } from "../../right-panel/PanelEmptyState";
+import { getWorkspaceFileIconKind } from "../workspaceFilePresentation";
+import { WorkspaceFileTypeIcon } from "../components/WorkspaceFileTypeIcon";
+import { WorkspaceExplorerToolbar } from "./WorkspaceExplorerToolbar";
 
-type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
+type WorkspaceFileExplorerCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
-type RightPanelFilesProps = {
+type WorkspaceFileExplorerProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   activeFileId: string;
   collapsedFolderIds: Set<string>;
-  copy: RightPanelFilesCopy;
+  copy: WorkspaceFileExplorerCopy;
   onNewFile: (parentId?: string) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -77,6 +74,7 @@ type RightPanelFilesProps = {
   onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
   onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
   onRenameWorkspace: (nextTitle: string) => boolean;
+  showWorkspaceIdentity?: boolean;
 };
 
 const RIGHT_TREE_INDENT = 16;
@@ -86,7 +84,7 @@ const releasePointerActionFocus = (event: ReactMouseEvent<HTMLButtonElement>) =>
   if (event.detail > 0) event.currentTarget.blur();
 };
 
-export function RightPanelFiles({
+export function WorkspaceFileExplorer({
   files,
   folders,
   activeFileId,
@@ -108,7 +106,8 @@ export function RightPanelFiles({
   onMoveFolder,
   onRenameFolder,
   onRenameWorkspace,
-}: RightPanelFilesProps) {
+  showWorkspaceIdentity = true,
+}: WorkspaceFileExplorerProps) {
   const workspaceName = getWorkspaceName(folders);
   const [renamingWorkspace, setRenamingWorkspace] = useState(false);
   const [renamingWorkspaceTitle, setRenamingWorkspaceTitle] = useState("");
@@ -118,7 +117,6 @@ export function RightPanelFiles({
   const [actionMenuFolderId, setActionMenuFolderId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<DraggedTreeItem | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
@@ -808,87 +806,25 @@ export function RightPanelFiles({
     <ContextMenuRoot>
     <ContextMenuTrigger asChild>
     <section className="right-panel-content right-files-panel">
-      <div className="right-file-toolbar">
-        <div className="right-file-workspace-identity">
-          {renamingWorkspace ? (
-            <input
-              ref={workspaceRenameInputRef}
-              className="ui-input-surface right-file-workspace-name-input"
-              value={renamingWorkspaceTitle}
-              aria-label={copy.renameInPanel(workspaceName)}
-              onChange={(event) => setRenamingWorkspaceTitle(event.target.value)}
-              onBlur={commitRenamingWorkspace}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") commitRenamingWorkspace();
-                if (event.key === "Escape") cancelRenamingWorkspace();
-              }}
-            />
-          ) : (
-            <button
-              className="right-file-workspace-name"
-              type="button"
-              aria-label={copy.renameInPanel(workspaceName)}
-              data-tooltip={copy.rename}
-              onClick={startRenamingWorkspace}
-            >
-              {workspaceName}
-            </button>
-          )}
-        </div>
-        <div className="right-file-toolbar-actions">
-            {collapsibleFolderIds.length > 0 && (
-              <button
-                className="right-file-toolbar-button"
-                type="button"
-                aria-label={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
-                data-tooltip={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
-                onClick={() => {
-                  if (allFoldersCollapsed) onExpandAllFolders();
-                  else onCollapseAllFolders(collapsibleFolderIds);
-                }}
-              >
-                {allFoldersCollapsed
-                  ? <ChevronsUpDown size={16} />
-                  : <ChevronsDownUp size={16} />}
-              </button>
-            )}
-            <button
-              className="right-file-toolbar-button"
-              type="button"
-              aria-label={copy.openMarkdown}
-              data-tooltip={copy.openMarkdown}
-              onClick={onImportFile}
-            >
-              <Upload size={16} />
-            </button>
-            <MenuRoot open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-              <div className="right-file-create-menu-wrap">
-                <MenuTrigger asChild>
-                  <button
-                    className={`right-file-toolbar-button ${createMenuOpen ? "active" : ""}`}
-                    type="button"
-                    aria-label={copy.create}
-                    data-tooltip={copy.create}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </MenuTrigger>
-              </div>
-              <MenuContent
-                className="right-file-create-menu"
-                ariaLabel={copy.createInWorkspace}
-                onCloseAutoFocus={(event) => event.preventDefault()}
-              >
-                <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={() => createAndRenameDocument()} />
-                <MenuItem
-                  icon={<FolderPlus size={16} />}
-                  label={copy.newFolder}
-                  onSelect={() => createAndRenameFolder()}
-                />
-              </MenuContent>
-            </MenuRoot>
-        </div>
-      </div>
+      <WorkspaceExplorerToolbar
+        allFoldersCollapsed={allFoldersCollapsed}
+        collapsibleFolderIds={collapsibleFolderIds}
+        copy={copy}
+        onCancelRename={cancelRenamingWorkspace}
+        onCollapseAllFolders={onCollapseAllFolders}
+        onCommitRename={commitRenamingWorkspace}
+        onCreateDocument={() => createAndRenameDocument()}
+        onCreateFolder={() => createAndRenameFolder()}
+        onExpandAllFolders={onExpandAllFolders}
+        onImportFile={onImportFile}
+        onRenameTitleChange={setRenamingWorkspaceTitle}
+        onStartRename={startRenamingWorkspace}
+        renaming={renamingWorkspace}
+        renameInputRef={workspaceRenameInputRef}
+        renameTitle={renamingWorkspaceTitle}
+        showWorkspaceIdentity={showWorkspaceIdentity}
+        workspaceName={workspaceName}
+      />
       {visibleRows.length > 0 ? (
         <div
           className={`right-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}

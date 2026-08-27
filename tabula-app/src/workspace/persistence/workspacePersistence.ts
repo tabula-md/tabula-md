@@ -34,6 +34,18 @@ export const createWorkspacePersistenceQueue = ({
   let pendingTimer: TimerHandle | null = null;
   let queuedWrite: WorkspaceState | null = null;
   let writeInFlight = false;
+  let idleResolvers: Array<() => void> = [];
+
+  const resolveIdle = () => {
+    if (pendingWorkspace || queuedWrite || writeInFlight) return;
+    const resolvers = idleResolvers;
+    idleResolvers = [];
+    resolvers.forEach((resolve) => resolve());
+  };
+
+  const whenIdle = () => pendingWorkspace || queuedWrite || writeInFlight
+    ? new Promise<void>((resolve) => idleResolvers.push(resolve))
+    : Promise.resolve();
 
   const clearPendingTimer = () => {
     if (!pendingTimer) return;
@@ -46,6 +58,7 @@ export const createWorkspacePersistenceQueue = ({
     const nextWorkspace = queuedWrite;
     queuedWrite = null;
     if (nextWorkspace) persist(nextWorkspace);
+    else resolveIdle();
   };
 
   const persist = (workspace: WorkspaceState) => {
@@ -80,6 +93,7 @@ export const createWorkspacePersistenceQueue = ({
     cancel: () => {
       pendingWorkspace = null;
       clearPendingTimer();
+      resolveIdle();
     },
     flush,
     hasPending: () => Boolean(pendingWorkspace || queuedWrite),
@@ -87,6 +101,7 @@ export const createWorkspacePersistenceQueue = ({
       pendingWorkspace = null;
       clearPendingTimer();
       persist(workspace);
+      return whenIdle();
     },
     schedule: (workspace: WorkspaceState) => {
       pendingWorkspace = workspace;

@@ -51,19 +51,25 @@ describe("room view state", () => {
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "search",
-    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "outline" });
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "metadata" });
 
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "files",
-    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "outline" });
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "metadata" });
 
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "knowledge",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "properties" });
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "metadata" });
+
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "properties",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "metadata" });
   });
 
   it("migrates the retired graph panel to links", () => {

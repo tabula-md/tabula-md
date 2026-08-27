@@ -137,7 +137,7 @@ export const useQueuedWorkspacePersistence = (
 
   const persistNow = useCallback((nextWorkspace: WorkspaceState) => {
     setSaveState("saving");
-    queueRef.current?.persistNow(nextWorkspace);
+    return queueRef.current?.persistNow(nextWorkspace) ?? Promise.resolve();
   }, []);
 
   return { persistedRevision, persistNow, saveState };

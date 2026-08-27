@@ -33,6 +33,11 @@ type ShareControlsProps = {
   onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
 };
 
+export const shouldShowLiveRoomPanel = (
+  isLive: boolean,
+  isStartingLive: boolean,
+) => isLive || isStartingLive;
+
 export function ShareControls({
   room,
   language,
@@ -54,7 +59,11 @@ export function ShareControls({
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
-  const showLiveRoomPanel = isLive;
+  // Starting a room is already a live-session state. Keeping the chooser
+  // visible during hydration makes the action look as though it did nothing
+  // and allows it to be triggered twice. The live surface is shown immediately,
+  // while its invite stays hidden until the transport has connected.
+  const showLiveRoomPanel = shouldShowLiveRoomPanel(isLive, isStartingLive);
   const shareController = useShareDialogController({
     room,
     isLive: showLiveRoomPanel,
@@ -149,6 +158,7 @@ export function ShareControls({
             connectionStatus={connectionStatus}
             choiceLocked={choiceLocked}
             isLive={showLiveRoomPanel}
+            isStartingLive={isStartingLive}
             shareView={shareController.shareView}
             exportPanel={
               <ShareExportPanel

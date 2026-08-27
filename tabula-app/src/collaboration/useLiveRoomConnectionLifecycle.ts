@@ -12,29 +12,30 @@ type UseLiveRoomConnectionLifecycleOptions = {
   activeRoom: LocationRoom | null;
   connectionStatus: ConnectionStatus;
   hydrationStatus: RoomHydrationStatus;
+  isStartingLive: boolean;
 };
 
 export function useLiveRoomConnectionLifecycle({
   activeRoom,
   connectionStatus,
   hydrationStatus,
+  isStartingLive,
 }: UseLiveRoomConnectionLifecycleOptions) {
   const syncedRoomUrlRef = useRef<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const roomOpening = Boolean(activeRoom) &&
+    hydrationStatus !== "failed" &&
+    (isStartingLive || hydrationStatus !== "ready");
 
   useEffect(() => {
-    if (
-      !activeRoom ||
-      connectionStatus !== "connected" ||
-      hydrationStatus !== "waiting-for-state"
-    ) {
+    if (!roomOpening) {
       setTimedOut(false);
       return;
     }
 
     const timeoutId = window.setTimeout(() => setTimedOut(true), LIVE_ROOM_OPEN_TIMEOUT_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [activeRoom, connectionStatus, hydrationStatus]);
+  }, [activeRoom?.roomId, roomOpening]);
 
   useEffect(() => {
     if (!activeRoom) {

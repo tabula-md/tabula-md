@@ -1,6 +1,7 @@
 import type { ShareSnapshot } from "@tabula-md/tabula";
 import {
   createWorkspaceFile,
+  getWorkspacePresentation,
   isStarterReadmeText,
   README_FILE_ID,
   type FileComment,
@@ -39,6 +40,9 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
     openFileIds: normalizedFiles.map((file) => file.id),
     activeFileId: activeFileId ?? normalizedFiles[0]?.id ?? "",
     commentsByFileId: normalizeSnapshotComments(snapshot.commentsByFileId, normalizedFiles),
+    presentation: getWorkspacePresentation(
+      normalizedFiles.find((file) => file.id === activeFileId) ?? normalizedFiles[0],
+    ),
   };
 };
 

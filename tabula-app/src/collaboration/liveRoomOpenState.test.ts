@@ -17,7 +17,7 @@ describe("live room open state", () => {
     ).toBe("idle");
   });
 
-  it("keeps opening while the room is still connecting", () => {
+  it("marks a room that never connects as unavailable after the timeout", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "connecting",
@@ -25,7 +25,7 @@ describe("live room open state", () => {
         hasActiveRoom: true,
         timedOut: true,
       }),
-    ).toBe("opening");
+    ).toBe("unavailable");
   });
 
   it("marks a connected room without workspace state as unavailable after the timeout", () => {
@@ -46,9 +46,20 @@ describe("live room open state", () => {
         connectionStatus: "connected",
         hydrationStatus: "ready",
         hasActiveRoom: true,
-        timedOut: true,
+        timedOut: false,
       }),
     ).toBe("idle");
+  });
+
+  it("treats a timed-out created room as unavailable even when its local bootstrap is ready", () => {
+    expect(
+      getLiveRoomOpenState({
+        connectionStatus: "disconnected",
+        hydrationStatus: "ready",
+        hasActiveRoom: true,
+        timedOut: true,
+      }),
+    ).toBe("unavailable");
   });
 
   it("distinguishes an expired room from a generic open failure", () => {

@@ -2,10 +2,13 @@ import { expect, test } from "@playwright/test";
 import { selectDocumentViewMode } from "../../scripts/browser-smoke/support/view-mode.mjs";
 
 const waitForSavedLocally = async (page) => {
+  if ((await page.locator(".left-panel").count()) === 0) {
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
+  }
   await page.waitForFunction(() =>
     Boolean(
       document.querySelector(
-        '.workspace-identity-trigger[data-workspace-context="browser"][data-workspace-state="steady"]',
+        '.left-panel-workspace-status[data-workspace-context="browser"][data-workspace-state="steady"]',
       ),
     ),
   );

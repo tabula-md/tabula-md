@@ -359,14 +359,23 @@ export async function run(ctx) {
         const editor = document.querySelector(".cm-editor");
         const content = document.querySelector(".cm-content");
         const toolbar = document.querySelector(".document-toolbar-row");
+        const workspace = document.querySelector(".workspace");
+        const surface = document.querySelector(".editor-surface");
+        const shellRect = shell instanceof HTMLElement ? shell.getBoundingClientRect() : null;
         const editorRect = editor instanceof HTMLElement ? editor.getBoundingClientRect() : null;
         const contentRect = content instanceof HTMLElement ? content.getBoundingClientRect() : null;
         const toolbarRect = toolbar instanceof HTMLElement ? toolbar.getBoundingClientRect() : null;
+        const workspaceRect = workspace instanceof HTMLElement ? workspace.getBoundingClientRect() : null;
+        const surfaceRect = surface instanceof HTMLElement ? surface.getBoundingClientRect() : null;
         return {
           shellHasFile: shell instanceof HTMLElement && !shell.classList.contains("empty"),
+          shellTop: shellRect?.top ?? 0,
           editorWidth: editorRect?.width ?? 0,
           contentWidth: contentRect?.width ?? 0,
           toolbarBottom: toolbarRect?.bottom ?? 0,
+          toolbarTop: toolbarRect?.top ?? 0,
+          workspaceTop: workspaceRect?.top ?? 0,
+          surfaceTop: surfaceRect?.top ?? 0,
           contentTop: contentRect?.top ?? 0,
         };
       });
@@ -375,7 +384,7 @@ export async function run(ctx) {
       expect(narrowState.contentWidth > 180, "Narrow editor content should stay readable.");
       expect(
         narrowState.contentTop >= narrowState.toolbarBottom - 1,
-        "Narrow editor content should not overlap the toolbar.",
+        `Narrow editor content should not overlap the toolbar: ${JSON.stringify(narrowState)}`,
       );
     },
     { viewport: { width: 390, height: 820 } },

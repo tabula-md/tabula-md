@@ -57,6 +57,7 @@ export async function run(ctx) {
   const {
     browser,
     expect,
+    openProjectMenu,
     waitForActiveTab,
     withPage,
   } = ctx;
@@ -95,7 +96,7 @@ export async function run(ctx) {
     }
     const filesPanel = page.locator(".left-panel");
     await filesPanel.waitFor({ state: "visible" });
-    await filesPanel.locator(".right-panel-body.files").waitFor({
+    await filesPanel.locator(".left-panel-body.files").waitFor({
       state: "visible",
     });
     expect(
@@ -111,10 +112,7 @@ export async function run(ctx) {
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
 
-    await filesPanel.getByRole("button", {
-      name: "Open Workspace menu",
-      exact: true,
-    }).click();
+    await openProjectMenu(page);
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", {
       name: "Export workspace (.zip)",

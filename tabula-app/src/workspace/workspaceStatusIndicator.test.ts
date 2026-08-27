@@ -5,7 +5,7 @@ import { getWorkspaceStatusIndicator } from "./workspaceStatusIndicator";
 describe("workspace status indicator", () => {
   it("keeps a browser-only saved workspace quiet", () => {
     const summary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "local" },
+      authority: { kind: "browser" },
       browserPersistence: { state: "saved" },
       folderBinding: null,
       collaboration: null,
@@ -21,7 +21,7 @@ describe("workspace status indicator", () => {
 
   it("surfaces a folder conflict over a healthy live room", () => {
     const summary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "room" },
+      authority: { kind: "live" },
       browserPersistence: { state: "suspended" },
       folderBinding: {
         label: "Handbook",
@@ -44,7 +44,7 @@ describe("workspace status indicator", () => {
 
   it("shows active persistence work before a steady folder binding", () => {
     const summary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "local" },
+      authority: { kind: "folder" },
       browserPersistence: { state: "saving" },
       folderBinding: {
         label: "Handbook",
@@ -63,7 +63,7 @@ describe("workspace status indicator", () => {
 
   it("keeps a failed folder save visible after the toast disappears", () => {
     const summary = getWorkspaceContextSummary("en", {
-      runtime: { kind: "local" },
+      authority: { kind: "folder" },
       browserPersistence: { state: "saved" },
       folderBinding: {
         label: "Handbook",
