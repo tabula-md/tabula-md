@@ -1,13 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 async function openWorkspaceMenu(page) {
-  const menuButton = page.getByRole("button", {
-    name: /^(Open|Close) Workspace menu$/,
-  });
-  if ((await menuButton.count()) === 0) {
+  if ((await page.locator(".left-panel").count()) === 0) {
     await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
   }
-  await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
+  await page.locator(".left-panel-status-button").click();
+  await expect(page.locator(".workspace-menu-popover")).toBeVisible();
 }
 
 test("clear local workspace is explicit and immediately recoverable", async ({ page }) => {

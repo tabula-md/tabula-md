@@ -8,7 +8,7 @@ const waitForSavedLocally = async (page) => {
   await page.waitForFunction(() =>
     Boolean(
       document.querySelector(
-        '.left-panel-workspace-status[data-workspace-context="browser"][data-workspace-state="steady"]',
+        '.left-panel-status-button[data-workspace-context="browser"][data-workspace-state="steady"]',
       ),
     ),
   );

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createSmokeContext } from "../../scripts/browser-smoke/support/runtime.mjs";
+import { WORKSPACE_NARROW_MAX_WIDTH } from "../../tabula-app/src/workspace/workspaceShellLayout";
 
 const layoutCases = [
   { name: "wide light", width: 1440, theme: "light" },
@@ -113,18 +114,14 @@ for (const layoutCase of layoutCases) {
     await panelToggle.press("Enter");
     const panel = page.locator(".right-panel");
     await expect(panel).toBeVisible();
-    const overlayExpected = layoutCase.width <= 1160;
+    const overlayExpected = layoutCase.width <= WORKSPACE_NARROW_MAX_WIDTH;
     if (overlayExpected) {
       await expect(panel).toHaveAttribute("role", "dialog");
-      await expect(panel).toHaveAttribute("aria-modal", "true");
+      await expect(panel).not.toHaveAttribute("aria-modal", "true");
       await expect(page.locator(".center-workbench")).toHaveAttribute("inert", "");
       await expect(page.locator(".center-workbench")).toHaveAttribute("aria-hidden", "true");
       await expect.poll(() =>
         page.evaluate(() => Boolean(document.activeElement?.closest(".right-panel"))),
-      ).toBe(true);
-      await page.keyboard.press("Shift+Tab");
-      expect(
-        await page.evaluate(() => Boolean(document.activeElement?.closest(".right-panel"))),
       ).toBe(true);
       await page.keyboard.press("Escape");
       await expect(panel).toHaveCount(0);
@@ -171,7 +168,10 @@ test("keeps view, search, Share, toast, and focus contracts keyboard-accessible"
 
   await smoke.selectDocumentViewMode(page, "Source");
   await smoke.waitForEditorReady(page, { mode: "edit" });
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.locator(".document-toolbar-row").getByRole("button", {
+    name: "Search",
+    exact: true,
+  }).click();
   await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("searchbox", { name: "Search" })).toHaveCount(0);

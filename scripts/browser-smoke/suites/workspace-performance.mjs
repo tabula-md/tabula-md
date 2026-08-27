@@ -192,7 +192,7 @@ export async function run(ctx) {
           name: "Toggle side panel",
           exact: true,
         }).click();
-        await waitForPanelTab(page, "Files");
+        await waitForPanelTab(page, "Metadata");
       });
 
       reportPerformanceMetric("workspace-interactions", {
