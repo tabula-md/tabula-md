@@ -1,8 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 import { AppToast } from "../../ui/AppToast";
 import { TooltipLayer } from "../../ui/TooltipLayer";
 import type { AppToastState } from "../../ui/useAppToast";
-import type { WorkspaceFile, WorkspaceFolder, WorkspaceState } from "../workspaceStorage";
+import type { WorkspaceState } from "../workspaceStorage";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 import type { WorkspaceInfoDialogKind } from "./WorkspaceInfoDialog";
@@ -47,23 +47,7 @@ export type WorkspaceOverlaySurfaceProps = {
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
-  launcher?: {
-    files: WorkspaceFile[];
-    folders: WorkspaceFolder[];
-    openFileIds: readonly string[];
-    activeFileId?: string;
-    onClose: () => void;
-    onSelectFile: (fileId: string) => void;
-    onNewFile: () => void;
-    onNewFolder: () => void;
-    onImportFile: () => void;
-    onImportWorkspace: () => void;
-    onAddProperty?: () => void;
-    onOpenFiles: () => void;
-    onOpenComments: () => void;
-    onOpenProperties: () => void;
-    onOpenPreferences: () => void;
-  };
+  launcher?: ComponentProps<typeof WorkspaceLauncher>;
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
@@ -75,6 +59,7 @@ export type WorkspaceOverlaySurfaceProps = {
   onKeepTabulaLiveFolderVersion: () => void;
   onMergeLiveFolderConflictManually: () => void;
   onUseExternalLiveFolderVersion: () => void;
+  onDeferLiveFolderConflict: () => void;
 };
 
 export function WorkspaceOverlaySurface({
@@ -97,6 +82,7 @@ export function WorkspaceOverlaySurface({
   onKeepTabulaLiveFolderVersion,
   onMergeLiveFolderConflictManually,
   onUseExternalLiveFolderVersion,
+  onDeferLiveFolderConflict,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -130,6 +116,7 @@ export function WorkspaceOverlaySurface({
             onKeepTabula={onKeepTabulaLiveFolderVersion}
             onMergeManually={onMergeLiveFolderConflictManually}
             onUseExternal={onUseExternalLiveFolderVersion}
+            onDefer={onDeferLiveFolderConflict}
           />
         </Suspense>
       )}

@@ -9,6 +9,7 @@ import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspace/workspaceStorage";
 import { ModalSurface } from "../ui/ModalSurface";
 import { X } from "lucide-react";
+import type { RoomExitLocalWorkspaceStrategy } from "../workspace/workspaceSessionTransition";
 
 type ShareControlsProps = {
   room?: LocationRoom | null;
@@ -19,6 +20,8 @@ type ShareControlsProps = {
   isLive: boolean;
   shareOpen: boolean;
   copied: boolean;
+  canChooseRoomExitStrategy: boolean;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   jsonShare: JsonShareController;
   onCloseShare: () => void;
   onCopyFailed: () => void;
@@ -27,8 +30,13 @@ type ShareControlsProps = {
   onCopyShareUrl: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
 };
+
+export const shouldShowLiveRoomPanel = (
+  isLive: boolean,
+  isStartingLive: boolean,
+) => isLive || isStartingLive;
 
 export function ShareControls({
   room,
@@ -39,6 +47,8 @@ export function ShareControls({
   isLive,
   shareOpen,
   copied,
+  canChooseRoomExitStrategy,
+  roomExitStrategy,
   jsonShare,
   onCloseShare,
   onCopyFailed,
@@ -49,12 +59,17 @@ export function ShareControls({
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
-  const showLiveRoomPanel = isLive;
+  // Starting a room is already a live-session state. Keeping the chooser
+  // visible during hydration makes the action look as though it did nothing
+  // and allows it to be triggered twice. The live surface is shown immediately,
+  // while its invite stays hidden until the transport has connected.
+  const showLiveRoomPanel = shouldShowLiveRoomPanel(isLive, isStartingLive);
   const shareController = useShareDialogController({
     room,
     isLive: showLiveRoomPanel,
     jsonShare,
     language,
+    roomExitStrategy,
     onCloseShare,
     onCopyFailed,
     onStopSession,
@@ -72,9 +87,12 @@ export function ShareControls({
         onClose={shareController.cancelStopSession}
       >
         <ShareStopSessionConfirm
+          canChooseExitStrategy={canChooseRoomExitStrategy}
           copy={shareController.copy}
+          exitStrategy={shareController.selectedRoomExitStrategy}
           onCancel={shareController.cancelStopSession}
           onConfirm={shareController.confirmStopSession}
+          onExitStrategyChange={shareController.setSelectedRoomExitStrategy}
         />
       </ModalSurface>
     );
@@ -140,6 +158,7 @@ export function ShareControls({
             connectionStatus={connectionStatus}
             choiceLocked={choiceLocked}
             isLive={showLiveRoomPanel}
+            isStartingLive={isStartingLive}
             shareView={shareController.shareView}
             exportPanel={
               <ShareExportPanel

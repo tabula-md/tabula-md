@@ -89,14 +89,12 @@ export type DocumentWorkbenchProps = {
   searchTarget: SearchTarget;
   selectedCharacterCount: number;
   selectedLineCount: number;
-  saveRevision: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   splitDividerDragging: boolean;
   splitDividerMaxValue: number;
   splitDividerMinValue: number;
   splitDividerValue: number;
   splitWorkspaceStyle?: CSSProperties;
-  statusLabel: string;
   text: string;
   toolbarLabel: string;
   workspaceRef: RefObject<HTMLElement | null>;
@@ -108,6 +106,7 @@ export type DocumentWorkbenchProps = {
   onEditorSelectionActionPositionChange: (position: MarkdownSelectionActionPosition | null) => void;
   onEditorSelectionChange: (selection?: LiveSelection) => void;
   onFormat: (command: MarkdownFormatCommand) => void;
+  onExportDocument?: () => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
   onPropertyAddRequestHandled?: () => void;
@@ -193,14 +192,12 @@ export function DocumentWorkbench({
   searchTarget,
   selectedCharacterCount,
   selectedLineCount,
-  saveRevision,
   selectionActionPosition,
   splitDividerDragging,
   splitDividerMaxValue,
   splitDividerMinValue,
   splitDividerValue,
   splitWorkspaceStyle,
-  statusLabel,
   text,
   toolbarLabel,
   workspaceRef,
@@ -212,6 +209,7 @@ export function DocumentWorkbench({
   onEditorSelectionActionPositionChange,
   onEditorSelectionChange,
   onFormat,
+  onExportDocument,
   onLineAction,
   onOpenComment,
   onPropertyAddRequestHandled,
@@ -305,6 +303,7 @@ export function DocumentWorkbench({
           metadataOpen={metadataEditorOpen}
           searchOpen={searchOpen}
           onSetViewMode={onSetViewMode}
+          onExportDocument={onExportDocument}
           onPreparePreview={prepareMarkdownPreview}
           onToggleViewOptions={onToggleViewOptions}
           onSetReadingWidth={onSetReadingWidth}
@@ -409,10 +408,7 @@ export function DocumentWorkbench({
       <MemoStatusBar
         activeFileTitle={documentSurface.statusBar.activeFileTitle}
         activeViewMode={documentSurface.statusBar.activeViewMode}
-        isLive={isLive}
         language={language}
-        saveRevision={saveRevision}
-        statusLabel={statusLabel}
         approximateTokenCount={documentSurface.statusBar.approximateTokenCount}
         wordCount={documentSurface.statusBar.wordCount}
         characterCount={text.length}

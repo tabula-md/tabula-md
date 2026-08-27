@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { inspectFrontmatterData } from "@tabula-md/tabula";
 import {
-  Braces,
+  CircleHelp,
+  Download,
   FileText,
+  FolderArchive,
   FolderInput,
   FolderPlus,
   FilePlus2,
+  Info,
   ListPlus,
   MessageSquare,
   PanelLeft,
@@ -15,7 +17,9 @@ import {
 } from "lucide-react";
 import { ModalSurface } from "../../ui/ModalSurface";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
-import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
+import { buildWorkspaceSearchIndex } from "../workspaceSearchIndex";
+import { DEFAULT_SEARCH_OPTIONS } from "../../editor/editorSearchModel";
+import { searchWorkspaceFiles } from "../../editor/workspaceFileSearchModel";
 
 type LauncherCommand = {
   id: string;
@@ -44,11 +48,15 @@ export function WorkspaceLauncher({
   onNewFolder,
   onImportFile,
   onImportWorkspace,
+  onExportFile,
+  onExportWorkspace,
   onAddProperty,
   onOpenFiles,
   onOpenComments,
-  onOpenProperties,
+  onOpenMetadata,
   onOpenPreferences,
+  onOpenHelp,
+  onOpenAbout,
 }: {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
@@ -60,15 +68,22 @@ export function WorkspaceLauncher({
   onNewFolder: () => void;
   onImportFile: () => void;
   onImportWorkspace: () => void;
+  onExportFile?: () => void;
+  onExportWorkspace: () => void;
   onAddProperty?: () => void;
   onOpenFiles: () => void;
   onOpenComments: () => void;
-  onOpenProperties: () => void;
+  onOpenMetadata: () => void;
   onOpenPreferences: () => void;
+  onOpenHelp: () => void;
+  onOpenAbout: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
-  const labels = useMemo(() => getWorkspaceFileTabLabels(files, folders), [files, folders]);
+  const searchIndex = useMemo(
+    () => buildWorkspaceSearchIndex(files, folders),
+    [files, folders],
+  );
   const commands = useMemo<LauncherCommand[]>(() => [
     { id: "new-document", label: "New document", section: "Commands", icon: FilePlus2, run: onNewFile },
     { id: "new-folder", label: "New folder", section: "Commands", icon: FolderPlus, run: onNewFolder },
@@ -77,41 +92,62 @@ export function WorkspaceLauncher({
       : []),
     { id: "import-document", label: "Import document (.md)…", section: "Commands", icon: FileText, run: onImportFile },
     { id: "import-folder", label: "Import folder copy…", section: "Commands", icon: FolderInput, run: onImportWorkspace },
+    ...(onExportFile
+      ? [{ id: "export-document", label: "Export document (.md)", section: "Commands" as const, icon: Download, run: onExportFile }]
+      : []),
+    { id: "export-workspace", label: "Export workspace (.zip)", section: "Commands", icon: FolderArchive, run: onExportWorkspace },
     { id: "open-files", label: "Open Files", section: "Commands", icon: PanelLeft, run: onOpenFiles },
     { id: "open-comments", label: "Open Comments", section: "Commands", icon: MessageSquare, run: onOpenComments },
-    { id: "open-properties", label: "Open Metadata", section: "Commands", icon: Braces, run: onOpenProperties },
+    { id: "open-metadata", label: "Open Metadata", section: "Commands", icon: Info, run: onOpenMetadata },
     { id: "preferences", label: "Preferences", section: "Settings", icon: SlidersHorizontal, run: onOpenPreferences },
+    { id: "help", label: "Help", section: "Settings", icon: CircleHelp, run: onOpenHelp },
+    { id: "about", label: "About Tabula", section: "Settings", icon: Info, run: onOpenAbout },
   ], [
     onAddProperty,
     onImportFile,
     onImportWorkspace,
+    onExportFile,
+    onExportWorkspace,
     onNewFile,
     onNewFolder,
     onOpenComments,
     onOpenFiles,
     onOpenPreferences,
-    onOpenProperties,
+    onOpenHelp,
+    onOpenAbout,
+    onOpenMetadata,
   ]);
   const trimmed = query.trim();
   const filter = trimmed.match(/^([\w.-]+):(.*)$/u);
   const documentResults = useMemo(() => {
     const openOrder = new Map(openFileIds.map((id, index) => [id, index]));
-    return files.map((file) => {
-      const title = labels.get(file.id)?.displayTitle ?? file.title;
-      const path = labels.get(file.id)?.fullPath ?? title;
-      const frontmatter = inspectFrontmatterData(file.text);
-      return { file, title, path, metadata: frontmatter.metadata, body: frontmatter.body, open: openOrder.has(file.id) };
-    }).filter((entry) => {
-      if (!trimmed) return entry.open || entry.file.id === activeFileId;
+    const candidates = searchIndex.map((entry) => ({
+      ...entry,
+      path: entry.displayPath,
+      open: openOrder.has(entry.fileId),
+    }));
+    const matchedIds = !trimmed || filter
+      ? null
+      : new Set(searchWorkspaceFiles(
+          searchIndex,
+          trimmed,
+          DEFAULT_SEARCH_OPTIONS,
+        ).files.map((entry) => entry.fileId));
+    return candidates.filter((entry) => {
+      if (!trimmed) return entry.open || entry.fileId === activeFileId;
       if (filter) {
         const value = readPath(entry.metadata, filter[1] ?? "");
         return filter[2]?.trim()
           ? normalize(value).includes(normalize(filter[2]))
           : value !== undefined;
       }
-      return normalize([entry.title, entry.path, entry.body, JSON.stringify(entry.metadata)].join(" ")).includes(normalize(trimmed));
-    }).sort((a, b) => Number(b.file.id === activeFileId) - Number(a.file.id === activeFileId) || Number(b.open) - Number(a.open));
-  }, [activeFileId, files, filter, labels, openFileIds, trimmed]);
+      return matchedIds?.has(entry.fileId);
+    }).sort((a, b) =>
+      Number(b.fileId === activeFileId) - Number(a.fileId === activeFileId) ||
+      Number(b.open) - Number(a.open) ||
+      (openOrder.get(a.fileId) ?? Number.MAX_SAFE_INTEGER) -
+        (openOrder.get(b.fileId) ?? Number.MAX_SAFE_INTEGER));
+  }, [activeFileId, filter, openFileIds, searchIndex, trimmed]);
   const commandResults = useMemo(() => filter ? [] : commands.filter(
     (command) => !trimmed || normalize(command.label).includes(normalize(trimmed)),
   ), [commands, filter, trimmed]);

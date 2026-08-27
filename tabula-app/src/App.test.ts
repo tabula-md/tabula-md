@@ -153,7 +153,7 @@ describe("file tab state transitions", () => {
 });
 
 describe("project persistence", () => {
-  it("preserves per-file view modes and active file", () => {
+  it("preserves one workspace presentation and the active file", () => {
     const files: WorkspaceFile[] = [
       createWorkspaceFile(1, { id: "prd", title: "PRD.md", text: "# PRD", viewMode: "split" }),
       createWorkspaceFile(2, { id: "design", title: "DESIGN.md", text: "# Design", viewMode: "preview" }),
@@ -172,6 +172,7 @@ describe("project persistence", () => {
       openFileIds: ["prd", "design"],
       fileOrder: ["prd", "design"],
       commentsByFileId: {},
+      presentation: expect.objectContaining({ viewMode: "preview" }),
     });
     expect(Object.keys(stored).sort()).toEqual([
       "activeFileId",
@@ -181,6 +182,7 @@ describe("project persistence", () => {
       "folderOrder",
       "folders",
       "openFileIds",
+      "presentation",
       "savedAt",
       "schema",
       "version",
@@ -188,9 +190,11 @@ describe("project persistence", () => {
     expect(restored?.activeFileId).toBe("design");
     expect(restored?.openFileIds).toEqual(["prd", "design"]);
     expect(restored?.files.map((file) => [file.title, file.viewMode])).toEqual([
-      ["PRD.md", "split"],
+      ["PRD.md", "preview"],
       ["DESIGN.md", "preview"],
     ]);
+    expect(stored.files.prd).not.toHaveProperty("viewMode");
+    expect(stored.files.design).not.toHaveProperty("viewMode");
   });
 
   it("repairs cyclic v7 folders instead of exposing an unusable tree", () => {

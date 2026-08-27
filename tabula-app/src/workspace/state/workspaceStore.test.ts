@@ -116,6 +116,39 @@ describe("workspace store", () => {
     });
   });
 
+  it("keeps presentation controls consistent when switching documents", () => {
+    const { draft } = initializeWorkspaceStore();
+    const secondFile = useWorkspaceStore.getState().addFile({ title: "Second.md" });
+
+    useWorkspaceStore.getState().setActiveFileViewMode("edit");
+    useWorkspaceStore.getState().setActiveFileReadingWidth("narrow");
+    useWorkspaceStore.getState().setActiveFileLineWrapping(false);
+    useWorkspaceStore.getState().setActiveFileLineNumbers(false);
+    useWorkspaceStore.getState().commitActiveFileSplitRatio(0.6);
+    useWorkspaceStore.getState().selectFile(draft.id);
+
+    for (const file of useWorkspaceStore.getState().files) {
+      expect(file).toMatchObject({
+        viewMode: "edit",
+        readingWidth: "narrow",
+        lineWrapping: false,
+        lineNumbers: false,
+        splitRatio: 0.6,
+      });
+    }
+    expect(useWorkspaceStore.getState().activeFileId).toBe(draft.id);
+    expect(secondFile.id).not.toBe(draft.id);
+  });
+
+  it("does not publish a new workspace snapshot when file text is unchanged", () => {
+    const { draft } = initializeWorkspaceStore();
+    const filesBeforeUpdate = useWorkspaceStore.getState().files;
+
+    useWorkspaceStore.getState().setFileText(draft.id, draft.text);
+
+    expect(useWorkspaceStore.getState().files).toBe(filesBeforeUpdate);
+  });
+
   it("keeps the selected workspace view when switching documents", () => {
     const { readme, draft } = initializeWorkspaceStore();
 

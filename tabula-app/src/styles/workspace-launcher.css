@@ -26,6 +26,11 @@
   font-size: var(--font-ui-large);
 }
 
+.workspace-launcher-search input:focus,
+.workspace-launcher-search input:focus-visible {
+  outline: 0;
+}
+
 .workspace-launcher-close {
   display: grid;
   flex: 0 0 auto;

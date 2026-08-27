@@ -224,7 +224,7 @@ button {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: 50px minmax(0, 1fr);
   min-width: 0;
   height: 100vh;
   min-height: 100vh;
@@ -247,11 +247,12 @@ button {
 
 .center-workbench {
   grid-column: 1;
+  grid-row: 2;
   display: grid;
-  grid-template-rows: 50px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  height: 100vh;
+  height: calc(100vh - 50px);
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -337,7 +338,12 @@ button {
 }
 
 @media (max-width: 560px) {
-  .center-workbench {
+  .main-panel {
     grid-template-rows: 60px minmax(0, 1fr);
+  }
+
+  .center-workbench {
+    grid-template-rows: minmax(0, 1fr);
+    height: calc(100vh - 60px);
   }
 }

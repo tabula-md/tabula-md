@@ -5,6 +5,7 @@ import {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
+import { MODAL_ACCESSIBILITY } from "./overlayAccessibility";
 
 type ModalSurfaceProps = {
   ariaLabel?: string;
@@ -141,8 +142,8 @@ export function ModalSurface({
       <section
         ref={dialogRef}
         className={`share-modal ui-modal ${className}`}
-        role="dialog"
-        aria-modal="true"
+        role={MODAL_ACCESSIBILITY.role}
+        aria-modal={MODAL_ACCESSIBILITY.ariaModal}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         tabIndex={-1}

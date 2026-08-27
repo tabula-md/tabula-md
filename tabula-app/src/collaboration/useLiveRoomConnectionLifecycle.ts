@@ -9,52 +9,33 @@ import {
 import { syncUrlForRoom, type LocationRoom } from "../workspace/workspaceStorage";
 
 type UseLiveRoomConnectionLifecycleOptions = {
-  activeFileAvailable: boolean;
   activeRoom: LocationRoom | null;
   connectionStatus: ConnectionStatus;
   hydrationStatus: RoomHydrationStatus;
-  onConnectionFailed: () => void;
+  isStartingLive: boolean;
 };
 
 export function useLiveRoomConnectionLifecycle({
-  activeFileAvailable,
   activeRoom,
   connectionStatus,
   hydrationStatus,
-  onConnectionFailed,
+  isStartingLive,
 }: UseLiveRoomConnectionLifecycleOptions) {
-  const failedRoomIdRef = useRef<string | null>(null);
   const syncedRoomUrlRef = useRef<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const roomOpening = Boolean(activeRoom) &&
+    hydrationStatus !== "failed" &&
+    (isStartingLive || hydrationStatus !== "ready");
 
   useEffect(() => {
-    if (
-      !activeRoom ||
-      connectionStatus !== "connected" ||
-      hydrationStatus !== "waiting-for-state"
-    ) {
+    if (!roomOpening) {
       setTimedOut(false);
       return;
     }
 
     const timeoutId = window.setTimeout(() => setTimedOut(true), LIVE_ROOM_OPEN_TIMEOUT_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [activeRoom, connectionStatus, hydrationStatus]);
-
-  useEffect(() => {
-    const roomId = activeRoom?.roomId;
-    if (!roomId || connectionStatus !== "failed") return;
-    if (!activeFileAvailable || failedRoomIdRef.current === roomId) return;
-
-    failedRoomIdRef.current = roomId;
-    onConnectionFailed();
-  }, [activeFileAvailable, activeRoom?.roomId, connectionStatus, onConnectionFailed]);
-
-  useEffect(() => {
-    if (connectionStatus === "connected" || !activeRoom) {
-      failedRoomIdRef.current = null;
-    }
-  }, [activeRoom, connectionStatus]);
+  }, [activeRoom?.roomId, roomOpening]);
 
   useEffect(() => {
     if (!activeRoom) {

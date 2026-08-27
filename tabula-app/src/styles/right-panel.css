@@ -6,6 +6,8 @@
 @import "./left-panel.css";
 
 .right-properties {
+  container-name: right-properties;
+  container-type: inline-size;
   height: 100%;
   overflow: auto;
   padding: 8px 12px 24px;
@@ -21,7 +23,7 @@
 .right-properties-row,
 .right-properties-nested > div {
   display: grid;
-  grid-template-columns: minmax(88px, 0.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(72px, 0.32fr) minmax(0, 1fr);
   gap: 12px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border-subtle);
@@ -90,4 +92,21 @@
 .right-properties-nested {
   padding-left: 10px;
   border-left: 1px solid var(--border-subtle);
+}
+
+.right-properties-nested > div {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 7px 0;
+}
+
+@container right-properties (max-width: 340px) {
+  .right-properties-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .right-properties-list dt {
+    line-height: 1.35;
+  }
 }

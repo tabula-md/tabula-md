@@ -1,16 +1,23 @@
-import { lazy, memo, Suspense } from "react";
-import { DocumentWorkbench } from "../../document/DocumentWorkbench";
+import { lazy, memo, Suspense, useEffect, useState } from "react";
 import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
-import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
+import { WorkspaceImportInputs } from "./WorkspaceImportInputs";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
+import { WorkspaceAssetViewer } from "./WorkspaceAssetViewer";
+import { useWorkspaceShellSize } from "../workspaceShellLayout";
 
-const MemoWorkspaceMenuSurface = memo(WorkspaceMenuSurface);
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
+const DocumentWorkbench = lazy(() => import("../../document/DocumentWorkbench").then(
+  ({ DocumentWorkbench: Component }) => ({ default: Component }),
+));
+const WorkspaceMenuSurface = lazy(() => import("./WorkspaceMenuSurface").then(
+  ({ WorkspaceMenuSurface: Component }) => ({ default: memo(Component) }),
+));
 const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightPanel").then(
   ({ WorkspaceRightPanel: Component }) => ({ default: memo(Component) }),
 ));
@@ -19,6 +26,7 @@ const WorkspaceLeftPanel = lazy(() => import("../../left-panel/WorkspaceLeftPane
 ));
 
 export function WorkspaceApp() {
+  const shellSize = useWorkspaceShellSize();
   const {
     collaboration,
     chrome,
@@ -26,8 +34,19 @@ export function WorkspaceApp() {
     overlays,
     panels,
     workspaceSession,
-  } = useWorkspaceRuntime();
+  } = useWorkspaceRuntime(shellSize);
   const { activeFile, ...documentWorkbenchProps } = documentRuntime.workbench;
+  const activeFilePresentation = activeFile
+    ? getWorkspaceFilePresentation(activeFile)
+    : undefined;
+  const assetOpen = activeFilePresentation?.kind === "asset";
+  const [workspaceMenuMounted, setWorkspaceMenuMounted] = useState(false);
+
+  useEffect(() => {
+    if (chrome.menu.isOpen || chrome.menu.preferencesOpen) {
+      setWorkspaceMenuMounted(true);
+    }
+  }, [chrome.menu.isOpen, chrome.menu.preferencesOpen]);
 
   if (workspaceSession.localOpening) {
     return (
@@ -41,18 +60,31 @@ export function WorkspaceApp() {
   return (
     <main className="app-shell">
       <WorkspaceOverlaySurface {...overlays.workspace} />
-      <section className={chrome.mainPanelClassName}>
-        <MemoWorkspaceMenuSurface {...chrome.menu} />
+      <section className={chrome.mainPanelClassName} data-shell-size={shellSize}>
+        <WorkspaceImportInputs
+          importInputRef={chrome.menu.importInputRef}
+          workspaceImportInputRef={chrome.menu.workspaceImportInputRef}
+          language={chrome.menu.language}
+          onImportFileChange={chrome.menu.onImportFileChange}
+          onImportWorkspaceChange={chrome.menu.onImportWorkspaceChange}
+        />
+        {(workspaceMenuMounted || chrome.menu.isOpen) && (
+          <Suspense fallback={null}>
+            <WorkspaceMenuSurface {...chrome.menu} />
+          </Suspense>
+        )}
+
+        <MemoWorkspaceTopChrome {...chrome.top} />
 
         <Suspense fallback={null}>
           <WorkspaceLeftPanel {...panels.left} />
         </Suspense>
 
         <section className={documentRuntime.surface.centerWorkbenchClassName}>
-          <MemoWorkspaceTopChrome {...chrome.top} />
-
           <section
-            className={documentRuntime.surface.fileShellClassName}
+            className={`${documentRuntime.surface.fileShellClassName}${
+              assetOpen ? " asset-file-shell" : ""
+            }`}
             id={activeFile ? getWorkspaceTabPanelId(activeFile.id) : undefined}
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
@@ -60,10 +92,21 @@ export function WorkspaceApp() {
             {collaboration.liveRoomOpenState === "opening" ? (
               <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
-              <DocumentWorkbench
-                {...documentWorkbenchProps}
-                activeFile={activeFile}
-              />
+              assetOpen ? (
+                <WorkspaceAssetViewer
+                  file={activeFile}
+                  language={documentWorkbenchProps.language}
+                />
+              ) : (
+                <Suspense
+                  fallback={<section className="workspace" aria-busy="true" />}
+                >
+                  <DocumentWorkbench
+                    {...documentWorkbenchProps}
+                    activeFile={activeFile}
+                  />
+                </Suspense>
+              )
             ) : (
               <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}

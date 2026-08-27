@@ -85,7 +85,10 @@ test.describe("document metadata", () => {
   test("aligns search, metadata, and document content to one lane", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openFreshDocument(page);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.locator(".document-toolbar-row").getByRole("button", {
+      name: "Search",
+      exact: true,
+    }).click();
 
     const readLaneMetrics = () => page.evaluate(() => {
       const selectors = [

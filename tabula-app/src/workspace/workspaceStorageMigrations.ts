@@ -29,9 +29,16 @@ const isStoredFile = (value: unknown): value is JsonRecord =>
   isRecord(value) &&
   typeof value.id === "string" &&
   typeof value.title === "string" &&
-  typeof value.text === "string" &&
+  typeof value.text === "string";
+
+const isWorkspacePresentation = (value: unknown): value is JsonRecord =>
+  isRecord(value) &&
   ["visual", "edit", "split", "preview"].includes(String(value.viewMode)) &&
-  (value.editingMode === "source" || value.editingMode === "visual");
+  (value.editingMode === "source" || value.editingMode === "visual") &&
+  ["narrow", "standard", "wide"].includes(String(value.readingWidth)) &&
+  typeof value.lineWrapping === "boolean" &&
+  typeof value.lineNumbers === "boolean" &&
+  (value.splitRatio === undefined || typeof value.splitRatio === "number");
 
 const isStoredFolder = (value: unknown): value is JsonRecord =>
   isRecord(value) &&
@@ -50,6 +57,7 @@ export const isCurrentWorkspaceStoragePayload = (
     !isRecord(value.files) ||
     !isRecord(value.folders) ||
     !isRecord(value.commentsByFileId) ||
+    !isWorkspacePresentation(value.presentation) ||
     !isStringArray(value.fileOrder) ||
     !isStringArray(value.folderOrder) ||
     !isStringArray(value.openFileIds) ||
@@ -174,9 +182,57 @@ const migrateV6ToV7 = (payload: JsonRecord): JsonRecord | null => {
   };
 };
 
+const migrateV7ToV8 = (payload: JsonRecord): JsonRecord | null => {
+  if (!isRecord(payload.files)) return null;
+  const activeFile = isRecord(payload.files[payload.activeFileId as string])
+    ? payload.files[payload.activeFileId as string] as JsonRecord
+    : Object.values(payload.files).find(isRecord);
+  const viewMode = ["visual", "edit", "split", "preview"].includes(String(activeFile?.viewMode))
+    ? activeFile?.viewMode
+    : "visual";
+  const presentation = {
+    viewMode,
+    editingMode: viewMode === "split"
+      ? "source"
+      : activeFile?.editingMode === "source" || activeFile?.editingMode === "visual"
+        ? activeFile.editingMode
+        : viewMode === "visual" ? "visual" : "source",
+    readingWidth: ["narrow", "standard", "wide"].includes(String(activeFile?.readingWidth))
+      ? activeFile?.readingWidth
+      : "wide",
+    ...(typeof activeFile?.splitRatio === "number"
+      ? { splitRatio: activeFile.splitRatio }
+      : {}),
+    lineWrapping: typeof activeFile?.lineWrapping === "boolean" ? activeFile.lineWrapping : true,
+    lineNumbers: typeof activeFile?.lineNumbers === "boolean" ? activeFile.lineNumbers : true,
+  };
+
+  return {
+    ...payload,
+    version: 8,
+    presentation,
+    files: Object.fromEntries(
+      Object.entries(payload.files).map(([id, value]) => {
+        if (!isRecord(value)) return [id, value];
+        const {
+          viewMode: _viewMode,
+          editingMode: _editingMode,
+          readingWidth: _readingWidth,
+          splitRatio: _splitRatio,
+          lineWrapping: _lineWrapping,
+          lineNumbers: _lineNumbers,
+          ...storedFile
+        } = value;
+        return [id, storedFile];
+      }),
+    ),
+  };
+};
+
 const migrations = new Map<number, (payload: JsonRecord) => JsonRecord | null>([
   [5, migrateV5ToV6],
   [6, migrateV6ToV7],
+  [7, migrateV7ToV8],
 ]);
 
 export const migrateWorkspaceStoragePayload = (

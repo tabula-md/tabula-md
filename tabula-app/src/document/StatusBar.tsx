@@ -1,5 +1,4 @@
-import { ChartNoAxesColumn, Check, TriangleAlert } from "lucide-react";
-import { getStatusBarSaveState } from "@tabula-md/tabula";
+import { ChartNoAxesColumn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PopoverAnchor, PopoverContent, PopoverRoot } from "../ui/Popover";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -9,10 +8,7 @@ import type { FileViewMode } from "../workspace/workspaceStorage";
 interface StatusBarProps {
   activeFileTitle: string;
   activeViewMode: FileViewMode;
-  isLive: boolean;
   language: WorkspaceLanguage;
-  saveRevision: number;
-  statusLabel: string;
   approximateTokenCount: number;
   wordCount: number;
   characterCount: number;
@@ -24,10 +20,7 @@ interface StatusBarProps {
 export function StatusBar({
   activeFileTitle,
   activeViewMode,
-  isLive,
   language,
-  saveRevision,
-  statusLabel,
   approximateTokenCount,
   wordCount,
   characterCount,
@@ -36,12 +29,6 @@ export function StatusBar({
   selectedLineCount,
 }: StatusBarProps) {
   const copy = getWorkspaceChromeCopy(language).statusBar;
-  const saveState = getStatusBarSaveState({
-    isLive,
-    roomOfflineLabel: copy.roomOffline,
-    savedLocallyLabel: copy.savedLocally,
-    statusLabel,
-  });
   const cursorLabel =
     selectedCharacterCount > 0
       ? `${cursorPositionLabel} (${
@@ -81,32 +68,12 @@ export function StatusBar({
 
   useEffect(() => () => clearDocumentMetricsCloseTimer(), []);
 
-  const showSaveState = isLive ? saveState.visible : saveRevision > 0;
-  const showSaveLabel = saveState.tone === "attention";
-
   return (
     <footer
       className="file-status-bar"
       aria-label={copy.statusFor(activeFileTitle)}
     >
       <div className="status-bar-right">
-        {showSaveState && (
-          <span
-            className={`status-save-state ${
-              saveState.tone === "attention" ? "attention" : "quiet"
-            }`}
-            role="status"
-            aria-label={saveState.label}
-            data-tooltip={showSaveLabel ? undefined : saveState.label}
-          >
-            {saveState.tone === "attention" ? (
-              <TriangleAlert size={14} aria-hidden="true" />
-            ) : (
-              <Check size={14} aria-hidden="true" />
-            )}
-            {showSaveLabel && <span>{saveState.label}</span>}
-          </span>
-        )}
         <PopoverRoot open={showDocumentMetrics} onOpenChange={setShowDocumentMetrics}>
           <PopoverAnchor asChild>
             <button

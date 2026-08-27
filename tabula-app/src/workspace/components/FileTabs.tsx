@@ -15,6 +15,9 @@ import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { getWorkspaceFileIconKind } from "../workspaceFilePresentation";
+import { WorkspaceFileTypeIcon } from "./WorkspaceFileTypeIcon";
+import type { WorkspaceShellSize } from "../workspaceShellLayout";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -28,6 +31,7 @@ type FileTabsProps = {
   collaborators: Collaborator[];
   roomId?: string;
   language: WorkspaceLanguage;
+  shellSize: WorkspaceShellSize;
   leadingControl?: ReactNode;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
@@ -42,7 +46,7 @@ const emptyTabScrollState: TabScrollState = {
   canScrollRight: false,
 };
 
-const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
+const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown|mdx)$/i, "");
 
 export const getDocumentCollaborators = (
   collaborators: readonly Collaborator[],
@@ -59,6 +63,7 @@ export function FileTabs({
   collaborators,
   roomId,
   language,
+  shellSize,
   leadingControl,
   onAddFile,
   onSelectFile,
@@ -110,7 +115,7 @@ export function FileTabs({
     const scrollPadding = Math.min(44, Math.floor(element.clientWidth * 0.2));
     const activeLeft = activeTabElement.offsetLeft;
     const activeRight = activeLeft + activeTabElement.offsetWidth;
-    const isTouchLayout = window.matchMedia("(max-width: 560px)").matches;
+    const isTouchLayout = shellSize === "narrow";
     const visibleLeft = element.scrollLeft + scrollPadding;
     const visibleRight = element.scrollLeft + element.clientWidth - scrollPadding;
     let nextScrollLeft = visibleLeft;
@@ -258,6 +263,7 @@ export function FileTabs({
             fullPath: file.title,
           };
           const tabDisplayTitle = getTabDisplayTitle(tabLabel.displayTitle);
+          const fileIconKind = getWorkspaceFileIconKind(file);
           return (
             <div
               className={`tab-item ${isActiveFile ? "active" : ""} ${
@@ -349,6 +355,11 @@ export function FileTabs({
                       tabLabel.locationLabel ? " has-location" : ""
                     }`}
                   >
+                    {fileIconKind !== "markdown" && (
+                      <span className="tab-file-type-icon" aria-hidden="true">
+                        <WorkspaceFileTypeIcon kind={fileIconKind} size={14} />
+                      </span>
+                    )}
                     <span className="tab-title">{tabDisplayTitle}</span>
                     {tabLabel.locationLabel && (
                       <span className="tab-location" aria-hidden="true">

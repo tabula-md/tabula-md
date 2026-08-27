@@ -8,6 +8,7 @@ import {
   type StoredWorkspaceFile,
   type WorkspaceFile,
   type WorkspaceFolder,
+  type WorkspacePresentationState,
   type WorkspaceState,
 } from "../workspaceStorage";
 import { migrateWorkspaceStoragePayload } from "../workspaceStorageMigrations";
@@ -23,6 +24,7 @@ export type WorkspaceManifestRecord = {
   openFileIds: string[];
   fileOrder: string[];
   folderOrder: string[];
+  presentation: WorkspacePresentationState;
 };
 
 export type WorkspaceFileRecord = {
@@ -55,6 +57,7 @@ export type IndexedDbWorkspaceSnapshot = {
   files: Record<string, unknown>;
   folders: Record<string, unknown>;
   commentsByFileId: Record<string, unknown>;
+  presentation?: WorkspacePresentationState;
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
 };
 
@@ -72,6 +75,7 @@ export const parseIndexedDbWorkspaceSnapshot = (
     folders: snapshot.folders,
     files: snapshot.files,
     commentsByFileId: snapshot.commentsByFileId,
+    presentation: snapshot.presentation,
   }, PROJECT_STORAGE_VERSION);
   const parsedWorkspace = migration.payload
     ? parseWorkspacePayload(migration.payload)
@@ -182,6 +186,7 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
         folders,
         files,
         commentsByFileId,
+        presentation: manifest.presentation,
         knowledgeBaseline: knowledgeBaselineRecord?.payload,
       });
       if (!workspace) return null;
@@ -203,6 +208,7 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
           openFileIds: workspace.openFileIds,
           fileOrder: nextFileOrder,
           folderOrder: nextFolderOrder,
+          presentation: workspace.presentation,
         });
       }
 
@@ -306,9 +312,21 @@ export const createWorkspaceWritePlan = (
       openFileIds,
       fileOrder,
       folderOrder,
+      presentation: workspace.presentation,
     },
     filePuts: fileOrder
-      .filter((fileId) => previous?.fileRefs.get(fileId) !== filesById.get(fileId))
+      .filter((fileId) => {
+        const previousFile = previous?.fileRefs.get(fileId);
+        const nextFile = filesById.get(fileId);
+        if (!previousFile || !nextFile) return true;
+        if (previousFile === nextFile) return false;
+        return previousFile.title !== nextFile.title ||
+          previousFile.text !== nextFile.text ||
+          previousFile.parentId !== nextFile.parentId ||
+          previousFile.order !== nextFile.order ||
+          previousFile.bookmarks !== nextFile.bookmarks ||
+          previousFile.artifact !== nextFile.artifact;
+      })
       .map((fileId) => ({ id: fileId, payload: serializeFile(filesById.get(fileId)!) })),
     fileDeletes: getDeletedIds(previous?.fileRefs.keys() ?? [], fileIds),
     folderPuts: folderOrder

@@ -8,7 +8,6 @@ import type {
   ConnectionStatus,
 } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
-import type { LeftPanelView } from "../../ui/uiTypes";
 import type { JsonShareController } from "../../share/useJsonShareController";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../../collaboration/collabCollaborators";
@@ -18,6 +17,9 @@ import {
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
+import type { RoomExitLocalWorkspaceStrategy } from "../workspaceSessionTransition";
+import type { WorkspaceShellSize } from "../workspaceShellLayout";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
 
@@ -34,6 +36,7 @@ export type WorkspaceTopChromeProps = {
   followState: FollowState;
   connectionStatus: ConnectionStatus;
   copied: boolean;
+  canChooseRoomExitStrategy: boolean;
   currentUserName: string;
   folders: WorkspaceFolder[];
   identity: Collaborator;
@@ -42,13 +45,15 @@ export type WorkspaceTopChromeProps = {
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
+  shellSize: WorkspaceShellSize;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   shareOpen: boolean;
-  workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
@@ -65,14 +70,13 @@ export type WorkspaceTopChromeProps = {
   onReopenLastClosedFile: () => void;
   onSelectFile: FileTabsProps["onSelectFile"];
   onStartSession: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
   onRetrySession: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
   onOpenWorkspaceLauncher: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
-  onToggleWorkspaceMenu: () => void;
 };
 
 export function WorkspaceTopChrome({
@@ -82,6 +86,7 @@ export function WorkspaceTopChrome({
   followState,
   connectionStatus,
   copied,
+  canChooseRoomExitStrategy,
   currentUserName,
   folders,
   identity,
@@ -90,13 +95,15 @@ export function WorkspaceTopChrome({
   isLiveConnected,
   jsonShare,
   language,
+  workspaceContextSummary,
   lastClosedFile,
   openFiles,
   room,
+  roomExitStrategy,
+  shellSize,
   leftPanelOpen,
   rightPanelOpen,
   shareOpen,
-  workspaceMenuOpen,
   onAddFile,
   onChangeUserName,
   onChromeInteraction,
@@ -120,7 +127,6 @@ export function WorkspaceTopChrome({
   onToggleRightPanel,
   onToggleFollowing,
   onToggleShare,
-  onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
   const displayedParticipants = useMemo(
     () => getCollaboratorDisplayList([identity, ...collaborators]),
@@ -140,6 +146,7 @@ export function WorkspaceTopChrome({
       collaborators={displayedCollaborators}
       roomId={room?.roomId}
       language={language}
+      shellSize={shellSize}
       leadingControl={
         <OpenTabsMenu
           activeFile={activeFile}
@@ -185,7 +192,9 @@ export function WorkspaceTopChrome({
               isLive={isLive}
               shareOpen={shareOpen}
               copied={copied}
+              canChooseRoomExitStrategy={canChooseRoomExitStrategy}
               jsonShare={jsonShare}
+              roomExitStrategy={roomExitStrategy}
               onCloseShare={onCloseShare}
               onCopyFailed={onShareCopyFailed}
               onStartSession={onStartSession}
@@ -202,11 +211,11 @@ export function WorkspaceTopChrome({
   );
 
   return (
-    <TopChrome
-      workspaceMenuOpen={workspaceMenuOpen}
-      leftPanelOpen={leftPanelOpen}
+      <TopChrome
+        leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
+      workspaceContextSummary={workspaceContextSummary}
       language={language}
       identity={displayedIdentity}
       collaborators={displayedCollaborators}
@@ -215,7 +224,6 @@ export function WorkspaceTopChrome({
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}
-      onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleLeftPanel={onToggleLeftPanel}
       onOpenWorkspaceLauncher={onOpenWorkspaceLauncher}
       onToggleRightPanel={onToggleRightPanel}

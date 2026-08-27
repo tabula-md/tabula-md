@@ -67,7 +67,7 @@ const getPageDiagnostics = async (page) =>
     cmContentCount: document.querySelectorAll(".cm-content").length,
     fileShellClass: document.querySelector(".file-shell")?.className ?? null,
     activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? null,
-    liveStatus: document.querySelector(".status-save-state")?.textContent?.trim() ?? null,
+    liveStatus: document.querySelector(".left-panel-workspace-status")?.getAttribute("data-tooltip") ?? null,
   }));
 
 const getTextFingerprint = (text) => {
@@ -141,10 +141,8 @@ const selectRoomDocument = async (page, fileName, waitForEditorReady) => {
   if ((await tab.count()) === 1) {
     await tab.click();
   } else {
-    const toggleSidePanel = page.getByRole("button", { name: "Toggle side panel" });
-    if ((await toggleSidePanel.count()) === 1) await toggleSidePanel.click();
-    const filesTab = page.getByRole("button", { name: "Files", exact: true });
-    if ((await filesTab.count()) === 1) await filesTab.click();
+    const toggleWorkspacePanel = page.getByRole("button", { name: "Toggle workspace panel" });
+    if ((await toggleWorkspacePanel.count()) === 1) await toggleWorkspacePanel.click();
     await page.getByRole("button", { name: `Open ${fileName}` }).click();
   }
   await page.waitForFunction(

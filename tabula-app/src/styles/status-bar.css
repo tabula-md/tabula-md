@@ -27,7 +27,6 @@
   min-width: 0;
 }
 
-.status-save-state,
 .status-cursor-position {
   display: inline-flex;
   align-items: center;
@@ -37,17 +36,6 @@
   color: var(--text-soft);
   border-radius: var(--radius-surface);
   white-space: nowrap;
-}
-
-.status-save-state.attention {
-  color: var(--danger-text);
-}
-
-.status-save-state.quiet {
-  justify-content: center;
-  width: var(--control-size-compact);
-  min-height: var(--control-size-compact);
-  padding: 0;
 }
 
 .status-cursor-position {
@@ -121,7 +109,6 @@
     flex: 0 0 auto;
   }
 
-  .status-save-state,
   .status-cursor-position,
   .status-bar-right > span {
     min-height: var(--control-size-touch);

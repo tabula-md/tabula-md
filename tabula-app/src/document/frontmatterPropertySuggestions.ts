@@ -19,6 +19,7 @@ export type FrontmatterPropertySuggestion = {
   type: FrontmatterPropertyType;
   typeHints?: FrontmatterPropertyTypeHint[];
   usageCount?: number;
+  hasMixedTypes?: boolean;
 };
 
 // These are authoring hints, not a schema. OKF permits producer-defined keys,
@@ -105,12 +106,14 @@ export const getWorkspaceFrontmatterPropertySuggestions = (
       const builtIn = getFrontmatterPropertySuggestion(normalizedKey);
       if (builtIn) return { ...builtIn, usageCount: properties.length };
       const type = getPreferredWorkspaceType(properties);
+      const hasMixedTypes = new Set(properties.map((property) => property.type)).size > 1;
       return {
         key: properties[0]?.key ?? normalizedKey,
         type,
         draft: getEmptyDraftForType(type),
         description: "Workspace field",
         usageCount: properties.length,
+        hasMixedTypes,
       };
     })
     .sort((left, right) =>

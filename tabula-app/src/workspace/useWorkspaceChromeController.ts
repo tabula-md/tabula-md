@@ -1,26 +1,39 @@
 import { useEffect } from "react";
 import type { MarkdownSelectionActionPosition } from "../document/markdownEditorTypes";
-import type { LeftPanelView } from "../ui/uiTypes";
-import { useWorkspaceUiStore } from "./state/workspaceUiStore";
+import type { LeftPanelView, RightPanelView } from "../ui/uiTypes";
+import {
+  selectCenterPopover,
+  selectLauncherOpen,
+  selectPreferencesOpen,
+  selectSearchOpen,
+  selectWorkspaceMenuOpen,
+  useWorkspaceUiStore,
+} from "./state/workspaceUiStore";
+import {
+  workspaceShellUsesExclusivePanels,
+  type WorkspaceShellSize,
+} from "./workspaceShellLayout";
 
 type UseWorkspaceChromeControllerArgs = {
+  shellSize: WorkspaceShellSize;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   setCopiedFileId: (fileId: string | null) => void;
   setSelectionActionPosition: (position: MarkdownSelectionActionPosition | null) => void;
 };
 
 export function useWorkspaceChromeController({
+  shellSize,
   selectionActionPosition,
   setCopiedFileId,
   setSelectionActionPosition,
 }: UseWorkspaceChromeControllerArgs) {
   const topPopover = useWorkspaceUiStore((state) => state.topPopover);
   const setTopPopover = useWorkspaceUiStore((state) => state.setTopPopover);
-  const centerPopover = useWorkspaceUiStore((state) => state.centerPopover);
+  const centerPopover = useWorkspaceUiStore(selectCenterPopover);
   const setCenterPopover = useWorkspaceUiStore((state) => state.setCenterPopover);
-  const workspaceMenuOpen = useWorkspaceUiStore((state) => state.workspaceMenuOpen);
+  const workspaceMenuOpen = useWorkspaceUiStore(selectWorkspaceMenuOpen);
   const setWorkspaceMenuOpen = useWorkspaceUiStore((state) => state.setWorkspaceMenuOpen);
-  const preferencesOpen = useWorkspaceUiStore((state) => state.preferencesOpen);
+  const preferencesOpen = useWorkspaceUiStore(selectPreferencesOpen);
   const setPreferencesOpen = useWorkspaceUiStore((state) => state.setPreferencesOpen);
   const leftPanelOpen = useWorkspaceUiStore((state) => state.leftPanelOpen);
   const setLeftPanelOpen = useWorkspaceUiStore((state) => state.setLeftPanelOpen);
@@ -30,19 +43,25 @@ export function useWorkspaceChromeController({
   const setRightPanelOpen = useWorkspaceUiStore((state) => state.setRightPanelOpen);
   const rightPanelView = useWorkspaceUiStore((state) => state.rightPanelView);
   const setRightPanelView = useWorkspaceUiStore((state) => state.setRightPanelView);
-  const searchOpen = useWorkspaceUiStore((state) => state.searchOpen);
+  const searchOpen = useWorkspaceUiStore(selectSearchOpen);
   const setSearchOpen = useWorkspaceUiStore((state) => state.setSearchOpen);
-  const launcherOpen = useWorkspaceUiStore((state) => state.launcherOpen);
+  const launcherOpen = useWorkspaceUiStore(selectLauncherOpen);
   const setLauncherOpen = useWorkspaceUiStore((state) => state.setLauncherOpen);
   const closeUiFloatingChrome = useWorkspaceUiStore((state) => state.closeFloatingChrome);
   const openUiFilesPanel = useWorkspaceUiStore((state) => state.openFilesPanel);
+  const openUiSidePanel = useWorkspaceUiStore((state) => state.openSidePanel);
   const openSharePanel = useWorkspaceUiStore((state) => state.openSharePanel);
   const toggleUiWorkspaceMenu = useWorkspaceUiStore((state) => state.toggleWorkspaceMenu);
-  const toggleUiLeftPanel = useWorkspaceUiStore((state) => state.toggleLeftPanel);
   const toggleUiRightPanel = useWorkspaceUiStore((state) => state.toggleRightPanel);
+  const toggleUiSidePanel = useWorkspaceUiStore((state) => state.toggleSidePanel);
 
-  const usesOverlayPanels = () =>
-    typeof window !== "undefined" && window.innerWidth <= 1160;
+  const usesExclusivePanels = workspaceShellUsesExclusivePanels(shellSize);
+
+  useEffect(() => {
+    if (usesExclusivePanels && leftPanelOpen && rightPanelOpen) {
+      setRightPanelOpen(false);
+    }
+  }, [leftPanelOpen, rightPanelOpen, setRightPanelOpen, usesExclusivePanels]);
 
   const closeFloatingChrome = () => {
     closeUiFloatingChrome();
@@ -51,41 +70,58 @@ export function useWorkspaceChromeController({
   };
 
   const openFilesPanel = () => {
-    openUiFilesPanel();
-    if (usesOverlayPanels()) setRightPanelOpen(false);
+    openUiFilesPanel(usesExclusivePanels);
     setCopiedFileId(null);
     setSelectionActionPosition(null);
   };
 
-  const toggleLeftPanel = (view: LeftPanelView) => {
-    const willOpen = !leftPanelOpen || leftPanelView !== view;
-    toggleUiLeftPanel(view);
-    if (willOpen && usesOverlayPanels()) setRightPanelOpen(false);
+  const openLeftPanel = (view: LeftPanelView) => {
+    openUiSidePanel({ side: "left", view }, usesExclusivePanels);
+    setCopiedFileId(null);
+    setSelectionActionPosition(null);
+  };
+
+  const openRightPanel = (view: RightPanelView) => {
+    openUiSidePanel({ side: "right", view }, usesExclusivePanels);
+    setCopiedFileId(null);
+    setSelectionActionPosition(null);
+  };
+
+  const toggleLeftPanel = () => {
+    const willOpen = !leftPanelOpen;
+    toggleUiSidePanel({ side: "left", view: leftPanelView }, usesExclusivePanels);
+    if (!willOpen) {
+      setPreferencesOpen(false);
+      setWorkspaceMenuOpen(false);
+    }
   };
 
   const toggleRightPanel = () => {
     const willOpen = !rightPanelOpen;
-    toggleUiRightPanel();
-    if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
+    toggleUiRightPanel(usesExclusivePanels);
+    if (willOpen && usesExclusivePanels) {
+      setPreferencesOpen(false);
+      setWorkspaceMenuOpen(false);
+    }
   };
 
   const toggleWorkspaceMenu = () => {
     const willOpen = !workspaceMenuOpen;
     toggleUiWorkspaceMenu();
-    if (willOpen && usesOverlayPanels()) setRightPanelOpen(false);
+    if (!willOpen) setPreferencesOpen(false);
+    if (willOpen && usesExclusivePanels) {
+      setLeftPanelOpen(true);
+      setRightPanelOpen(false);
+    }
   };
 
-  useEffect(() => {
-    if (!leftPanelOpen || !rightPanelOpen) return undefined;
-
-    const keepSingleOverlayPanel = () => {
-      if (usesOverlayPanels()) setRightPanelOpen(false);
-    };
-
-    keepSingleOverlayPanel();
-    window.addEventListener("resize", keepSingleOverlayPanel);
-    return () => window.removeEventListener("resize", keepSingleOverlayPanel);
-  }, [leftPanelOpen, rightPanelOpen, setRightPanelOpen]);
+  const openWorkspaceMenu = () => {
+    setWorkspaceMenuOpen(true);
+    if (usesExclusivePanels) {
+      setLeftPanelOpen(true);
+      setRightPanelOpen(false);
+    }
+  };
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -164,7 +200,7 @@ export function useWorkspaceChromeController({
       }
 
       const isInsideWorkspaceMenu = Boolean(target.closest(".workspace-menu-popover"));
-      const isWorkspaceMenuTrigger = Boolean(target.closest(".workspace-menu-button"));
+      const isWorkspaceMenuTrigger = Boolean(target.closest(".left-panel-status-button"));
       const isInsideEditorControls = Boolean(target.closest(".document-controls-wrap, .document-controls-popover"));
       const isInsideSelectionPopover = Boolean(target.closest(".selection-comment-popover"));
 
@@ -216,6 +252,9 @@ export function useWorkspaceChromeController({
     setRightPanelView,
     closeFloatingChrome,
     openFilesPanel,
+    openLeftPanel,
+    openRightPanel,
+    openWorkspaceMenu,
     openSharePanel,
     toggleWorkspaceMenu,
     toggleLeftPanel,

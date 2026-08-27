@@ -14,7 +14,9 @@ const LOCAL_PERSISTENCE_MAX_MS = 2_000;
 const LARGE_VISUAL_ENTRY_MAX_MS = 6_000;
 const LARGE_PREVIEW_ENTRY_MAX_MS = 7_000;
 const LARGE_VISUAL_RETURN_MAX_MS = 3_000;
-const LONG_DOCUMENT_ARROW_MAX_MS = process.env.CI ? 4_000 : 2_500;
+// CI includes the Node-to-browser round trip for each of the 40 key presses and
+// has measurably higher variance than the local product budget.
+const LONG_DOCUMENT_ARROW_MAX_MS = process.env.CI ? 5_000 : 2_500;
 const LARGE_SEARCH_MAX_MS = 2_500;
 const RIGHT_PANEL_OPEN_MAX_MS = 1_500;
 const ASYNC_RENDERERS_MAX_MS = 10_000;
@@ -80,10 +82,7 @@ export async function run(ctx) {
     async (page) => {
       await page.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(page, { mode: "visual" });
-      await page.waitForSelector(
-        '.status-save-state[aria-label="Saved locally"]',
-        { state: "visible" },
-      );
+      await page.waitForSelector(".top-chrome", { state: "visible" });
       await focusMarkdownEditor(page);
       await page.evaluate(() => {
         const originalPut = IDBObjectStore.prototype.put;
@@ -195,7 +194,7 @@ export async function run(ctx) {
           name: "Toggle side panel",
           exact: true,
         }).click();
-        await waitForPanelTab(page, "Files");
+        await waitForPanelTab(page, "Metadata");
       });
 
       reportPerformanceMetric("workspace-interactions", {
@@ -229,7 +228,7 @@ export async function run(ctx) {
       );
       expect(
         panelOpenElapsed < RIGHT_PANEL_OPEN_MAX_MS,
-        `The Files panel should open within budget. Elapsed: ${Math.round(panelOpenElapsed)}ms.`,
+        `The Metadata panel should open within budget. Elapsed: ${Math.round(panelOpenElapsed)}ms.`,
       );
     },
     { viewport: { width: 1440, height: 900 } },

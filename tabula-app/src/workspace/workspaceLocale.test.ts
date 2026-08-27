@@ -31,11 +31,21 @@ describe("workspace locale chrome copy", () => {
 
   it("localizes Preferences, empty state, and Share chrome together", () => {
     const english = getWorkspaceMenuCopy("en");
+    expect(english.sections).toEqual({
+      documents: "Documents",
+      workspace: "Workspace",
+      localFolder: "Local folder",
+    });
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.actions.importFile).toBe("Import document (.md)…");
     expect(english.actions.importWorkspace).toBe("Import folder copy…");
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
+    expect(english.clearWorkspace.description).toContain("this browser");
+    expect(english.clearWorkspace.undo).toBe("Undo");
+    expect(english.disconnectFolder.description).toContain(
+      "Files already in the folder are not deleted.",
+    );
     expect(english.emptyState.tagline).toBe(
       "Open Markdown. Share one link. Edit with people or agents.",
     );
@@ -80,6 +90,11 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.modalTitle).toBe("Share");
 
     const korean = getWorkspaceMenuCopy("ko");
+    expect(korean.sections).toEqual({
+      documents: "문서",
+      workspace: "워크스페이스",
+      localFolder: "로컬 폴더",
+    });
     expect(korean.actions.preferences).toBe("환경설정");
     expect(korean.emptyState.openFile).toBe("Markdown 파일 열기");
     expect(korean.share.live.startSession).toBe("세션 시작");

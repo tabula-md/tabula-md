@@ -302,7 +302,12 @@
   }
 
   .file-shell.with-format-toolbar {
-    grid-template-rows: 88px minmax(0, 1fr) 42px;
+    grid-template-rows: 50px minmax(0, 1fr) 42px;
+  }
+
+  .workspace {
+    margin-top: 0;
+    padding-top: 0;
   }
 
   .file-shell.view-edit .file-status-bar {
@@ -332,7 +337,7 @@
   }
 
   .file-shell.with-format-toolbar {
-    grid-template-rows: 100px minmax(0, 1fr) 52px;
+    grid-template-rows: 52px minmax(0, 1fr) 52px;
   }
 
   .center-workbench,

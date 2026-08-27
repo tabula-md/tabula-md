@@ -21,7 +21,7 @@ export const getLiveRoomOpenState = ({
   timedOut: boolean;
   failure?: LiveRoomOpenFailure | null;
 }): LiveRoomOpenState => {
-  if (!hasActiveRoom || hydrationStatus === "ready") {
+  if (!hasActiveRoom) {
     return "idle";
   }
 
@@ -33,8 +33,12 @@ export const getLiveRoomOpenState = ({
     return "unavailable";
   }
 
-  if (timedOut && connectionStatus === "connected" && hydrationStatus === "waiting-for-state") {
+  if (timedOut) {
     return "unavailable";
+  }
+
+  if (hydrationStatus === "ready") {
+    return "idle";
   }
 
   return "opening";

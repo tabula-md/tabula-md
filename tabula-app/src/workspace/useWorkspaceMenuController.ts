@@ -13,61 +13,62 @@ import type {
   WorkspacePreferences,
   WorkspaceTheme,
 } from "./state/useWorkspacePreferences";
+import type { WorkspaceContextSummaryViewModel } from "./workspaceContextSummary";
 
 type UseWorkspaceMenuControllerOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
   workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
-  onAddFile: () => void;
-  canClearWorkspace: boolean;
-  canExportFile: boolean;
+  canUseLocalWorkspaceActions: boolean;
+  canClearBrowserWorkspace: boolean;
   canExportWorkspace: boolean;
-  onClearWorkspace: () => void;
-  onExportFile: () => void;
+  onClearWorkspace: () => void | Promise<void>;
   onExportWorkspace: () => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
+  onReviewLiveFolderConflict?: () => void;
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
-  onOpenAbout: () => void;
-  onOpenHelp: () => void;
+  collaborationActive?: boolean;
+  onRetryCollaboration?: () => void;
   preferences: WorkspacePreferences;
   preferencesOpen: boolean;
   setPreferences: Dispatch<SetStateAction<WorkspacePreferences>>;
   setPreferencesOpen: Dispatch<SetStateAction<boolean>>;
   setTopPopover: (popover: TopPopover) => void;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
 };
 
 export function useWorkspaceMenuController({
   importInputRef,
   workspaceImportInputRef,
   isOpen,
-  onAddFile,
-  canClearWorkspace,
-  canExportFile,
+  canUseLocalWorkspaceActions,
+  canClearBrowserWorkspace,
   canExportWorkspace,
   onClearWorkspace,
-  onExportFile,
   onExportWorkspace,
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
+  onReviewLiveFolderConflict,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
-  onOpenAbout,
-  onOpenHelp,
+  collaborationActive,
+  onRetryCollaboration,
   preferences,
   preferencesOpen,
   setPreferences,
   setPreferencesOpen,
   setTopPopover,
+  workspaceContextSummary,
 }: UseWorkspaceMenuControllerOptions) {
   const setTheme = useCallback((theme: WorkspaceTheme) => {
     setPreferences((currentPreferences) => ({
@@ -96,54 +97,54 @@ export function useWorkspaceMenuController({
       language: preferences.language,
       importInputRef,
       workspaceImportInputRef,
-      canClearWorkspace,
-      canExportFile,
+      canUseLocalWorkspaceActions,
+      canClearBrowserWorkspace,
       canExportWorkspace,
       onImportFileChange,
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
+      onReviewLiveFolderConflict,
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
+      collaborationActive,
+      onRetryCollaboration,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
       onChangeTheme: setTheme,
       onChangeLanguage: setLanguage,
-      onAddFile,
-      onOpenAbout,
-      onOpenHelp,
+      workspaceContextSummary,
     }),
     [
       importInputRef,
       workspaceImportInputRef,
       isOpen,
-      onAddFile,
-      canClearWorkspace,
-      canExportFile,
+      canUseLocalWorkspaceActions,
+      canClearBrowserWorkspace,
       canExportWorkspace,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
       onCloseChrome,
       onImportFileChange,
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
       onSaveLiveWorkspace,
+      onReviewLiveFolderConflict,
       onDisconnectLiveWorkspace,
       liveFolderAutoSave,
       onToggleLiveFolderAutoSave,
-      onOpenAbout,
-      onOpenHelp,
+      collaborationActive,
+      onRetryCollaboration,
       preferences.language,
       preferences.theme,
       preferencesOpen,
       setLanguage,
       setTheme,
       togglePreferences,
+      workspaceContextSummary,
     ],
   );
 

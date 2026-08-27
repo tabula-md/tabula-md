@@ -1,12 +1,18 @@
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 type WorkspaceMenuCopy = {
+  sections: {
+    documents: string;
+    workspace: string;
+    localFolder: string;
+  };
   actions: {
     newFile: string;
     importFile: string;
     importWorkspace: string;
     openLiveWorkspace: string;
     saveLiveWorkspace: string;
+    reviewLiveFolderConflict: string;
     disconnectLiveWorkspace: string;
     autoSaveLiveWorkspace: string;
     exportFile: string;
@@ -50,6 +56,15 @@ type WorkspaceMenuCopy = {
     cancel: string;
     confirm: string;
     cleared: string;
+    undo: string;
+    restored: string;
+  };
+  disconnectFolder: {
+    title: string;
+    description: string;
+    cancel: string;
+    confirm: string;
+    disconnected: string;
   };
   share: {
     trigger: string;
@@ -84,6 +99,12 @@ type WorkspaceMenuCopy = {
       stopDescription: string;
       stopConfirmTitle: string;
       stopConfirmDescription: string;
+      stopJoinedConfirmDescription: string;
+      afterLeaving: string;
+      restoreLocalWorkspace: string;
+      restoreLocalWorkspaceDescription: string;
+      keepRoomCopy: string;
+      keepRoomCopyDescription: string;
       cancelStop: string;
       confirmStop: string;
     };
@@ -118,12 +139,18 @@ export const WORKSPACE_LANGUAGE_OPTIONS: Array<{
 
 const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   en: {
+    sections: {
+      documents: "Documents",
+      workspace: "Workspace",
+      localFolder: "Local folder",
+    },
     actions: {
       newFile: "New document",
       importFile: "Import document (.md)…",
       importWorkspace: "Import folder copy…",
       openLiveWorkspace: "Connect local folder…",
       saveLiveWorkspace: "Save to folder",
+      reviewLiveFolderConflict: "Review folder conflict",
       disconnectLiveWorkspace: "Disconnect folder",
       autoSaveLiveWorkspace: "Auto-save to folder",
       exportFile: "Export document (.md)",
@@ -163,10 +190,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Clear local workspace?",
-      description: "Delete all local documents, folders, and comments. This cannot be undone.",
+      description: "Remove all documents, folders, and comments from this browser. You can undo immediately after clearing.",
       cancel: "Cancel",
       confirm: "Clear workspace",
       cleared: "Local workspace cleared.",
+      undo: "Undo",
+      restored: "Local workspace restored.",
+    },
+    disconnectFolder: {
+      title: "Disconnect local folder?",
+      description: "Keep the current browser copy, but stop saving changes to the folder. Files already in the folder are not deleted.",
+      cancel: "Cancel",
+      confirm: "Disconnect folder",
+      disconnected: "Folder disconnected. The browser copy is still here.",
     },
     share: {
       trigger: "Share",
@@ -209,6 +245,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Leave live collaboration?",
         stopConfirmDescription:
           "You’ll leave the live room and keep the latest workspace on this device as a local copy. Everyone else can continue collaborating.",
+        stopJoinedConfirmDescription:
+          "Choose what this browser should show after it disconnects. The live room and its invite link continue to work.",
+        afterLeaving: "After leaving",
+        restoreLocalWorkspace: "Return to my previous workspace",
+        restoreLocalWorkspaceDescription:
+          "Restore the browser workspace you had before opening this room.",
+        keepRoomCopy: "Keep this room as my local workspace",
+        keepRoomCopyDescription:
+          "Replace the previous browser workspace with the latest room contents.",
         cancelStop: "Cancel",
         confirmStop: "Leave room",
       },
@@ -227,12 +272,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   ko: {
+    sections: {
+      documents: "문서",
+      workspace: "워크스페이스",
+      localFolder: "로컬 폴더",
+    },
     actions: {
       newFile: "새 문서",
       importFile: "문서 가져오기 (.md)…",
       importWorkspace: "폴더 복사본 가져오기…",
       openLiveWorkspace: "로컬 폴더 연결…",
       saveLiveWorkspace: "폴더에 저장",
+      reviewLiveFolderConflict: "폴더 충돌 검토",
       disconnectLiveWorkspace: "폴더 연결 해제",
       autoSaveLiveWorkspace: "폴더에 자동 저장",
       exportFile: "문서 내보내기 (.md)",
@@ -272,10 +323,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "로컬 워크스페이스를 비울까요?",
-      description: "이 기기의 모든 문서, 폴더, 댓글을 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+      description: "이 브라우저의 모든 문서, 폴더, 댓글을 제거합니다. 비운 직후에는 되돌릴 수 있습니다.",
       cancel: "취소",
       confirm: "워크스페이스 비우기",
       cleared: "로컬 워크스페이스를 비웠습니다.",
+      undo: "되돌리기",
+      restored: "로컬 워크스페이스를 복구했습니다.",
+    },
+    disconnectFolder: {
+      title: "로컬 폴더 연결을 해제할까요?",
+      description: "현재 브라우저 복사본은 유지하지만 폴더에 변경 사항을 저장하지 않습니다. 폴더의 기존 파일은 삭제되지 않습니다.",
+      cancel: "취소",
+      confirm: "폴더 연결 해제",
+      disconnected: "폴더 연결을 해제했습니다. 브라우저 복사본은 그대로 유지됩니다.",
     },
     share: {
       trigger: "공유",
@@ -318,6 +378,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "실시간 협업에서 나갈까요?",
         stopConfirmDescription:
           "실시간 룸에서 나가고 최신 워크스페이스를 이 기기에 로컬 복사본으로 남깁니다. 다른 참여자는 계속 협업할 수 있습니다.",
+        stopJoinedConfirmDescription:
+          "연결을 끊은 뒤 이 브라우저에 무엇을 표시할지 선택하세요. 실시간 룸과 초대 링크는 그대로 유지됩니다.",
+        afterLeaving: "나간 뒤",
+        restoreLocalWorkspace: "이전 워크스페이스로 돌아가기",
+        restoreLocalWorkspaceDescription:
+          "이 룸을 열기 전에 사용하던 브라우저 워크스페이스를 복원합니다.",
+        keepRoomCopy: "이 룸을 로컬 워크스페이스로 유지",
+        keepRoomCopyDescription:
+          "이전 브라우저 워크스페이스를 최신 룸 내용으로 교체합니다.",
         cancelStop: "취소",
         confirmStop: "룸 나가기",
       },
@@ -336,12 +405,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   ja: {
+    sections: {
+      documents: "ドキュメント",
+      workspace: "ワークスペース",
+      localFolder: "ローカルフォルダー",
+    },
     actions: {
       newFile: "新規ドキュメント",
       importFile: "ドキュメントを読み込む (.md)…",
       importWorkspace: "フォルダーのコピーを読み込む…",
       openLiveWorkspace: "ローカルフォルダーを接続…",
       saveLiveWorkspace: "フォルダーに保存",
+      reviewLiveFolderConflict: "フォルダーの競合を確認",
       disconnectLiveWorkspace: "フォルダーの接続を解除",
       autoSaveLiveWorkspace: "フォルダーに自動保存",
       exportFile: "ドキュメントを書き出す (.md)",
@@ -381,10 +456,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "ローカルワークスペースを消去しますか？",
-      description: "この端末のすべてのドキュメント、フォルダー、コメントを削除します。この操作は元に戻せません。",
+      description: "このブラウザーのすべてのドキュメント、フォルダー、コメントを削除します。消去直後は元に戻せます。",
       cancel: "キャンセル",
       confirm: "ワークスペースを消去",
       cleared: "ローカルワークスペースを消去しました。",
+      undo: "元に戻す",
+      restored: "ローカルワークスペースを復元しました。",
+    },
+    disconnectFolder: {
+      title: "ローカルフォルダーを切断しますか？",
+      description: "現在のブラウザーコピーは保持しますが、変更をフォルダーへ保存しなくなります。フォルダー内の既存ファイルは削除されません。",
+      cancel: "キャンセル",
+      confirm: "フォルダーを切断",
+      disconnected: "フォルダーを切断しました。ブラウザーコピーは保持されています。",
     },
     share: {
       trigger: "共有",
@@ -428,6 +512,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "ライブ共同編集から退出しますか？",
         stopConfirmDescription:
           "ライブルームを退出し、最新のワークスペースをこの端末にローカルコピーとして残します。他の参加者は共同編集を続けられます。",
+        stopJoinedConfirmDescription:
+          "切断後にこのブラウザーに表示する内容を選択してください。ライブルームと招待リンクは引き続き利用できます。",
+        afterLeaving: "退出後",
+        restoreLocalWorkspace: "以前のワークスペースに戻る",
+        restoreLocalWorkspaceDescription:
+          "このルームを開く前のブラウザーワークスペースを復元します。",
+        keepRoomCopy: "このルームをローカルワークスペースとして保持",
+        keepRoomCopyDescription:
+          "以前のブラウザーワークスペースを最新のルーム内容で置き換えます。",
         cancelStop: "キャンセル",
         confirmStop: "ルームを退出",
       },
@@ -447,12 +540,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   zh: {
+    sections: {
+      documents: "文档",
+      workspace: "工作区",
+      localFolder: "本地文件夹",
+    },
     actions: {
       newFile: "新建文档",
       importFile: "导入文档 (.md)…",
       importWorkspace: "导入文件夹副本…",
       openLiveWorkspace: "连接本地文件夹…",
       saveLiveWorkspace: "保存到文件夹",
+      reviewLiveFolderConflict: "检查文件夹冲突",
       disconnectLiveWorkspace: "断开文件夹连接",
       autoSaveLiveWorkspace: "自动保存到文件夹",
       exportFile: "导出文档 (.md)",
@@ -492,10 +591,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "清空本地工作区？",
-      description: "删除此设备上的所有文档、文件夹和评论。此操作无法撤销。",
+      description: "移除此浏览器中的所有文档、文件夹和评论。清空后可立即撤销。",
       cancel: "取消",
       confirm: "清空工作区",
       cleared: "本地工作区已清空。",
+      undo: "撤销",
+      restored: "本地工作区已恢复。",
+    },
+    disconnectFolder: {
+      title: "断开本地文件夹？",
+      description: "保留当前浏览器副本，但停止将更改保存到文件夹。文件夹中的现有文件不会被删除。",
+      cancel: "取消",
+      confirm: "断开文件夹",
+      disconnected: "文件夹已断开。浏览器副本仍然保留。",
     },
     share: {
       trigger: "分享",
@@ -537,6 +645,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "离开实时协作？",
         stopConfirmDescription:
           "你将离开实时房间，并在此设备上保留最新工作区的本地副本。其他参与者仍可继续协作。",
+        stopJoinedConfirmDescription:
+          "选择断开连接后此浏览器显示的内容。实时房间和邀请链接仍可继续使用。",
+        afterLeaving: "离开后",
+        restoreLocalWorkspace: "返回之前的工作区",
+        restoreLocalWorkspaceDescription:
+          "恢复打开此房间之前使用的浏览器工作区。",
+        keepRoomCopy: "将此房间保留为本地工作区",
+        keepRoomCopyDescription:
+          "用最新的房间内容替换之前的浏览器工作区。",
         cancelStop: "取消",
         confirmStop: "离开协作空间",
       },
@@ -555,12 +672,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   es: {
+    sections: {
+      documents: "Documentos",
+      workspace: "Espacio de trabajo",
+      localFolder: "Carpeta local",
+    },
     actions: {
       newFile: "Nuevo documento",
       importFile: "Importar documento (.md)…",
       importWorkspace: "Importar copia de carpeta…",
       openLiveWorkspace: "Conectar carpeta local…",
       saveLiveWorkspace: "Guardar en la carpeta",
+      reviewLiveFolderConflict: "Revisar conflicto de carpeta",
       disconnectLiveWorkspace: "Desconectar carpeta",
       autoSaveLiveWorkspace: "Guardar automáticamente en la carpeta",
       exportFile: "Exportar documento (.md)",
@@ -600,10 +723,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "¿Vaciar el espacio local?",
-      description: "Elimina todos los documentos, carpetas y comentarios locales. Esta acción no se puede deshacer.",
+      description: "Elimina del navegador todos los documentos, carpetas y comentarios. Puedes deshacerlo inmediatamente.",
       cancel: "Cancelar",
       confirm: "Vaciar espacio",
       cleared: "Espacio local vaciado.",
+      undo: "Deshacer",
+      restored: "Espacio local restaurado.",
+    },
+    disconnectFolder: {
+      title: "¿Desconectar la carpeta local?",
+      description: "Conserva la copia del navegador, pero deja de guardar cambios en la carpeta. Los archivos existentes no se eliminan.",
+      cancel: "Cancelar",
+      confirm: "Desconectar carpeta",
+      disconnected: "Carpeta desconectada. La copia del navegador se conserva.",
     },
     share: {
       trigger: "Compartir",
@@ -647,6 +779,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "¿Salir de la colaboración en vivo?",
         stopConfirmDescription:
           "Saldrás de la sala y conservarás el espacio más reciente como copia local en este dispositivo. Los demás pueden continuar colaborando.",
+        stopJoinedConfirmDescription:
+          "Elige qué mostrará este navegador después de desconectarse. La sala y su enlace de invitación seguirán funcionando.",
+        afterLeaving: "Después de salir",
+        restoreLocalWorkspace: "Volver a mi espacio anterior",
+        restoreLocalWorkspaceDescription:
+          "Restaura el espacio del navegador que usabas antes de abrir esta sala.",
+        keepRoomCopy: "Conservar esta sala como espacio local",
+        keepRoomCopyDescription:
+          "Reemplaza el espacio anterior del navegador con el contenido más reciente de la sala.",
         cancelStop: "Cancelar",
         confirmStop: "Salir de la sala",
       },
@@ -666,12 +807,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   fr: {
+    sections: {
+      documents: "Documents",
+      workspace: "Espace de travail",
+      localFolder: "Dossier local",
+    },
     actions: {
       newFile: "Nouveau document",
       importFile: "Importer un document (.md)…",
       importWorkspace: "Importer une copie du dossier…",
       openLiveWorkspace: "Connecter un dossier local…",
       saveLiveWorkspace: "Enregistrer dans le dossier",
+      reviewLiveFolderConflict: "Examiner le conflit du dossier",
       disconnectLiveWorkspace: "Déconnecter le dossier",
       autoSaveLiveWorkspace: "Enregistrement automatique dans le dossier",
       exportFile: "Exporter le document (.md)",
@@ -711,10 +858,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Effacer l’espace local ?",
-      description: "Supprime tous les documents, dossiers et commentaires locaux. Cette action est irréversible.",
+      description: "Supprime du navigateur tous les documents, dossiers et commentaires. Vous pouvez annuler immédiatement.",
       cancel: "Annuler",
       confirm: "Effacer l’espace",
       cleared: "Espace local effacé.",
+      undo: "Annuler",
+      restored: "Espace local restauré.",
+    },
+    disconnectFolder: {
+      title: "Déconnecter le dossier local ?",
+      description: "Conserve la copie du navigateur, mais cesse d’enregistrer les changements dans le dossier. Les fichiers existants ne sont pas supprimés.",
+      cancel: "Annuler",
+      confirm: "Déconnecter le dossier",
+      disconnected: "Dossier déconnecté. La copie du navigateur est conservée.",
     },
     share: {
       trigger: "Partager",
@@ -758,6 +914,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Quitter la collaboration en direct ?",
         stopConfirmDescription:
           "Vous quitterez la salle et conserverez l’espace le plus récent comme copie locale sur cet appareil. Les autres peuvent poursuivre la collaboration.",
+        stopJoinedConfirmDescription:
+          "Choisissez ce que ce navigateur affichera après la déconnexion. La salle et son lien d’invitation continueront de fonctionner.",
+        afterLeaving: "Après avoir quitté",
+        restoreLocalWorkspace: "Revenir à mon espace précédent",
+        restoreLocalWorkspaceDescription:
+          "Restaure l’espace du navigateur utilisé avant d’ouvrir cette salle.",
+        keepRoomCopy: "Conserver cette salle comme espace local",
+        keepRoomCopyDescription:
+          "Remplace l’espace précédent du navigateur par le contenu actuel de la salle.",
         cancelStop: "Annuler",
         confirmStop: "Quitter la salle",
       },
@@ -777,12 +942,18 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
   },
   de: {
+    sections: {
+      documents: "Dokumente",
+      workspace: "Workspace",
+      localFolder: "Lokaler Ordner",
+    },
     actions: {
       newFile: "Neues Dokument",
       importFile: "Dokument importieren (.md)…",
       importWorkspace: "Ordnerkopie importieren…",
       openLiveWorkspace: "Lokalen Ordner verbinden…",
       saveLiveWorkspace: "Im Ordner speichern",
+      reviewLiveFolderConflict: "Ordnerkonflikt prüfen",
       disconnectLiveWorkspace: "Ordner trennen",
       autoSaveLiveWorkspace: "Automatisch im Ordner speichern",
       exportFile: "Dokument exportieren (.md)",
@@ -822,10 +993,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     clearWorkspace: {
       title: "Lokalen Workspace leeren?",
-      description: "Löscht alle lokalen Dokumente, Ordner und Kommentare. Diese Aktion kann nicht rückgängig gemacht werden.",
+      description: "Entfernt alle Dokumente, Ordner und Kommentare aus diesem Browser. Direkt danach ist Rückgängig möglich.",
       cancel: "Abbrechen",
       confirm: "Workspace leeren",
       cleared: "Lokaler Workspace geleert.",
+      undo: "Rückgängig",
+      restored: "Lokaler Workspace wiederhergestellt.",
+    },
+    disconnectFolder: {
+      title: "Lokalen Ordner trennen?",
+      description: "Behält die Browserkopie, speichert Änderungen aber nicht mehr im Ordner. Vorhandene Dateien werden nicht gelöscht.",
+      cancel: "Abbrechen",
+      confirm: "Ordner trennen",
+      disconnected: "Ordner getrennt. Die Browserkopie bleibt erhalten.",
     },
     share: {
       trigger: "Teilen",
@@ -869,6 +1049,15 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopConfirmTitle: "Live-Zusammenarbeit verlassen?",
         stopConfirmDescription:
           "Du verlässt den Live-Raum und behältst den aktuellen Workspace als lokale Kopie auf diesem Gerät. Alle anderen können weiter zusammenarbeiten.",
+        stopJoinedConfirmDescription:
+          "Wähle, was dieser Browser nach dem Trennen anzeigen soll. Der Live-Raum und sein Einladungslink bleiben bestehen.",
+        afterLeaving: "Nach dem Verlassen",
+        restoreLocalWorkspace: "Zum vorherigen Workspace zurückkehren",
+        restoreLocalWorkspaceDescription:
+          "Stellt den Browser-Workspace wieder her, der vor diesem Raum geöffnet war.",
+        keepRoomCopy: "Diesen Raum als lokalen Workspace behalten",
+        keepRoomCopyDescription:
+          "Ersetzt den vorherigen Browser-Workspace durch den aktuellen Rauminhalt.",
         cancelStop: "Abbrechen",
         confirmStop: "Raum verlassen",
       },
@@ -896,6 +1085,7 @@ export type WorkspaceChromeCopy = {
   topChrome: {
     openWorkspaceMenu: string;
     closeWorkspaceMenu: string;
+    toggleWorkspacePanel: string;
     toggleSidePanel: string;
     closeSidePanel: string;
     collaborators: string;
@@ -969,6 +1159,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Open Workspace menu",
       closeWorkspaceMenu: "Close Workspace menu",
+      toggleWorkspacePanel: "Toggle workspace panel",
       toggleSidePanel: "Toggle side panel",
       closeSidePanel: "Close side panel",
       collaborators: "Collaborators",
@@ -1040,6 +1231,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "작업공간 메뉴 열기",
       closeWorkspaceMenu: "작업공간 메뉴 닫기",
+      toggleWorkspacePanel: "작업공간 패널 전환",
       toggleSidePanel: "사이드 패널 전환",
       closeSidePanel: "사이드 패널 닫기",
       collaborators: "협업자",
@@ -1111,6 +1303,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "ワークスペースメニューを開く",
       closeWorkspaceMenu: "ワークスペースメニューを閉じる",
+      toggleWorkspacePanel: "ワークスペースパネルを切り替える",
       toggleSidePanel: "サイドパネルを切り替える",
       closeSidePanel: "サイドパネルを閉じる",
       collaborators: "共同編集者",
@@ -1182,6 +1375,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "打开工作区菜单",
       closeWorkspaceMenu: "关闭工作区菜单",
+      toggleWorkspacePanel: "切换工作区面板",
       toggleSidePanel: "切换侧边栏",
       closeSidePanel: "关闭侧边栏",
       collaborators: "协作者",
@@ -1253,6 +1447,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Abrir menú del espacio",
       closeWorkspaceMenu: "Cerrar menú del espacio",
+      toggleWorkspacePanel: "Alternar panel del espacio",
       toggleSidePanel: "Alternar panel lateral",
       closeSidePanel: "Cerrar panel lateral",
       collaborators: "Colaboradores",
@@ -1324,6 +1519,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Ouvrir le menu de l’espace",
       closeWorkspaceMenu: "Fermer le menu de l’espace",
+      toggleWorkspacePanel: "Afficher ou masquer le panneau de l’espace",
       toggleSidePanel: "Afficher ou masquer le panneau latéral",
       closeSidePanel: "Fermer le panneau latéral",
       collaborators: "Collaborateurs",
@@ -1395,6 +1591,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Workspace-Menü öffnen",
       closeWorkspaceMenu: "Workspace-Menü schließen",
+      toggleWorkspacePanel: "Workspace-Bereich ein-/ausblenden",
       toggleSidePanel: "Seitenleiste ein-/ausblenden",
       closeSidePanel: "Seitenleiste schließen",
       collaborators: "Mitwirkende",

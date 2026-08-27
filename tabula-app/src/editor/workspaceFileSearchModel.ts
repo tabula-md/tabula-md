@@ -33,17 +33,19 @@ export type WorkspaceFileSearchFilters = {
   freshness?: ReadonlySet<OkfFreshness>;
 };
 
-export type WorkspaceFileSearchResult = {
+export type WorkspaceFileSearchResult<
+  Entry extends WorkspaceFileSearchEntry = WorkspaceFileSearchEntry,
+> = {
   error: string | null;
-  files: WorkspaceFileSearchEntry[];
+  files: Entry[];
 };
 
-export const searchWorkspaceFiles = (
-  entries: readonly WorkspaceFileSearchEntry[],
+export const searchWorkspaceFiles = <Entry extends WorkspaceFileSearchEntry>(
+  entries: readonly Entry[],
   query: string,
   options: SearchOptions,
   filters?: WorkspaceFileSearchFilters,
-): WorkspaceFileSearchResult => {
+): WorkspaceFileSearchResult<Entry> => {
   const hasQuery = query.trim().length > 0;
   const hasFilters = Boolean(filters && (
     filters.types.size > 0 ||
@@ -54,7 +56,7 @@ export const searchWorkspaceFiles = (
   ));
   if (!hasQuery && !hasFilters) return { error: null, files: [] };
 
-  const files: WorkspaceFileSearchEntry[] = [];
+  const files: Entry[] = [];
   for (const entry of entries) {
     if (
       filters?.types.size &&

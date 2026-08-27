@@ -37,6 +37,11 @@ describe("workspace storage migrations", () => {
     expect(workspace?.activeFileId).toBe("guide");
     expect(workspace?.openFileIds).toEqual(["guide"]);
     expect(workspace?.files[0]?.editingMode).toBe("source");
+    expect(result.payload?.presentation).toMatchObject({
+      editingMode: "source",
+      viewMode: "edit",
+    });
+    expect((result.payload?.files as Record<string, unknown>)?.guide).not.toHaveProperty("viewMode");
   });
 
   it("rebuilds v5 path segments as folders", () => {
@@ -127,6 +132,16 @@ describe("workspace storage migrations", () => {
       contentKind: "binary",
       sourceHash: "sha256:abc",
       editable: false,
+    });
+  });
+
+  it("keeps presentation state out of persisted document records", () => {
+    const workspace = parseWorkspacePayload(fixtures[1].payload);
+    const file = workspace?.files[0];
+    expect(file && serializeFile(file)).not.toMatchObject({
+      viewMode: expect.anything(),
+      readingWidth: expect.anything(),
+      lineWrapping: expect.anything(),
     });
   });
 });

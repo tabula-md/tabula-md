@@ -29,7 +29,7 @@ export {
 };
 export type { FileEditingMode, FileViewMode, ReadingWidth };
 
-export const PROJECT_STORAGE_VERSION = 7;
+export const PROJECT_STORAGE_VERSION = 8;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
@@ -83,6 +83,39 @@ export type WorkspaceFile = {
   artifact?: WorkspaceFileArtifactMetadata;
 };
 
+export type WorkspacePresentationState = {
+  viewMode: FileViewMode;
+  editingMode: FileEditingMode;
+  readingWidth: ReadingWidth;
+  splitRatio?: number;
+  lineWrapping: boolean;
+  lineNumbers: boolean;
+};
+
+export const DEFAULT_WORKSPACE_PRESENTATION: WorkspacePresentationState = {
+  viewMode: "visual",
+  editingMode: "visual",
+  readingWidth: "wide",
+  splitRatio: undefined,
+  lineWrapping: true,
+  lineNumbers: true,
+};
+
+export const getWorkspacePresentation = (
+  file?: Pick<WorkspaceFile, keyof WorkspacePresentationState>,
+): WorkspacePresentationState => {
+  if (!file) return DEFAULT_WORKSPACE_PRESENTATION;
+  const viewMode = file.viewMode;
+  return {
+    viewMode,
+    editingMode: viewMode === "split" ? "source" : getFileEditingMode(file),
+    readingWidth: file.readingWidth,
+    splitRatio: file.splitRatio,
+    lineWrapping: file.lineWrapping,
+    lineNumbers: file.lineNumbers,
+  };
+};
+
 export type WorkspaceFileArtifactMetadata = {
   kind: WorkspaceArtifactKind;
   mediaType?: string;
@@ -130,6 +163,7 @@ export type WorkspaceState = {
   openFileIds: string[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
+  presentation: WorkspacePresentationState;
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
 };
 
@@ -145,17 +179,11 @@ export type StoredWorkspaceFile = {
   text: string;
   parentId?: string | null;
   order?: number;
-  viewMode: FileViewMode;
-  editingMode?: FileEditingMode;
-  readingWidth: ReadingWidth;
-  splitRatio?: number;
-  lineWrapping: boolean;
-  lineNumbers: boolean;
   bookmarks?: FileBookmark[];
   artifact?: WorkspaceFileArtifactMetadata;
 };
 
-export type StoredProjectV7 = {
+export type StoredProjectV8 = {
   schema: "tabula.project";
   version: typeof PROJECT_STORAGE_VERSION;
   savedAt: string;
@@ -166,6 +194,7 @@ export type StoredProjectV7 = {
   folders: Record<string, WorkspaceFolder>;
   files: Record<string, StoredWorkspaceFile>;
   commentsByFileId: Record<string, FileComment[]>;
+  presentation: WorkspacePresentationState;
 };
 
 export type LocationRoom = {
@@ -233,6 +262,7 @@ export const createRoomWorkspaceState = (): WorkspaceState => {
     openFileIds: [],
     activeFileId: "",
     commentsByFileId: {},
+    presentation: DEFAULT_WORKSPACE_PRESENTATION,
   };
 };
 
@@ -306,6 +336,7 @@ const normalizeWorkspaceFileArtifactMetadata = (
       ["document", "asset", "instruction", "support"].includes(value.kind)
     ? value.kind as WorkspaceArtifactKind
     : undefined;
+
   const contentKind =
     value.contentKind === "text" || value.contentKind === "binary"
       ? value.contentKind
@@ -326,6 +357,27 @@ const normalizeWorkspaceFileArtifactMetadata = (
     ...(typeof value.mediaType === "string"
       ? { mediaType: value.mediaType }
       : {}),
+  };
+};
+
+const normalizeWorkspacePresentation = (
+  value: unknown,
+): WorkspacePresentationState => {
+  if (!isRecord(value)) return DEFAULT_WORKSPACE_PRESENTATION;
+  const viewMode = getFileViewMode(value.viewMode) ?? DEFAULT_WORKSPACE_PRESENTATION.viewMode;
+  const splitRatio = getFiniteNumber(value.splitRatio);
+  return {
+    viewMode,
+    editingMode: viewMode === "split"
+      ? "source"
+      : getFileEditingMode({
+          viewMode,
+          editingMode: getFileEditingModeValue(value.editingMode),
+        }),
+    readingWidth: getReadingWidth(value.readingWidth) ?? DEFAULT_WORKSPACE_PRESENTATION.readingWidth,
+    splitRatio: splitRatio === undefined ? undefined : clampSplitEditorRatio(splitRatio),
+    lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
+    lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
   };
 };
 
@@ -550,13 +602,17 @@ export const finalizeWorkspaceState = (
     folders?: WorkspaceFolder[];
     openFileIds?: string[];
     knowledgeBaseline?: WorkspaceKnowledgeBaseline;
+    presentation?: WorkspacePresentationState;
   } = {},
 ): WorkspaceState => {
   const normalizedTree = normalizeWorkspaceTree(
     files,
     options.folders?.length ? options.folders : [createWorkspaceRootFolder()],
   );
-  const nextFiles = normalizedTree.files;
+  const presentation = options.presentation ?? getWorkspacePresentation(
+    normalizedTree.files.find((file) => file.id === activeFileId) ?? normalizedTree.files[0],
+  );
+  const nextFiles = normalizedTree.files.map((file) => ({ ...file, ...presentation }));
 
   const fileIds = new Set(nextFiles.map((file) => file.id));
   const storedOpenFileIds = options.openFileIds;
@@ -584,6 +640,7 @@ export const finalizeWorkspaceState = (
     openFileIds: nextOpenFileIds,
     activeFileId: nextActiveFileId,
     commentsByFileId,
+    presentation,
     ...(options.knowledgeBaseline
       ? { knowledgeBaseline: options.knowledgeBaseline }
       : {}),
@@ -616,6 +673,7 @@ export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null =
         migratedPayload.folderOrder,
       ),
       openFileIds: normalizeFileIdList(migratedPayload.openFileIds),
+      presentation: normalizeWorkspacePresentation(migratedPayload.presentation),
     },
   );
 };
@@ -636,20 +694,15 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     text: file.text,
     parentId: file.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
     order: file.order,
-    viewMode: file.viewMode,
-    editingMode: getFileEditingMode(file),
-    readingWidth: file.readingWidth,
-    splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
-    lineWrapping: file.lineWrapping,
-    lineNumbers: file.lineNumbers,
     bookmarks: file.bookmarks ?? [],
     artifact: file.artifact,
   };
 };
 
-type CreateStoredWorkspaceInput = Omit<WorkspaceState, "folders" | "openFileIds"> & {
+type CreateStoredWorkspaceInput = Omit<WorkspaceState, "folders" | "openFileIds" | "presentation"> & {
   folders?: WorkspaceFolder[];
   openFileIds?: string[];
+  presentation?: WorkspacePresentationState;
 };
 
 export const createStoredWorkspace = ({
@@ -658,10 +711,14 @@ export const createStoredWorkspace = ({
   openFileIds = files.map((file) => file.id),
   activeFileId,
   commentsByFileId,
-}: CreateStoredWorkspaceInput): StoredProjectV7 => {
+  presentation,
+}: CreateStoredWorkspaceInput): StoredProjectV8 => {
   const storedFiles = files;
   const storedFileIds = new Set(storedFiles.map((file) => file.id));
   const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
+  const storedPresentation = presentation ?? getWorkspacePresentation(
+    storedFiles.find((file) => file.id === nextActiveFileId) ?? storedFiles[0],
+  );
 
   return {
     schema: "tabula.project",
@@ -676,6 +733,7 @@ export const createStoredWorkspace = ({
     folders: Object.fromEntries(folders.map((folder) => [folder.id, folder])),
     files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
+    presentation: storedPresentation,
   };
 };
 

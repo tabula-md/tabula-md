@@ -140,18 +140,19 @@ export async function run(ctx) {
     });
     expect(
       splitWithProjectContext.mainClass.includes("split-view-open") &&
-        splitWithProjectContext.mainColumns.split(" ").length === 1,
-      "At compact desktop widths, Project Context should overlay Split instead of shrinking its document lane.",
+        splitWithProjectContext.mainColumns.split(" ").length === 2,
+      "At compact desktop widths, Project Context should use the shared inline panel layout.",
     );
     expect(
-      splitWithProjectContext.panelPosition === "fixed" && splitWithProjectContext.backdropDisplay === "block",
-      "Compact Split should use the shared overlay panel behavior.",
+      splitWithProjectContext.panelPosition !== "fixed" && splitWithProjectContext.backdropDisplay !== "block",
+      "Compact Split should reserve overlay behavior for narrow screens.",
     );
     expect(
-      splitWithProjectContext.workspaceDisplay === "grid" &&
-        splitWithProjectContext.editor?.height > 300 &&
-        splitWithProjectContext.preview?.height > 300,
-      "Opening Project Context should keep editor and preview visible side by side.",
+      splitWithProjectContext.workspaceDisplay === "block" &&
+        splitWithProjectContext.editor?.width > 600 &&
+        splitWithProjectContext.preview?.width > 600 &&
+        Math.abs(splitWithProjectContext.editor.width - splitWithProjectContext.preview.width) <= 1,
+      `Opening Project Context should stack full-width editor and preview lanes when the workbench becomes compact: ${JSON.stringify(splitWithProjectContext)}`,
     );
   });
 }

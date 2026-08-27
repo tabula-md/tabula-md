@@ -31,7 +31,6 @@ export function useRightPanelCollapseState({
   const [showResolved, setShowResolved] = useState(false);
   const [collapsedReplyIds, setCollapsedReplyIds] = useState<Set<string>>(() => new Set());
   const [collapsedCommentFileIds, setCollapsedCommentFileIds] = useState<Set<string>>(() => new Set());
-  const [collapsedFileTreeFolderIds, setCollapsedFileTreeFolderIds] = useState<Set<string>>(() => new Set());
   const [collapsedLinkSections, setCollapsedLinkSections] = useState<Set<RightPanelLinkSection>>(
     () => new Set(),
   );
@@ -93,7 +92,6 @@ export function useRightPanelCollapseState({
     showResolved,
     collapsedReplyIds,
     collapsedCommentFileIds,
-    collapsedFileTreeFolderIds,
     collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection: () => setShowResolved((isVisible) => !isVisible),
@@ -101,11 +99,6 @@ export function useRightPanelCollapseState({
       setCollapsedReplyIds((currentIds) => toggleSetValue(currentIds, commentId)),
     toggleCommentFileCollapsed: (fileId: string) =>
       setCollapsedCommentFileIds((currentIds) => toggleSetValue(currentIds, fileId)),
-    toggleFileTreeFolderCollapsed: (folderId: string) =>
-      setCollapsedFileTreeFolderIds((currentIds) => toggleSetValue(currentIds, folderId)),
-    collapseAllFileTreeFolders: (folderIds: Iterable<string>) =>
-      setCollapsedFileTreeFolderIds(new Set(folderIds)),
-    expandAllFileTreeFolders: () => setCollapsedFileTreeFolderIds(new Set()),
     toggleLinkSectionCollapsed: (section: RightPanelLinkSection) =>
       setCollapsedLinkSections((currentSections) => toggleSetValue(currentSections, section)),
     toggleOutlineHeadingCollapsed: (headingId: string) =>

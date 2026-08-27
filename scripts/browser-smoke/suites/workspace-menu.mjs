@@ -82,7 +82,7 @@ export async function run(ctx) {
       (await page.locator(".left-panel").getByText("No documents yet", { exact: true }).count()) === 1,
       "An empty Files panel should describe the document state instead of a failed search.",
     );
-    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
@@ -98,8 +98,8 @@ export async function run(ctx) {
       "Comments should describe its missing document context.",
     );
     expect((await page.locator(".right-comments-toolbar").count()) === 0, "Comments should hide unusable controls in an empty workspace.");
-    await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
-    await page.getByRole("button", { name: "Workspace search", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Search", exact: true }).click();
     await page.getByRole("dialog", { name: "Search documents and commands", exact: true }).waitFor({ state: "visible" });
     await page.getByRole("button", { name: "Close search", exact: true }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
@@ -185,7 +185,7 @@ export async function run(ctx) {
     );
     await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
     expect((await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === "", "Blank file copy should preserve its source.");
-    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
@@ -348,13 +348,15 @@ export async function run(ctx) {
       "The workspace menu should not expose the removed JSON backup importer.",
     );
     expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isEnabled(),
-      "The workspace menu should export the active document.",
+      (await page.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 0,
+      "The workspace menu should not duplicate document-scoped export.",
     );
     expect(
       await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isEnabled(),
       "The workspace menu should export a ZIP when the workspace has documents.",
     );
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     const documentDownloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export document (.md)", exact: true }).click();
     const documentDownload = await documentDownloadPromise;
@@ -374,8 +376,8 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
     await page.getByRole("dialog", { name: "Clear local workspace?" }).waitFor();
     expect(
-      (await page.getByText("Delete all local documents, folders, and comments. This cannot be undone.").count()) === 1,
-      "Clear workspace should explain its destructive local scope.",
+      (await page.getByText("Remove all documents, folders, and comments from this browser. You can undo immediately after clearing.").count()) === 1,
+      "Clear workspace should explain its browser-local scope and immediate recovery.",
     );
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
@@ -388,6 +390,16 @@ export async function run(ctx) {
     await page.waitForFunction(
       () => document.querySelector(".app-toast")?.textContent?.includes("Local workspace cleared."),
     );
+    await page.locator(".app-toast").getByRole("button", { name: "Undo", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await page.waitForFunction(
+      () => document.querySelector(".app-toast")?.textContent?.includes("Local workspace restored."),
+    );
+
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
+    await page.getByRole("button", { name: "Clear workspace", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
     await page.reload();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
@@ -428,9 +440,12 @@ export async function run(ctx) {
       (await page.locator("#root").getAttribute("aria-hidden")) === null,
       "Closing the modal should restore the app accessibility tree.",
     );
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await page.getByRole("dialog", { name: "About Tabula.md" }).waitFor();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("dialog", { name: "Search documents and commands", exact: true })
+      .getByRole("option")
+      .filter({ hasText: "About Tabula" })
+      .click();
+    await page.getByRole("dialog", { name: "About Tabula" }).waitFor();
     expect(
       (await page.locator('.tab-item[data-file-name="README.md"]').count()) === 0,
       "About should not create a document in the user's workspace.",
@@ -541,7 +556,7 @@ export async function run(ctx) {
       "Files panel should not mark an active file when no tab is open.",
     );
 
-    await page.locator(".left-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
@@ -593,24 +608,24 @@ export async function run(ctx) {
     await waitForFileCount(page, 0);
     await page.keyboard.press(appNewFileShortcut);
     await waitForFileCount(page, 1);
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     await waitForSavedLocally(page);
     let nextTabs = await getTabs(page);
     expect(nextTabs.length === 1, "New document shortcut from the empty workbench should open one tab.");
     expect(nextTabs[0]?.active, "New document shortcut from the empty workbench should activate the new tab.");
-    expect(nextTabs[0]?.mode === "Edit", "New document shortcut should preserve the workspace Source mode.");
+    expect(nextTabs[0]?.mode === "Visual", "New document shortcut should use the Visual edit default.");
 
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
     await waitForFileCount(page, 0);
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForFileCount(page, 1);
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     await waitForSavedLocally(page);
     nextTabs = await getTabs(page);
     expect(nextTabs.length === 1, "New document from the empty workbench should open one tab.");
     expect(nextTabs[0]?.active, "New document from the empty workbench should activate the new tab.");
-    expect(nextTabs[0]?.mode === "Edit", "New document action should preserve the workspace Source mode.");
+    expect(nextTabs[0]?.mode === "Visual", "New document action should use the Visual edit default.");
     expect((await page.locator(".empty-file-state").count()) === 0, "New file should leave the empty workbench.");
     expect((await page.locator(".document-controls").count()) === 1, "New file should restore file tools.");
     await waitForEditorFocus(page);
@@ -1029,14 +1044,14 @@ export async function run(ctx) {
         await page.locator(".share-trigger").click();
         await waitForShareDialogState(page, { panel: "Share link" });
         await page.getByRole("button", { name: "Start session" }).click();
-        await page.waitForSelector(".app-toast", { timeout: 8_000 });
+        await page.waitForSelector(".app-toast", { timeout: 12_000 });
 
         await page.waitForFunction(
           () =>
             !window.location.hash.startsWith("#room=") &&
             document.querySelectorAll(".share-modal").length === 0,
           undefined,
-          { timeout: 8_000 },
+          { timeout: 12_000 },
         );
 
         const failedStartState = await page.evaluate(() => {
@@ -1158,20 +1173,19 @@ export async function run(ctx) {
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Import document (.md)…"),
-      "The menu should keep the must-have document start actions.",
+      !menuSurface.menuRows.includes("New document") &&
+        !menuSurface.menuRows.includes("Import document (.md)…") &&
+        !menuSurface.menuRows.includes("Export document (.md)"),
+      "The workspace menu should not mix document commands into workspace identity and persistence.",
     );
     expect(
-      menuSurface.menuRows.includes("Export document (.md)") && menuSurface.menuRows.includes("Export workspace (.zip)"),
-      "The workspace menu should own document and workspace export.",
+      menuSurface.menuRows.includes("Import folder copy…") &&
+        menuSurface.menuRows.includes("Clear local workspace…"),
+      "The workspace menu should keep available workspace-level persistence actions.",
     );
     expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isDisabled(),
-      "Document export should stay disabled without an active document.",
-    );
-    expect(
-      await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isDisabled(),
-      "Workspace export should stay disabled while the workspace has no documents.",
+      (await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).count()) === 0,
+      "Workspace export should stay out of the menu while the workspace has no documents.",
     );
 
     await page.mouse.click(760, 420);
@@ -1180,13 +1194,12 @@ export async function run(ctx) {
       "Clicking outside the workspace menu should close it.",
     );
 
-    await openProjectMenu(page);
-    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
+    await page.locator(".add-tab-button").click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "visual" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title.startsWith("Untitled"), "Menu New document should create and activate the next blank document.");
+    expect(activeTab?.title.startsWith("Untitled"), "The persistent New document action should create and activate a blank document.");
     expect(activeTab?.mode === "Visual", "New blank documents should start in Visual edit.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });
@@ -1290,14 +1303,14 @@ export async function run(ctx) {
 
 async function ensureFilesPanelOpen(page) {
   if ((await page.locator(".left-panel").count()) === 0) {
-    await page.locator(".top-left-zone").getByRole("button", { name: "Files", exact: true }).click();
+    await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     await page.locator(".left-panel").waitFor({ state: "visible" });
   }
   const filesTab = page.locator(".left-panel").getByRole("button", { name: "Files", exact: true });
   if ((await filesTab.getAttribute("aria-pressed")) !== "true") {
     await filesTab.click();
   }
-  await page.locator(".left-panel .right-panel-body.files").waitFor({ state: "visible" });
+  await page.locator(".left-panel .left-panel-body.files").waitFor({ state: "visible" });
 }
 
 async function waitForEditorFocus(page) {

@@ -7,7 +7,6 @@ import type { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime"
 import type { useDocumentSurfaceController } from "./useDocumentSurfaceController";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { useWorkspaceRoomController } from "../workspace/useWorkspaceRoomController";
-import type { useWorkspacePersistenceRuntime } from "../workspace/persistence/useWorkspacePersistenceRuntime";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
 import type { CenterPopover } from "../ui/uiTypes";
@@ -18,7 +17,6 @@ type ActiveFileEditor = ReturnType<typeof useWorkspaceActiveFileEditor>;
 type CommentActions = ReturnType<typeof useWorkspaceCommentActions>;
 type DocumentSurfaceController = ReturnType<typeof useDocumentSurfaceController>;
 type RoomController = ReturnType<typeof useWorkspaceRoomController>;
-type WorkspacePersistence = ReturnType<typeof useWorkspacePersistenceRuntime>;
 
 type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   addPropertyRequestId?: number;
@@ -32,16 +30,15 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   focusedCommentId: string | null;
   language: WorkspaceLanguage;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
+  onExportDocument?: () => void;
   onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
   onPropertyAddRequestHandled?: () => void;
-  persistence: Pick<WorkspacePersistence, "persistedRevision">;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   room: Pick<
     RoomController,
     | "editorBinding"
     | "isLive"
     | "publishCurrentRoomViewport"
-    | "statusLabel"
     | "stopFollowing"
     | "stopFollowingForLocalNavigation"
   >;
@@ -66,7 +63,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   onOpenWorkspaceLink,
   onPropertyAddRequestHandled,
   onSetViewMode,
-  persistence,
+  onExportDocument,
   previewRef,
   room,
   surface,
@@ -137,14 +134,12 @@ export function useWorkspaceWorkbenchSurfaceController({
       searchTarget: document.searchTarget,
       selectedCharacterCount: document.selectedCharacterCount,
       selectedLineCount: document.selectedLineCount,
-      saveRevision: persistence.persistedRevision,
       selectionActionPosition: document.selectionActionPosition,
       splitDividerDragging: document.splitDividerDragging,
       splitDividerMaxValue: document.splitDividerMaxValue,
       splitDividerMinValue: document.splitDividerMinValue,
       splitDividerValue: document.splitDividerValue,
       splitWorkspaceStyle: document.splitWorkspaceStyle,
-      statusLabel: room.statusLabel,
       text: document.text,
       toolbarLabel,
       workspaceRef: document.workspaceRef,
@@ -171,6 +166,7 @@ export function useWorkspaceWorkbenchSurfaceController({
         room.stopFollowing("local-edit");
         documentWorkbenchController.onFormat(command);
       },
+      onExportDocument,
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
       onOpenWorkspaceLink,

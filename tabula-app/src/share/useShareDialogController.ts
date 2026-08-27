@@ -7,15 +7,17 @@ import { buildAgentInvite } from "./shareAgentHandoff";
 import { getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import type { LocationRoom } from "../workspace/workspaceStorage";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
+import type { RoomExitLocalWorkspaceStrategy } from "../workspace/workspaceSessionTransition";
 
 type UseShareDialogControllerOptions = {
   room?: LocationRoom | null;
   isLive: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   onCloseShare: () => void;
   onCopyFailed: () => void;
-  onStopSession: () => void;
+  onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
 };
 
 export function useShareDialogController({
@@ -23,6 +25,7 @@ export function useShareDialogController({
   isLive,
   jsonShare,
   language,
+  roomExitStrategy,
   onCloseShare,
   onCopyFailed,
   onStopSession,
@@ -30,6 +33,8 @@ export function useShareDialogController({
   const [agentInviteCopied, setAgentInviteCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
   const [view, setView] = useState<"chooser" | "export-result" | "stop-confirm">("chooser");
+  const [selectedRoomExitStrategy, setSelectedRoomExitStrategy] =
+    useState<RoomExitLocalWorkspaceStrategy>(roomExitStrategy);
   const closedRef = useRef(false);
   const copy = getWorkspaceMenuCopy(language).share;
   const shareModalTitle = copy.modalTitle;
@@ -70,10 +75,13 @@ export function useShareDialogController({
       onCopyFailed();
     }
   };
-  const requestStopSession = () => setView("stop-confirm");
+  const requestStopSession = () => {
+    setSelectedRoomExitStrategy(roomExitStrategy);
+    setView("stop-confirm");
+  };
   const cancelStopSession = () => setView("chooser");
   const confirmStopSession = () => {
-    onStopSession();
+    onStopSession(selectedRoomExitStrategy);
     closeShare();
   };
 
@@ -111,6 +119,8 @@ export function useShareDialogController({
     shareModalTitle,
     shareView,
     requestStopSession,
+    selectedRoomExitStrategy,
+    setSelectedRoomExitStrategy,
     view,
   };
 }

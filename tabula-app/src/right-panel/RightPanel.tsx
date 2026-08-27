@@ -1,11 +1,11 @@
 import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
-  Link2,
+  Info,
+  Link,
   ListTree,
   MessageSquare,
-  Braces,
-  PanelRight,
 } from "lucide-react";
+import { SIDE_PANEL_OVERLAY_ACCESSIBILITY } from "../ui/overlayAccessibility";
 import {
   getRightPanelCommentGroups,
   type WorkspaceKnowledgeIndex,
@@ -18,11 +18,11 @@ import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/w
 import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 import { RightPanelProperties } from "./RightPanelProperties";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
+import { SidePanelTabs } from "../workspace/components/SidePanelTabs";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
@@ -58,7 +58,6 @@ type RightPanelProps = {
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
-  onClose: () => void;
   onSelectFile: (fileId: string) => void;
   onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
   onResolveAmbiguousLink: (
@@ -108,7 +107,6 @@ export function RightPanel({
   activeReplyCommentId,
   replyDraftByCommentId,
   onSetView,
-  onClose,
   onSelectFile,
   onFocusLinkSource,
   onResolveAmbiguousLink,
@@ -131,7 +129,6 @@ export function RightPanel({
   panelRef,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
-  const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
   const knowledgeCopy = getKnowledgePanelCopy(language);
   const {
     showResolved,
@@ -167,57 +164,47 @@ export function RightPanel({
     commentsByFileId,
   );
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
-  const panelTitle = effectiveView === "properties"
+  const panelTitle = effectiveView === "metadata"
     ? knowledgeCopy.properties
     : copy.tabs[effectiveView];
-  const renderTab = (
-    tabView: RightPanelView,
-    label: string,
-    icon: ReactNode,
-    indicator?: "live" | "comments",
-    tooltip = label,
-  ) => (
-    <button
-      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""}`}
-      type="button"
-      aria-label={label}
-      data-tooltip={tooltip}
-      aria-pressed={effectiveView === tabView}
-      aria-controls="right-panel-body"
-      onClick={() => onSetView(tabView)}
-    >
-      {icon}
-      {indicator && <span className={`right-panel-tab-status-dot ${indicator}`} aria-hidden="true" />}
-    </button>
-  );
+  const tabs = [
+    { view: "metadata", label: knowledgeCopy.properties, icon: <Info size={14} /> },
+    { view: "links", label: copy.tabs.links, icon: <Link size={14} /> },
+    { view: "outline", label: copy.tabs.outline, icon: <ListTree size={14} /> },
+    {
+      view: "comments",
+      label: copy.tabs.comments,
+      icon: <MessageSquare size={14} />,
+      indicator: hasOpenComments
+        ? <span className="right-panel-tab-status-dot comments" aria-hidden="true" />
+        : undefined,
+    },
+  ] satisfies Array<{
+    view: RightPanelView;
+    label: string;
+    icon: ReactNode;
+    indicator?: ReactNode;
+  }>;
 
   return (
     <aside
       ref={panelRef}
       className="right-panel"
-      role={overlayMode ? "dialog" : undefined}
-      aria-modal={overlayMode || undefined}
+      role={overlayMode ? SIDE_PANEL_OVERLAY_ACCESSIBILITY.role : undefined}
+      aria-modal={overlayMode && SIDE_PANEL_OVERLAY_ACCESSIBILITY.ariaModal ? true : undefined}
       aria-label={panelTitle}
       tabIndex={overlayMode ? -1 : undefined}
       data-knowledge-index-source={knowledgeIndexSource}
     >
       <div className="right-panel-header">
-        <nav className="right-panel-tabs" aria-label={copy.sections}>
-          {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
-          {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
-          {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
-          {renderTab("properties", knowledgeCopy.properties, <Braces size={14} />)}
-        </nav>
-        <button
-          className="right-panel-overlay-toggle"
-          type="button"
-          aria-label={closePanelLabel}
-          data-tooltip={closePanelLabel}
-          aria-pressed="true"
-          onClick={onClose}
-        >
-          <PanelRight size={16} />
-        </button>
+        <SidePanelTabs
+          activeView={effectiveView}
+          ariaLabel={copy.sections}
+          controls="right-panel-body"
+          items={tabs}
+          onSelect={onSetView}
+          side="right"
+        />
       </div>
 
       <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">
@@ -308,7 +295,7 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {effectiveView === "properties" && (
+        {effectiveView === "metadata" && (
           <RightPanelProperties
             activeFileId={activeFileId}
             markdown={activeFile?.text ?? ""}

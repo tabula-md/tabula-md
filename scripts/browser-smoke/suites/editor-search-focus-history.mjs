@@ -45,15 +45,56 @@ export async function run(ctx) {
     await page.keyboard.type(" typed", { delay: 25 });
     await waitForRenderFrame(page);
 
-    const searchEditState = await page.evaluate(() => ({
-      editorText: document.querySelector(".cm-content")?.textContent ?? "",
-      searchCount: document.querySelector(".document-search-count")?.textContent ?? "",
-      activeElementLabel: document.activeElement?.getAttribute("aria-label") ?? "",
-    }));
+    const searchEditState = await page.evaluate(({ x, y }) => {
+      const content = document.querySelector(".cm-content");
+      const view = content?.cmView?.view ?? content?.cmTile?.view;
+      const activeElement = document.activeElement;
+      const hit = document.elementFromPoint(x, y);
+      const rect = (element) => {
+        const bounds = element?.getBoundingClientRect();
+        return bounds ? { top: bounds.top, bottom: bounds.bottom, left: bounds.left, right: bounds.right } : null;
+      };
+      return {
+        editorText: view?.state?.doc?.toString?.() ?? content?.textContent ?? "",
+        searchCount: document.querySelector(".document-search-count")?.textContent ?? "",
+        activeElementLabel: activeElement?.getAttribute("aria-label") ?? "",
+        activeElementTag: activeElement?.tagName ?? "",
+        activeElementClass: activeElement?.getAttribute("class") ?? "",
+        hitTag: hit?.tagName ?? "",
+        hitClass: hit?.getAttribute("class") ?? "",
+        lineRect: rect(Array.from(document.querySelectorAll(".cm-line")).find((element) =>
+          element.textContent?.includes("Working line"),
+        )),
+        rowRect: rect(document.querySelector(".document-search-row")),
+        barRect: rect(document.querySelector(".document-search-bar")),
+        searchLineRect: rect(document.querySelector(".document-search-line")),
+        workspaceRect: rect(document.querySelector(".workspace")),
+        fileShellClass: document.querySelector(".file-shell")?.getAttribute("class") ?? "",
+        fileShellGridRows: getComputedStyle(document.querySelector(".file-shell")).gridTemplateRows,
+        fileShellWidth: document.querySelector(".file-shell")?.getBoundingClientRect().width ?? -1,
+        viewportWidth: window.innerWidth,
+        compactMedia: window.matchMedia("(max-width: 820px)").matches,
+        rowStyles: (() => {
+          const row = document.querySelector(".document-search-row");
+          if (!row) return null;
+          const style = getComputedStyle(row);
+          return {
+            height: style.height,
+            minHeight: style.minHeight,
+            paddingTop: style.paddingTop,
+            paddingBottom: style.paddingBottom,
+            alignSelf: style.alignSelf,
+          };
+        })(),
+        selection: view
+          ? { anchor: view.state.selection.main.anchor, head: view.state.selection.main.head }
+          : null,
+      };
+    }, workingLinePoint);
     expect(searchEditState.editorText.includes("Agent anchor"), "Editing with Search open should not overwrite the matching Agent text.");
     expect(
       searchEditState.editorText.includes("Working line typed"),
-      "Editing with Search open should keep typing on the line the user selected.",
+      `Editing with Search open should keep typing on the line the user selected: ${JSON.stringify(searchEditState)}`,
     );
     expect(searchEditState.searchCount === "1/1", "Search should keep the same match count while unrelated text changes.");
     expect(searchEditState.activeElementLabel !== "Search", "Typing in the document should not be pulled back into the search input.");

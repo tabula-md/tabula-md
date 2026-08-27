@@ -8,7 +8,7 @@ import {
   type WorkspaceDatabaseAdapter,
   type WorkspaceWritePlan,
 } from "./workspaceIndexedDb";
-import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "../workspaceStorage";
+import { createWorkspaceFile, createWorkspaceRootFolder, DEFAULT_WORKSPACE_PRESENTATION, type WorkspaceState } from "../workspaceStorage";
 import projectV6 from "../__fixtures__/storage/project-v6.json";
 
 const createWorkspace = (text: string): WorkspaceState => ({
@@ -17,6 +17,7 @@ const createWorkspace = (text: string): WorkspaceState => ({
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},
+  presentation: DEFAULT_WORKSPACE_PRESENTATION,
 });
 
 const withKnowledgeBaseline = (workspace: WorkspaceState): WorkspaceState => ({
@@ -98,8 +99,10 @@ describe("workspace IndexedDB adapter", () => {
 
     const plan = memory.workspacePlans[0];
     expect(plan?.manifest).toMatchObject({ activeFileId: "local", fileOrder: ["local"] });
+    expect(plan?.manifest.presentation).toEqual(DEFAULT_WORKSPACE_PRESENTATION);
     expect(plan?.filePuts).toHaveLength(1);
     expect(plan?.filePuts[0]?.payload.text).toBe("# IndexedDB");
+    expect(plan?.filePuts[0]?.payload).not.toHaveProperty("viewMode");
     expect(plan?.folderPuts).toHaveLength(1);
   });
 
@@ -114,6 +117,22 @@ describe("workspace IndexedDB adapter", () => {
 
     expect(memory.workspacePlans[1]?.filePuts.map((record) => record.id)).toEqual(["local"]);
     expect(memory.workspacePlans[1]?.fileDeletes).toEqual([]);
+  });
+
+  it("updates presentation without rewriting unchanged document records", async () => {
+    const memory = createMemoryAdapter();
+    const workspace = createWorkspace("# First");
+
+    await writeIndexedDbWorkspace(workspace, memory.adapter);
+    const nextWorkspace = {
+      ...workspace,
+      presentation: { ...workspace.presentation, viewMode: "preview" as const },
+      files: workspace.files.map((file) => ({ ...file, viewMode: "preview" as const })),
+    };
+    await writeIndexedDbWorkspace(nextWorkspace, memory.adapter);
+
+    expect(memory.workspacePlans[1]?.manifest.presentation.viewMode).toBe("preview");
+    expect(memory.workspacePlans[1]?.filePuts).toEqual([]);
   });
 
   it("persists the knowledge baseline separately and skips unchanged writes", async () => {

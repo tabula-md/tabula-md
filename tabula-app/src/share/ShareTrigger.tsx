@@ -71,6 +71,7 @@ export function ShareTrigger({
         type="button"
         aria-label={statusLabel}
         data-tooltip={statusLabel}
+        data-live-status={liveStatus ?? undefined}
         aria-expanded={shareOpen}
         onFocus={prepareCollaboration}
         onPointerDown={prepareCollaboration}

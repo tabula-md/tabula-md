@@ -30,7 +30,7 @@
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:browser:playwright": "playwright test",
     "test:browser:playwright:canary": "playwright test harness.spec.ts markdown-parity.spec.mjs visual-interaction.spec.mjs right-panels.spec.mjs",
-    "test:browser:workspace": "npm run test:browser:playwright -- storage-restore.spec.mjs",
+    "test:browser:workspace": "npm run test:browser:playwright -- storage-restore.spec.mjs workspace-boundaries.spec.mjs",
     "test:browser:editor": "npm run test:browser:visual && npm run test:browser:preview && npm run test:browser -- --suite=editor-preview-sync,editor-preview-typography,editor-search-layout,editor-search-source,editor-search-replace,editor-search-preview,editor-search-focus-history,editor-selection-comments,split-layout",
     "test:browser:preview": "npm run test:browser:playwright -- markdown-parity.spec.mjs preview-navigation.spec.mjs editor-controls.spec.mjs responsive-layout.spec.mjs",
     "test:browser:visual": "npm run test:browser:playwright -- markdown-parity.spec.mjs visual-interaction.spec.mjs editor-controls.spec.mjs responsive-layout.spec.mjs",

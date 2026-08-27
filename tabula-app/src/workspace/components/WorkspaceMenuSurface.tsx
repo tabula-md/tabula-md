@@ -1,12 +1,13 @@
 import { useState, type ChangeEventHandler, type RefObject } from "react";
 import { ModalSurface } from "../../ui/ModalSurface";
 import { WorkspaceMenu } from "./WorkspaceMenu";
+import { WorkspacePreferencesDialog } from "./WorkspacePreferencesDialog";
 import type {
   WorkspaceLanguage,
   WorkspaceTheme,
 } from "../state/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
-import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { WorkspaceContextSummaryViewModel } from "../workspaceContextSummary";
 
 export type WorkspaceMenuSurfaceProps = {
   importInputRef: RefObject<HTMLInputElement | null>;
@@ -15,10 +16,9 @@ export type WorkspaceMenuSurfaceProps = {
   language: WorkspaceLanguage;
   preferencesOpen: boolean;
   theme: WorkspaceTheme;
-  canClearWorkspace: boolean;
-  canExportFile: boolean;
+  canUseLocalWorkspaceActions: boolean;
+  canClearBrowserWorkspace: boolean;
   canExportWorkspace: boolean;
-  onAddFile: () => void;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onCloseChrome: () => void;
@@ -26,124 +26,159 @@ export type WorkspaceMenuSurfaceProps = {
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenLiveWorkspace?: () => void;
   onSaveLiveWorkspace?: () => void;
+  onReviewLiveFolderConflict?: () => void;
   onDisconnectLiveWorkspace?: () => void;
   liveFolderAutoSave?: boolean;
   onToggleLiveFolderAutoSave?: () => void;
-  onClearWorkspace: () => void;
-  onExportFile: () => void;
+  collaborationActive?: boolean;
+  onRetryCollaboration?: () => void;
+  onClearWorkspace: () => void | Promise<void>;
   onExportWorkspace: () => void;
-  onOpenAbout: () => void;
-  onOpenHelp: () => void;
   onTogglePreferences: () => void;
+  workspaceContextSummary: WorkspaceContextSummaryViewModel;
 };
 
 export function WorkspaceMenuSurface({
-  importInputRef,
   workspaceImportInputRef,
   isOpen,
   language,
   preferencesOpen,
   theme,
-  canClearWorkspace,
-  canExportFile,
+  canUseLocalWorkspaceActions,
+  canClearBrowserWorkspace,
   canExportWorkspace,
-  onAddFile,
   onChangeLanguage,
   onChangeTheme,
   onCloseChrome,
-  onImportFileChange,
-  onImportWorkspaceChange,
   onOpenLiveWorkspace,
   onSaveLiveWorkspace,
+  onReviewLiveFolderConflict,
   onDisconnectLiveWorkspace,
   liveFolderAutoSave,
   onToggleLiveFolderAutoSave,
+  collaborationActive,
+  onRetryCollaboration,
   onClearWorkspace,
-  onExportFile,
   onExportWorkspace,
-  onOpenAbout,
-  onOpenHelp,
   onTogglePreferences,
+  workspaceContextSummary,
 }: WorkspaceMenuSurfaceProps) {
   const copy = getWorkspaceMenuCopy(language);
-  const interfaceCopy = getWorkspaceInterfaceCopy(language);
-  const [clearWorkspaceOpen, setClearWorkspaceOpen] = useState(false);
-  const closeClearWorkspace = () => setClearWorkspaceOpen(false);
-  const confirmClearWorkspace = () => {
-    onClearWorkspace();
-    closeClearWorkspace();
+  const [confirmation, setConfirmation] = useState<"clear" | "disconnect" | null>(null);
+  const [clearPending, setClearPending] = useState(false);
+  const closeConfirmation = () => setConfirmation(null);
+  const confirmClearWorkspace = async () => {
+    setClearPending(true);
+    try {
+      await onClearWorkspace();
+      closeConfirmation();
+    } finally {
+      setClearPending(false);
+    }
   };
+  const confirmDisconnectFolder = () => {
+    onDisconnectLiveWorkspace?.();
+    closeConfirmation();
+  };
+
   return (
     <>
-      <input
-        ref={importInputRef}
-        className="ui-input-surface workspace-file-input"
-        type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
-        onChange={onImportFileChange}
-        aria-label={interfaceCopy.sidePanel.files.openMarkdown}
-      />
-      <input
-        ref={workspaceImportInputRef}
-        className="ui-input-surface workspace-file-input"
-        type="file"
-        multiple
-        {...{ webkitdirectory: "" }}
-        onChange={onImportWorkspaceChange}
-        aria-label={copy.actions.importWorkspace}
-      />
       <WorkspaceMenu
         isOpen={isOpen}
-        preferencesOpen={preferencesOpen}
-        theme={theme}
         language={language}
-        onTogglePreferences={onTogglePreferences}
-        onChangeTheme={onChangeTheme}
-        onChangeLanguage={onChangeLanguage}
-        onAddFile={onAddFile}
-        onImportFile={() => {
-          onCloseChrome();
-          importInputRef.current?.click();
-        }}
-        onImportWorkspace={canClearWorkspace ? () => {
+        onImportWorkspace={canUseLocalWorkspaceActions ? () => {
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         } : undefined}
-        onOpenLiveWorkspace={canClearWorkspace
-          ? onOpenLiveWorkspace
+        onOpenLiveWorkspace={canUseLocalWorkspaceActions && onOpenLiveWorkspace
+          ? () => {
+              onCloseChrome();
+              onOpenLiveWorkspace();
+            }
           : undefined}
-        onSaveLiveWorkspace={canClearWorkspace
-          ? onSaveLiveWorkspace
+        onSaveLiveWorkspace={canUseLocalWorkspaceActions && onSaveLiveWorkspace
+          ? () => {
+              onCloseChrome();
+              onSaveLiveWorkspace();
+            }
           : undefined}
-        onDisconnectLiveWorkspace={canClearWorkspace
-          ? onDisconnectLiveWorkspace
+        onReviewLiveFolderConflict={canUseLocalWorkspaceActions && onReviewLiveFolderConflict
+          ? () => {
+              onCloseChrome();
+              onReviewLiveFolderConflict();
+            }
+          : undefined}
+        collaborationActive={collaborationActive}
+        onRetryCollaboration={onRetryCollaboration ? () => {
+          onCloseChrome();
+          onRetryCollaboration();
+        } : undefined}
+        onDisconnectLiveWorkspace={canUseLocalWorkspaceActions && onDisconnectLiveWorkspace
+          ? () => {
+              onCloseChrome();
+              setConfirmation("disconnect");
+            }
           : undefined}
         liveFolderAutoSave={liveFolderAutoSave}
-        onToggleLiveFolderAutoSave={canClearWorkspace
+        onToggleLiveFolderAutoSave={canUseLocalWorkspaceActions
           ? onToggleLiveFolderAutoSave
           : undefined}
-        canExportFile={canExportFile}
-        canExportWorkspace={canExportWorkspace}
-        onExportFile={() => {
-          onCloseChrome();
-          onExportFile();
-        }}
-        onExportWorkspace={() => {
+        onExportWorkspace={canExportWorkspace ? () => {
           onCloseChrome();
           onExportWorkspace();
-        }}
-        onClearWorkspace={canClearWorkspace ? () => {
-          onCloseChrome();
-          setClearWorkspaceOpen(true);
         } : undefined}
-        onOpenAbout={onOpenAbout}
-        onOpenHelp={onOpenHelp}
+        onClearWorkspace={canClearBrowserWorkspace ? () => {
+          onCloseChrome();
+          setConfirmation("clear");
+        } : undefined}
+        workspaceContextSummary={workspaceContextSummary}
       />
-      {clearWorkspaceOpen && canClearWorkspace && (
+
+      {preferencesOpen && (
+        <WorkspacePreferencesDialog
+          language={language}
+          theme={theme}
+          onChangeLanguage={onChangeLanguage}
+          onChangeTheme={onChangeTheme}
+          onClose={onTogglePreferences}
+        />
+      )}
+
+      {confirmation === "disconnect" && onDisconnectLiveWorkspace && (
+        <ModalSurface
+          ariaLabelledBy="disconnect-folder-title"
+          className="clear-workspace-modal"
+          onClose={closeConfirmation}
+        >
+          <header className="share-modal-header compact">
+            <h2 id="disconnect-folder-title">{copy.disconnectFolder.title}</h2>
+            <p>{copy.disconnectFolder.description}</p>
+          </header>
+          <div className="share-modal-actions clear-workspace-actions">
+            <button
+              type="button"
+              className="share-modal-secondary"
+              data-modal-initial-focus
+              disabled={clearPending}
+              onClick={closeConfirmation}
+            >
+              {copy.disconnectFolder.cancel}
+            </button>
+            <button
+              type="button"
+              className="share-modal-primary"
+              onClick={confirmDisconnectFolder}
+            >
+              {copy.disconnectFolder.confirm}
+            </button>
+          </div>
+        </ModalSurface>
+      )}
+      {confirmation === "clear" && canClearBrowserWorkspace && (
         <ModalSurface
           ariaLabelledBy="clear-workspace-title"
           className="clear-workspace-modal"
-          onClose={closeClearWorkspace}
+          onClose={closeConfirmation}
         >
           <header className="share-modal-header compact">
             <h2 id="clear-workspace-title">{copy.clearWorkspace.title}</h2>
@@ -154,13 +189,14 @@ export function WorkspaceMenuSurface({
               type="button"
               className="share-modal-secondary"
               data-modal-initial-focus
-              onClick={closeClearWorkspace}
+              onClick={closeConfirmation}
             >
               {copy.clearWorkspace.cancel}
             </button>
             <button
               type="button"
               className="share-modal-danger"
+              disabled={clearPending}
               onClick={confirmClearWorkspace}
             >
               {copy.clearWorkspace.confirm}
