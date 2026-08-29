@@ -53,6 +53,7 @@ export function useWorkspaceFiles({
   const folders = useActiveStore((state) => state.folders);
   const openFileIds = useActiveStore((state) => state.openFileIds);
   const activeFileId = useActiveStore((state) => state.activeFileId);
+  const previewFileId = useActiveStore((state) => state.previewFileId);
   const lastClosedTab = useActiveStore((state) => state.lastClosedTab);
   const workspace = useMemo(
     () => ({
@@ -72,6 +73,7 @@ export function useWorkspaceFiles({
     [files, lastClosedTab, openFileIds],
   );
   const selectFile = useActiveStore((state) => state.selectFile);
+  const previewFile = useActiveStore((state) => state.previewFile);
   const addFile = useActiveStore((state) => state.addFile);
   const addFolder = useActiveStore((state) => state.addFolder);
   const addFileFromContent = useActiveStore((state) => state.addFileFromContent);
@@ -115,8 +117,10 @@ export function useWorkspaceFiles({
     openFileIds,
     activeFileId,
     activeFile,
+    previewFileId,
     lastClosedFile,
     selectFile,
+    previewFile,
     addFile,
     addFolder,
     addFileFromContent,

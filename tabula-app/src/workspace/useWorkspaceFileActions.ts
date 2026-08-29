@@ -48,6 +48,7 @@ type UseWorkspaceFileActionsArgs = {
   readFileComments?: (fileId: string) => FileComment[];
   readFileText?: (fileId: string) => string | null;
   preferences: WorkspacePreferences;
+  previewWorkspaceFileAction: (fileId: string) => WorkspaceFile | undefined;
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => Promise<RenameFileResult>;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
@@ -89,6 +90,7 @@ export function useWorkspaceFileActions({
   readFileComments,
   readFileText,
   preferences,
+  previewWorkspaceFileAction,
   queueEditorFocus,
   renameFile,
   replaceCommentsByFileId,
@@ -108,6 +110,13 @@ export function useWorkspaceFileActions({
       return;
     }
 
+    closeFloatingChrome();
+  };
+
+  const previewFile = (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
+    const nextFile = previewWorkspaceFileAction(fileId);
+    if (!nextFile) return;
     closeFloatingChrome();
   };
 
@@ -308,6 +317,7 @@ export function useWorkspaceFileActions({
 
   return {
     selectFile,
+    previewFile,
     addFile,
     renameWorkspaceFileAction,
     duplicateFile,

@@ -28,6 +28,7 @@ type FileTabsProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   activeFile?: WorkspaceFile;
+  previewFileId?: string | null;
   collaborators: Collaborator[];
   roomId?: string;
   language: WorkspaceLanguage;
@@ -35,6 +36,7 @@ type FileTabsProps = {
   leadingControl?: ReactNode;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onKeepFileOpen: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onCloseFile: (fileId: string) => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
@@ -60,6 +62,7 @@ export function FileTabs({
   files,
   folders,
   activeFile,
+  previewFileId,
   collaborators,
   roomId,
   language,
@@ -67,6 +70,7 @@ export function FileTabs({
   leadingControl,
   onAddFile,
   onSelectFile,
+  onKeepFileOpen,
   onRenameFile,
   onCloseFile,
   onReorderFiles,
@@ -254,6 +258,7 @@ export function FileTabs({
       <div className="ui-scroll-fade tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label={copy.openDocuments}>
         {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
+          const isPreviewFile = file.id === previewFileId;
           const isRenaming = file.id === renamingFileId;
           const allDocumentCollaborators = getDocumentCollaborators(collaborators, file.id);
           const documentCollaborators = allDocumentCollaborators.slice(0, 2);
@@ -268,13 +273,14 @@ export function FileTabs({
             <div
               className={`tab-item ${isActiveFile ? "active" : ""} ${
                 draggedFileId === file.id ? "dragging" : ""
-              }`}
+              }${isPreviewFile ? " preview" : ""}`}
               role="presentation"
               data-file-id={file.id}
               data-file-name={file.title}
               data-room-id={roomId ?? ""}
               data-display-title={tabDisplayTitle}
               data-view-mode={file.viewMode}
+              data-preview={isPreviewFile || undefined}
               draggable={!isRenaming}
               key={file.id}
               onDragStart={() => setDraggedFileId(file.id)}
@@ -329,7 +335,11 @@ export function FileTabs({
                   onDoubleClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    startRenamingFile(file);
+                    if (isPreviewFile) {
+                      onKeepFileOpen(file.id);
+                    } else {
+                      startRenamingFile(file);
+                    }
                   }}
                   onKeyDown={(event) => {
                     const lastIndex = files.length - 1;

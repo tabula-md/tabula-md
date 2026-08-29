@@ -48,6 +48,7 @@ export type WorkspaceTopChromeProps = {
   workspaceContextSummary: WorkspaceContextSummaryViewModel;
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
+  previewFileId?: string | null;
   room?: LocationRoom | null;
   roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   shellSize: WorkspaceShellSize;
@@ -69,6 +70,7 @@ export type WorkspaceTopChromeProps = {
   onRenameFile: FileTabsProps["onRenameFile"];
   onReopenLastClosedFile: () => void;
   onSelectFile: FileTabsProps["onSelectFile"];
+  onKeepFileOpen: FileTabsProps["onKeepFileOpen"];
   onStartSession: () => void;
   onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
   onRetrySession: () => void;
@@ -98,6 +100,7 @@ export function WorkspaceTopChrome({
   workspaceContextSummary,
   lastClosedFile,
   openFiles,
+  previewFileId,
   room,
   roomExitStrategy,
   shellSize,
@@ -119,6 +122,7 @@ export function WorkspaceTopChrome({
   onRenameFile,
   onReopenLastClosedFile,
   onSelectFile,
+  onKeepFileOpen,
   onStartSession,
   onStopSession,
   onRetrySession,
@@ -143,6 +147,7 @@ export function WorkspaceTopChrome({
       files={openFiles}
       folders={folders}
       activeFile={activeFile}
+      previewFileId={previewFileId}
       collaborators={displayedCollaborators}
       roomId={room?.roomId}
       language={language}
@@ -163,6 +168,7 @@ export function WorkspaceTopChrome({
       }
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
+      onKeepFileOpen={onKeepFileOpen}
       onRenameFile={onRenameFile}
       onCloseFile={onCloseFile}
       onReorderFiles={onReorderFiles}

@@ -65,6 +65,7 @@ type WorkspaceFileExplorerProps = {
   onCollapseAllFolders: (folderIds: Iterable<string>) => void;
   onExpandAllFolders: () => void;
   onSelectFile: (fileId: string) => void;
+  onPreviewFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -97,6 +98,7 @@ export function WorkspaceFileExplorer({
   onCollapseAllFolders,
   onExpandAllFolders,
   onSelectFile,
+  onPreviewFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -658,7 +660,8 @@ export function WorkspaceFileExplorer({
                 className="right-file-open-button"
                 type="button"
                 aria-label={copy.open(file.title)}
-                onClick={() => onSelectFile(file.id)}
+                onClick={() => onPreviewFile(file.id)}
+                onDoubleClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
                 <span className="right-file-document-icon">

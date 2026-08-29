@@ -88,6 +88,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   leftPanelOpen: boolean;
   leftPanelView: LeftPanelView;
   onImportFile: () => void;
+  onPreviewFile: (fileId: string) => void;
   onCloseWorkspaceMenu: () => void;
   onToggleWorkspaceMenu: () => void;
   onOpenPreferences: () => void;
@@ -144,6 +145,7 @@ export function useWorkspaceRightPanelController({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onPreviewFile,
   onCloseWorkspaceMenu,
   onToggleWorkspaceMenu,
   onOpenPreferences,
@@ -266,6 +268,12 @@ export function useWorkspaceRightPanelController({
       setLeftPanelOpen(false);
     }
   }, [onSelectFile, setLeftPanelOpen, shellSize]);
+  const previewFromLeftPanel = useCallback((fileId: string) => {
+    onPreviewFile(fileId);
+    if (workspaceShellUsesOverlayPanels(shellSize)) {
+      setLeftPanelOpen(false);
+    }
+  }, [onPreviewFile, setLeftPanelOpen, shellSize]);
   const setLeftPanelSection = useCallback((nextView: LeftPanelView) => {
     onCloseWorkspaceMenu();
     setLeftPanelView(nextView);
@@ -289,6 +297,7 @@ export function useWorkspaceRightPanelController({
     onNewFolder,
     onImportFile,
     onSelectFile: selectFromLeftPanel,
+    onPreviewFile: previewFromLeftPanel,
     onRenameFile,
     onDuplicateFile,
     onDeleteFile,

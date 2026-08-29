@@ -72,6 +72,7 @@ type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
     fileId: string;
     openIndex: number;
   } | null;
+  previewFileId: string | null;
   readmeFileId: string;
 };
 
@@ -103,6 +104,7 @@ type WorkspaceStoreActions = {
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
   reopenLastClosedFile: () => WorkspaceFile | undefined;
+  previewFile: (fileId: string) => WorkspaceFile | undefined;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
   selectFile: (fileId: string) => WorkspaceFile | undefined;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
@@ -141,6 +143,7 @@ const DEFAULT_WORKSPACE_STORE_STATE: WorkspaceStoreState = {
   initialized: false,
   lastClosedTab: null,
   openFileIds: [],
+  previewFileId: null,
   readmeFileId: "",
 };
 
@@ -148,6 +151,18 @@ const getWorkspaceState = (state: WorkspaceStoreState): WorkspaceModelState<Work
   files: state.files,
   openFileIds: state.openFileIds,
   activeFileId: state.activeFileId,
+});
+
+const getWorkspaceStateWithoutPreview = (
+  state: WorkspaceStoreState,
+): WorkspaceModelState<WorkspaceFile> => ({
+  ...getWorkspaceState(state),
+  openFileIds: state.previewFileId
+    ? state.openFileIds.filter((id) => id !== state.previewFileId)
+    : state.openFileIds,
+  activeFileId: state.previewFileId === state.activeFileId
+    ? (state.openFileIds.find((id) => id !== state.previewFileId) ?? "")
+    : state.activeFileId,
 });
 
 const getNextUserFileIndex = (files: WorkspaceFile[], readmeFileId: string) =>
@@ -302,6 +317,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       folders,
       initialized: true,
       lastClosedTab: null,
+      previewFileId: null,
       readmeFileId,
     });
   },
@@ -318,13 +334,20 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       ...normalizedWorkspace,
       folders: workspace.folders ?? state.folders,
       lastClosedTab: null,
+      previewFileId: null,
     }));
 
     return getActiveWorkspaceFile(normalizedWorkspace);
   },
 
   selectFile: (fileId) => {
-    const workspace = getWorkspaceState(get());
+    const currentState = get();
+    const workspace = {
+      ...getWorkspaceState(currentState),
+      openFileIds: currentState.previewFileId && currentState.previewFileId !== fileId
+        ? currentState.openFileIds.filter((id) => id !== currentState.previewFileId)
+        : currentState.openFileIds,
+    };
     const nextWorkspace = selectWorkspaceFile(workspace, fileId);
     const nextFile = nextWorkspace.files.find((file) => file.id === fileId);
     if (!nextFile) {
@@ -332,9 +355,41 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     }
 
     set((state) => ({
-      ...reduceWorkspace(state, { type: "selectFile", fileId }),
+      ...state,
+      ...nextWorkspace,
       lastClosedTab: state.lastClosedTab?.fileId === fileId ? null : state.lastClosedTab,
+      previewFileId: null,
     }));
+    return nextFile;
+  },
+
+  previewFile: (fileId) => {
+    const state = get();
+    const nextFile = state.files.find((file) => file.id === fileId);
+    if (!nextFile) return undefined;
+
+    if (state.openFileIds.includes(fileId) && state.previewFileId !== fileId) {
+      get().selectFile(fileId);
+      return nextFile;
+    }
+
+    const previousPreviewIndex = state.previewFileId
+      ? state.openFileIds.indexOf(state.previewFileId)
+      : -1;
+    const openFileIds = state.openFileIds.filter(
+      (id) => id !== state.previewFileId && id !== fileId,
+    );
+    openFileIds.splice(
+      previousPreviewIndex >= 0 ? Math.min(previousPreviewIndex, openFileIds.length) : openFileIds.length,
+      0,
+      fileId,
+    );
+    set({
+      openFileIds,
+      activeFileId: fileId,
+      previewFileId: fileId,
+      lastClosedTab: state.lastClosedTab?.fileId === fileId ? null : state.lastClosedTab,
+    });
     return nextFile;
   },
 
@@ -351,7 +406,8 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     });
     set((currentState) => ({
       ...currentState,
-      ...addWorkspaceFile(getWorkspaceState(currentState), nextFile),
+      ...addWorkspaceFile(getWorkspaceStateWithoutPreview(currentState), nextFile),
+      previewFileId: null,
     }));
     return nextFile;
   },
@@ -371,7 +427,8 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     });
     set((currentState) => ({
       ...currentState,
-      ...addWorkspaceFile(getWorkspaceState(currentState), nextFile),
+      ...addWorkspaceFile(getWorkspaceStateWithoutPreview(currentState), nextFile),
+      previewFileId: null,
     }));
     return nextFile;
   },
@@ -397,7 +454,8 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
     set((currentState) => ({
       ...currentState,
-      ...addWorkspaceFile(getWorkspaceState(currentState), nextFile, { insertAfterFileId: fileId }),
+      ...addWorkspaceFile(getWorkspaceStateWithoutPreview(currentState), nextFile, { insertAfterFileId: fileId }),
+      previewFileId: null,
     }));
     return nextFile;
   },
@@ -447,6 +505,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       ...state,
       ...next.state,
       lastClosedTab: { fileId, openIndex },
+      previewFileId: state.previewFileId === fileId ? null : state.previewFileId,
     }));
     return next.result;
   },
@@ -467,6 +526,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
         fileId,
         openIndex: state.openFileIds.indexOf(fileId),
       },
+      previewFileId: null,
     }));
   },
 
@@ -495,6 +555,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
         fileId: lastClosedFileId,
         openIndex: lastClosedOpenIndex < activeOpenIndex ? 0 : 1,
       },
+      previewFileId: null,
     }));
   },
 
@@ -532,6 +593,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     set((state) => ({
       ...reduceWorkspace(state, { type: "deleteFile", fileId }),
       lastClosedTab: state.lastClosedTab?.fileId === fileId ? null : state.lastClosedTab,
+      previewFileId: state.previewFileId === fileId ? null : state.previewFileId,
     }));
     return next.result;
   },
@@ -581,17 +643,26 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
   },
 
   setActiveFileText: (text) => {
-    set((state) => reduceWorkspace(state, { type: "setActiveFileText", text }));
+    set((state) => ({
+      ...reduceWorkspace(state, { type: "setActiveFileText", text }),
+      previewFileId: state.previewFileId === state.activeFileId &&
+        state.files.find((file) => file.id === state.activeFileId)?.text !== text
+        ? null
+        : state.previewFileId,
+    }));
   },
 
   setFileText: (fileId, text) => {
     set((state) => {
       const file = state.files.find((candidate) => candidate.id === fileId);
       if (!file || file.text === text) return state;
-      return updateFileInState(state, fileId, (currentFile) => ({
-        ...currentFile,
-        text,
-      }));
+      return {
+        ...updateFileInState(state, fileId, (currentFile) => ({
+          ...currentFile,
+          text,
+        })),
+        previewFileId: state.previewFileId === fileId ? null : state.previewFileId,
+      };
     });
   },
 

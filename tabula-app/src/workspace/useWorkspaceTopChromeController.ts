@@ -39,6 +39,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   workspaceContextSummary: WorkspaceContextSummaryViewModel;
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
+  previewFileId?: string | null;
   room?: LocationRoom | null;
   roomExitStrategy: RoomExitLocalWorkspaceStrategy;
   shellSize: WorkspaceShellSize;
@@ -59,6 +60,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onReopenLastClosedFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onKeepFileOpen: (fileId: string) => void;
   onShareOpened: () => void;
   onStartSession: () => void;
   onStopSession: (strategy: RoomExitLocalWorkspaceStrategy) => void;
@@ -93,6 +95,7 @@ export function useWorkspaceTopChromeController({
   workspaceContextSummary,
   lastClosedFile,
   openFiles,
+  previewFileId,
   room,
   roomExitStrategy,
   shellSize,
@@ -113,6 +116,7 @@ export function useWorkspaceTopChromeController({
   onRenameFile,
   onReopenLastClosedFile,
   onSelectFile,
+  onKeepFileOpen,
   onShareOpened,
   onStartSession,
   onStopSession,
@@ -185,6 +189,7 @@ export function useWorkspaceTopChromeController({
     workspaceContextSummary,
     lastClosedFile,
     openFiles,
+    previewFileId,
     room,
     roomExitStrategy,
     shellSize,
@@ -206,6 +211,7 @@ export function useWorkspaceTopChromeController({
     onRenameFile,
     onReopenLastClosedFile,
     onSelectFile,
+    onKeepFileOpen,
     onStartSession,
     onStopSession,
     onRetrySession,

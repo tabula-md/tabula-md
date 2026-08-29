@@ -163,6 +163,53 @@ describe("workspace store", () => {
     );
   });
 
+  it("reuses one transient preview tab while browsing closed files", () => {
+    initializeWorkspaceStore();
+    const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
+    useWorkspaceStore.getState().closeFile(plan.id);
+    const notes = useWorkspaceStore.getState().addFile({ title: "Notes.md" });
+    useWorkspaceStore.getState().closeFile(notes.id);
+
+    useWorkspaceStore.getState().previewFile(plan.id);
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      activeFileId: plan.id,
+      previewFileId: plan.id,
+    });
+
+    useWorkspaceStore.getState().previewFile(notes.id);
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      activeFileId: notes.id,
+      previewFileId: notes.id,
+    });
+    expect(useWorkspaceStore.getState().openFileIds).not.toContain(plan.id);
+    expect(useWorkspaceStore.getState().openFileIds).toContain(notes.id);
+  });
+
+  it("keeps a preview tab open once its document is edited", () => {
+    initializeWorkspaceStore();
+    const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
+    useWorkspaceStore.getState().closeFile(plan.id);
+
+    useWorkspaceStore.getState().previewFile(plan.id);
+    useWorkspaceStore.getState().setActiveFileText("Started writing");
+    useWorkspaceStore.getState().previewFile("readme");
+
+    expect(useWorkspaceStore.getState().previewFileId).toBeNull();
+    expect(useWorkspaceStore.getState().openFileIds).toContain(plan.id);
+  });
+
+  it("promotes a preview tab when the file is explicitly selected", () => {
+    initializeWorkspaceStore();
+    const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
+    useWorkspaceStore.getState().closeFile(plan.id);
+
+    useWorkspaceStore.getState().previewFile(plan.id);
+    useWorkspaceStore.getState().selectFile(plan.id);
+
+    expect(useWorkspaceStore.getState().previewFileId).toBeNull();
+    expect(useWorkspaceStore.getState().openFileIds).toContain(plan.id);
+  });
+
   it("adds, opens, and activates new files in one store action", () => {
     initializeWorkspaceStore();
 

@@ -136,8 +136,10 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
     openFileIds,
     activeFileId,
     activeFile,
+    previewFileId,
     lastClosedFile,
     selectFile: selectWorkspaceFileAction,
+    previewFile: previewWorkspaceFileAction,
     addFolder: addWorkspaceFolderAction,
     addFile: addWorkspaceFileAction,
     duplicateFile: duplicateWorkspaceFile,
@@ -677,6 +679,7 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
   disconnectConnectedFolderRef.current = disconnectLiveWorkspaceFolder;
   const {
     selectFile,
+    previewFile,
     addFile,
     renameWorkspaceFileAction,
     duplicateFile,
@@ -723,6 +726,7 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
     openFileIds,
     onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     preferences: workspacePreferences,
+    previewWorkspaceFileAction,
     queueEditorFocus,
     renameFile,
     replaceCommentsByFileId,
@@ -939,6 +943,7 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
       onReplyDraftChange: updateCommentReplyDraft,
       onResolveAmbiguousLink: resolveAmbiguousWorkspaceLink,
       onSelectFile: selectFile,
+      onPreviewFile: previewFile,
       onStartCommentReply: startCommentReply,
       onToggleCommentResolved: toggleFileCommentResolved,
       outlineHeadings,
@@ -990,6 +995,7 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
     language: workspacePreferences.language,
     workspaceContextSummary,
     openFiles,
+    previewFileId,
     lastClosedFile,
     room: activeRoom,
     roomExitStrategy,
@@ -1023,6 +1029,7 @@ export function useWorkspaceRuntime(shellSize: WorkspaceShellSize) {
     onRenameFile: renameWorkspaceFileAction,
     onReopenLastClosedFile: reopenLastClosedFile,
     onSelectFile: selectFile,
+    onKeepFileOpen: selectFile,
     onShareOpened: () => {
       productAnalytics.report("share_opened");
     },

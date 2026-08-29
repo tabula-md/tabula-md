@@ -57,6 +57,7 @@ export type LeftPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onPreviewFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -90,6 +91,7 @@ export function LeftPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
+  onPreviewFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -190,6 +192,7 @@ export function LeftPanel({
               onCollapseAllFolders={collapseAllFolders}
               onExpandAllFolders={expandAllFolders}
               onSelectFile={onSelectFile}
+              onPreviewFile={onPreviewFile}
               onRenameFile={onRenameFile}
               onDuplicateFile={onDuplicateFile}
               onDeleteFile={onDeleteFile}

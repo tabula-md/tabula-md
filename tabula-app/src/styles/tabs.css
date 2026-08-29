@@ -112,6 +112,10 @@
   white-space: nowrap;
 }
 
+.tab-item.preview .tab-title {
+  font-style: italic;
+}
+
 .tab-document-label {
   display: inline-flex;
   flex: 1 1 auto;
