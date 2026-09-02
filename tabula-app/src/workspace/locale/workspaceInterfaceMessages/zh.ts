@@ -64,7 +64,7 @@ export const zhWorkspaceInterfaceMessages = {
     panelKnowledgeFalse: "假",
     panelKnowledgeEnterValue: "输入值",
     panelKnowledgeConnectionCount: "{{count}} 个链接",
-    panelChecks: "检查",
+    panelChecks: "审阅",
     panelChecksLoading: "正在检查工作区…",
     panelChecksHealthy: "未发现问题",
     panelChecksAttention: "有项目需要检查",

@@ -64,7 +64,7 @@ export const deWorkspaceInterfaceMessages = {
     panelKnowledgeFalse: "Falsch",
     panelKnowledgeEnterValue: "Wert eingeben",
     panelKnowledgeConnectionCount: "{{count}} Links",
-    panelChecks: "Prüfungen",
+    panelChecks: "Überprüfung",
     panelChecksLoading: "Workspace wird geprüft…",
     panelChecksHealthy: "Keine Probleme",
     panelChecksAttention: "Einige Punkte erfordern Aufmerksamkeit",

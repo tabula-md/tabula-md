@@ -32,11 +32,11 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.left-panel-checks-button {
+.left-panel-preferences-button {
   margin-left: auto;
 }
 
-.left-panel-checks-button .left-panel-utility-indicator {
+.left-panel-review-indicator {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -44,10 +44,6 @@
   height: 5px;
   border-radius: 50%;
   background: var(--attention);
-}
-
-.left-panel-checks-button {
-  position: relative;
 }
 
 .left-panel-utilities > button {

@@ -1,7 +1,5 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
-import {
-  stripMarkdownExtension,
-} from "@tabula-md/tabula";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
 import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,

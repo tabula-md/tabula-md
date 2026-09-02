@@ -64,7 +64,7 @@ export const jaWorkspaceInterfaceMessages = {
     panelKnowledgeFalse: "偽",
     panelKnowledgeEnterValue: "値を入力",
     panelKnowledgeConnectionCount: "{{count}} リンク",
-    panelChecks: "チェック",
+    panelChecks: "レビュー",
     panelChecksLoading: "ワークスペースを確認中…",
     panelChecksHealthy: "問題はありません",
     panelChecksAttention: "確認が必要な項目があります",

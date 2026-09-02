@@ -7,16 +7,14 @@ import {
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import {
   Files,
-  BookOpenText,
-  CircleAlert,
   FolderOpen,
   HardDrive,
   LoaderCircle,
+  ListChecks,
   Radio,
   Search,
   Settings2,
   TriangleAlert,
-  LibraryBig,
 } from "lucide-react";
 import { SIDE_PANEL_OVERLAY_ACCESSIBILITY } from "../ui/overlayAccessibility";
 import type { LeftPanelView } from "../ui/uiTypes";
@@ -31,14 +29,9 @@ import type { WorkspaceContextSummaryViewModel } from "../workspace/workspaceCon
 import { getWorkspaceStatusIndicator } from "../workspace/workspaceStatusIndicator";
 import { SidePanelTabs } from "../workspace/components/SidePanelTabs";
 import { WorkspaceSearchPanel } from "./WorkspaceSearchPanel";
-import { WorkspaceKnowledgePanel } from "./WorkspaceKnowledgePanel";
 import { WorkspaceChecksPanel } from "./WorkspaceChecksPanel";
-import { WorkspaceLibrariesPanel } from "./WorkspaceLibrariesPanel";
 import { buildWorkspaceSearchIndex } from "../workspace/workspaceSearchIndex";
-import {
-  buildWorkspaceKnowledgeBrowseModel,
-  type WorkspaceKnowledgeFilters,
-} from "../workspace/workspaceKnowledgeBrowseModel";
+import { buildWorkspaceKnowledgeBrowseModel } from "../workspace/workspaceKnowledgeBrowseModel";
 
 export type LeftPanelProps = {
   isOpen: boolean;
@@ -110,7 +103,6 @@ export function LeftPanel({
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const menuCopy = getWorkspaceMenuCopy(language);
   const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState("");
-  const [knowledgeFilters, setKnowledgeFilters] = useState<WorkspaceKnowledgeFilters>({ fields: {} });
   const workspaceSearchIndex = useMemo(
     () => buildWorkspaceSearchIndex(files, folders),
     [files, folders],
@@ -143,15 +135,30 @@ export function LeftPanel({
           : HardDrive;
   const panelTitle = view === "search"
     ? copy.search.label
-    : view === "checks"
+    : view === "review"
       ? copy.checks.label
       : copy.tabs[view];
   const tabs = [
     { view: "files", label: copy.tabs.files, icon: <Files size={14} /> },
     { view: "search", label: copy.search.label, icon: <Search size={14} /> },
-    { view: "knowledge", label: copy.tabs.knowledge, icon: <BookOpenText size={14} /> },
-    { view: "libraries", label: copy.tabs.libraries, icon: <LibraryBig size={14} /> },
-  ] satisfies Array<{ view: LeftPanelView; label: string; icon: ReactNode }>;
+    {
+      view: "review",
+      label: copy.checks.label,
+      tooltip: knowledgeBrowseModel.reviewIssueCount > 0
+        ? copy.checks.attention
+        : copy.checks.label,
+      icon: <ListChecks size={14} />,
+      indicator: knowledgeBrowseModel.reviewIssueCount > 0
+        ? <span className="left-panel-review-indicator" aria-hidden="true" />
+        : undefined,
+    },
+  ] satisfies Array<{
+    view: LeftPanelView;
+    label: string;
+    icon: ReactNode;
+    tooltip?: string;
+    indicator?: ReactNode;
+  }>;
 
   return (
     <aside
@@ -214,21 +221,7 @@ export function LeftPanel({
             onSelectFile={onSelectFile}
           />
         )}
-        {view === "knowledge" && (
-          <WorkspaceKnowledgePanel
-            activeFileId={activeFileId}
-            copy={copy.knowledge}
-            entries={workspaceSearchIndex}
-            filters={knowledgeFilters}
-            model={knowledgeBrowseModel}
-            onFiltersChange={setKnowledgeFilters}
-            onSelectFile={onSelectFile}
-          />
-        )}
-        {view === "libraries" && (
-          <WorkspaceLibrariesPanel copy={copy.libraries} />
-        )}
-        {view === "checks" && (
+        {view === "review" && (
           <WorkspaceChecksPanel
             activeFileId={activeFileId}
             copy={copy.checks}
@@ -257,22 +250,7 @@ export function LeftPanel({
           />
         </button>
         <button
-          className={`left-panel-checks-button${view === "checks" ? " active" : ""}`}
-          type="button"
-          aria-label={copy.checks.label}
-          aria-controls="left-panel-body"
-          aria-pressed={view === "checks"}
-          data-tooltip={knowledgeBrowseModel.reviewIssueCount > 0
-            ? copy.checks.attention
-            : copy.checks.label}
-          onClick={() => onSetView("checks")}
-        >
-          <CircleAlert size={16} aria-hidden="true" />
-          {knowledgeBrowseModel.reviewIssueCount > 0 && (
-            <span className="left-panel-utility-indicator" aria-hidden="true" />
-          )}
-        </button>
-        <button
+          className="left-panel-preferences-button"
           type="button"
           aria-label={menuCopy.actions.preferences}
           data-tooltip={menuCopy.actions.preferences}

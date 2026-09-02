@@ -64,7 +64,7 @@ export const esWorkspaceInterfaceMessages = {
     panelKnowledgeFalse: "Falso",
     panelKnowledgeEnterValue: "Introducir un valor",
     panelKnowledgeConnectionCount: "{{count}} enlaces",
-    panelChecks: "Comprobaciones",
+    panelChecks: "Revisión",
     panelChecksLoading: "Revisando el espacio…",
     panelChecksHealthy: "No hay problemas",
     panelChecksAttention: "Hay elementos que requieren atención",

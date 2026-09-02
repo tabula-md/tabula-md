@@ -24,12 +24,34 @@ const makeFile = (
 describe("buildWorkspaceSearchIndex", () => {
   it("indexes Markdown metadata and body text", () => {
     const [entry] = buildWorkspaceSearchIndex([
-      makeFile("doc", "runbook.md", "---\ntitle: Incident response\ntags: [oncall]\n---\n\n# Trigger\n\nCheckout failed."),
+      makeFile("doc", "runbook.md", [
+        "---",
+        "type: Runbook",
+        "title: Incident response",
+        "tags: [oncall]",
+        "status: draft",
+        "stale_after: 2000-01-01",
+        "verified: { by: human:taeha, at: 2026-09-01T00:00:00Z }",
+        "sources:",
+        "  - id: incident-guide",
+        "    resource: ./sources/incident-guide.md",
+        "---",
+        "",
+        "# Trigger",
+        "",
+        "Checkout failed.",
+      ].join("\n")),
     ], [createWorkspaceRootFolder("Workspace")]);
 
     expect(entry).toMatchObject({
       title: "Incident response",
+      type: "Runbook",
       tags: ["oncall"],
+      status: "draft",
+      trustTier: "human-reviewed",
+      freshness: "stale",
+      verifiedBy: ["human:taeha"],
+      sourceValues: ["incident-guide", "./sources/incident-guide.md"],
       body: "\n# Trigger\n\nCheckout failed.",
       iconKind: "markdown",
     });

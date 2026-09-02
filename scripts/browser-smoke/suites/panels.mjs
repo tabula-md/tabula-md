@@ -241,6 +241,12 @@ export async function run(ctx) {
       await page.locator(".top-left-zone").getByRole("button", { name: "Toggle workspace panel", exact: true }).click();
     }
     await waitForLeftPanel(page, "Files");
+    const filesPanel = page.locator('.left-panel[aria-label="Files"]');
+    expect(
+      (await filesPanel.locator(".right-file-tree-row.file").count()) > 0 &&
+        (await filesPanel.locator(".workspace-directory-view-switcher").count()) === 0,
+      "Files should remain a direct physical folder tree instead of mixing in catalog or relationship modes.",
+    );
     await ensureSidePanelOpen(page);
     await waitForRenderFrame(page);
     const panelShellContract = await page.evaluate(() => {
@@ -273,9 +279,9 @@ export async function run(ctx) {
       )}`,
     );
     expect(
-      (await page.locator(".left-panel-tabs .left-panel-tab").count()) === 4 &&
+      (await page.locator(".left-panel-tabs .left-panel-tab").count()) === 3 &&
         (await page.locator(".left-panel-tabs .side-panel-tab-label").count()) === 0,
-      "The workspace panel should expose Files, Search, Knowledge, and Libraries as icon-only workspace sections.",
+      "The workspace panel should expose Files, Search, and Review as focused workspace sections.",
     );
     await page.locator(".left-panel-tabs").getByRole("button", { name: "Workspace search", exact: true }).click();
     await waitForLeftPanel(page, "Workspace search");
@@ -300,205 +306,14 @@ export async function run(ctx) {
       (await page.locator('.left-panel[aria-label="Workspace search"]').count()) === 1,
       "Closing workspace status from its trigger should preserve the active workspace section.",
     );
-    await page.locator(".left-panel-tabs").getByRole("button", { name: "Knowledge", exact: true }).click();
-    await waitForLeftPanel(page, "Knowledge");
+    await page.locator(".left-panel-tabs").getByRole("button", { name: "Review", exact: true }).click();
+    await waitForLeftPanel(page, "Review");
     expect(
-      (await page.locator('.left-panel-knowledge[aria-label="Knowledge"]').count()) === 1,
-      "Knowledge should provide a quiet concept browsing surface.",
-    );
-    expect(
-      (await page.getByRole("searchbox", { name: "Search documents", exact: true }).count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).count()) === 1 &&
-        (await page.locator(".left-panel-knowledge").getByRole("heading").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge").getByRole("button", { name: /^Review/ }).count()) === 0 &&
-        (await page.locator(".left-panel-knowledge").getByRole("button", { name: /^Metadata fields\s+\d+$/ }).count()) === 0,
-      "Knowledge should open as a searchable concept list without counts, review mode, or metadata statistics.",
-    );
-    const knowledgeSearch = page.getByRole("searchbox", { name: "Search documents", exact: true });
-    await knowledgeSearch.click();
-    const knowledgeSearchFocusStyle = await knowledgeSearch.evaluate((input) => {
-      const inputStyle = getComputedStyle(input);
-      const shellStyle = getComputedStyle(input.closest(".left-panel-knowledge-search"));
-      return {
-        borderWidth: inputStyle.borderWidth,
-        outlineStyle: inputStyle.outlineStyle,
-        shellRadius: shellStyle.borderRadius,
-      };
-    });
-    expect(
-      knowledgeSearchFocusStyle.borderWidth === "0px" &&
-        knowledgeSearchFocusStyle.outlineStyle === "none" &&
-        knowledgeSearchFocusStyle.shellRadius !== "0px",
-      `Panel search focus should stay on its rounded surface without a rectangular browser outline. Got: ${JSON.stringify(knowledgeSearchFocusStyle)}`,
-    );
-    const knowledgeRows = await page.locator(".left-panel-knowledge-concept").evaluateAll((rows) =>
-      rows.map((row) => ({
-        iconCount: row.querySelectorAll(".left-panel-knowledge-document-icon svg").length,
-        fontWeight: getComputedStyle(row.querySelector(".left-panel-knowledge-concept-title")).fontWeight,
-        context: row.querySelector(".left-panel-knowledge-concept-content small")?.textContent?.trim() ?? "",
-      })));
-    expect(
-      knowledgeRows.length > 0 &&
-        knowledgeRows.every((row) => row.iconCount === 1 && row.fontWeight === "400") &&
-        knowledgeRows.every((row) => row.context === ""),
-      "Knowledge documents should use quiet regular-weight rows with one shared file icon and no default metadata summary.",
-    );
-    await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).click();
-    const knowledgeFilterState = await page.evaluate(() => {
-      const panel = document.querySelector(".left-panel-knowledge-filter-view");
-      return {
-        fields: Array.from(panel?.querySelectorAll(".left-panel-knowledge-filter-menu.fields > button") ?? [])
-          .map((button) => button.textContent?.trim()),
-        sections: Array.from(panel?.querySelectorAll(".left-panel-knowledge-filter-section > span") ?? [])
-          .map((label) => label.textContent?.trim()),
-        sectionOpacity: getComputedStyle(panel?.querySelector(".left-panel-knowledge-filter-section > span")).opacity,
-      };
-    });
-    expect(
-      (await page.locator('.left-panel-knowledge-filter-view[aria-label="Filters"]').count()) === 1 &&
-        (await page.getByRole("button", { name: "Close filters", exact: true }).count()) === 1 &&
-        (await page.getByRole("button", { name: "Apply", exact: true }).count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-list").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-toolbar").count()) === 0 &&
-        knowledgeFilterState.sections.join("|") === "Suggested|All fields" &&
-        Number(knowledgeFilterState.sectionOpacity) < 0.7 &&
-        knowledgeFilterState.fields.includes("type") &&
-        knowledgeFilterState.fields.includes("tags") &&
-        knowledgeFilterState.fields.includes("status") &&
-        knowledgeFilterState.fields.includes("description") &&
-        knowledgeFilterState.fields.includes("reviewed_at") &&
-        knowledgeFilterState.fields.includes("owner.team"),
-      "Knowledge filters should separate suggested fields from every discovered metadata leaf.",
-    );
-    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
-      .getByRole("button", { name: "description", exact: true }).click();
-    expect(
-        (await page.locator(".left-panel-knowledge-filter-menu.values").count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-filter-operators").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-filter-view input").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-filter-menu.values > button").count()) >= 1,
-      "Metadata fields should expose observed values directly without a condition builder.",
-    );
-    await page.keyboard.press("Escape");
-    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
-      .getByRole("button", { name: "reviewed_at", exact: true }).click();
-    const dateFilterState = await page.evaluate(() => {
-      const panel = document.querySelector(".left-panel-knowledge-filter-view");
-      const backStyle = getComputedStyle(panel.querySelector("button.back"));
-      return {
-        dateInputCount: panel.querySelectorAll('input[type="date"]').length,
-        operatorCount: panel.querySelectorAll(".left-panel-knowledge-filter-operators").length,
-        observedDates: Array.from(panel.querySelectorAll(".left-panel-knowledge-filter-menu.values button"))
-          .map((button) => button.textContent?.trim()),
-        backRadius: backStyle.borderRadius,
-        backOutline: backStyle.outlineStyle,
-      };
-    });
-    expect(
-      dateFilterState.dateInputCount === 0 &&
-        dateFilterState.operatorCount === 0 &&
-        dateFilterState.observedDates.includes("2026-01-10") &&
-        dateFilterState.backRadius !== "0px" &&
-        dateFilterState.backOutline === "none",
-      "Date metadata should expose observed values without a date picker, condition builder, or square back-row state.",
-    );
-    await page.keyboard.press("Escape");
-    await page.locator('.left-panel-knowledge-filter-menu.fields[aria-label="All fields"]')
-      .getByRole("button", { name: "owner.team", exact: true }).click();
-    const observedOwnerValue = page.locator(".left-panel-knowledge-filter-menu.values")
-      .getByRole("button", { name: "docs", exact: true });
-    expect(
-      (await observedOwnerValue.count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-filter-view input").count()) === 0,
-      "Free-text filters should use observed values without introducing a separate input mode.",
-    );
-    await observedOwnerValue.click();
-    expect(
-      (await observedOwnerValue.getAttribute("aria-pressed")) === "true" &&
-        (await observedOwnerValue.locator("svg").count()) === 1,
-      "Choosing an observed value should create an exact filter and keep the selection visible.",
-    );
-    await page.keyboard.press("Escape");
-    await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).click();
-    expect(
-      (await page.locator(".left-panel-knowledge-filter-menu.values").count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-filter-menu.fields").count()) === 0,
-      "Choosing a metadata field should reveal only that field's observed values.",
-    );
-    const stableValue = page.locator(".left-panel-knowledge-filter-menu.values")
-      .getByRole("button", { name: "stable", exact: true });
-    const literalEmptyValue = page.locator(".left-panel-knowledge-filter-menu.values")
-      .getByRole("button", { name: "Empty", exact: true });
-    const missingValue = page.locator(".left-panel-knowledge-filter-menu.values")
-      .getByRole("button", { name: "status · No value", exact: true });
-    expect(
-      (await literalEmptyValue.count()) === 1 &&
-        (await literalEmptyValue.locator(".left-panel-knowledge-no-value").count()) === 0 &&
-        (await missingValue.count()) === 1 &&
-        (await missingValue.locator(".left-panel-knowledge-no-value svg").count()) === 1,
-      "Missing metadata should use a dedicated icon and accessible name instead of colliding with literal Empty values.",
-    );
-    await stableValue.click();
-    expect(
-      (await stableValue.getAttribute("aria-pressed")) === "true" &&
-        (await stableValue.locator(".left-panel-knowledge-filter-check svg").count()) === 1,
-      "Selected metadata values should expose a persistent check mark.",
-    );
-    await page.keyboard.press("Escape");
-    expect(
-      (await page.locator(".left-panel-knowledge-filter-menu.fields").count()) === 2 &&
-        (await page.locator(".left-panel-knowledge-filter-view").count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).locator("svg").count()) === 2 &&
-        (await page.locator(".left-panel-knowledge-filter-content .clear").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-filter-footer .clear").count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-filter-footer .apply").count()) === 1,
-      "Escape should return to marked fields and keep Clear filters beside Apply in the footer.",
-    );
-    await page.getByRole("button", { name: "Close filters", exact: true }).click();
-    expect(
-      (await page.locator(".left-panel-knowledge-filter-view").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-active-filters").count()) === 0 &&
-        await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).evaluate(
-          (button) => button === document.activeElement,
-        ),
-      "Closing filters should discard staged values, restore the browse view, and return focus to its trigger.",
-    );
-    await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Add filter", exact: true }).click();
-    await page.locator(".left-panel-knowledge-filter-menu.fields").getByRole("button", { name: "status", exact: true }).click();
-    await page.locator(".left-panel-knowledge-filter-menu.values")
-      .getByRole("button", { name: "stable", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Apply", exact: true }).click();
-    expect(
-      (await page.locator(".left-panel-knowledge-filter-view").count()) === 0 &&
-        (await page.locator(".left-panel-knowledge-active-filters").getByRole("button", { name: "Remove status · stable", exact: true }).count()) === 1 &&
-        await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Filters", exact: true }).evaluate(
-          (button) => button === document.activeElement,
-        ),
-      "Apply should commit staged filters, restore the browse view, and return focus to its trigger.",
-    );
-    await page.locator(".left-panel-tabs").getByRole("button", { name: "Libraries", exact: true }).click();
-    await waitForLeftPanel(page, "Libraries");
-    await page.locator(".left-panel-tabs").getByRole("button", { name: "Knowledge", exact: true }).click();
-    await waitForLeftPanel(page, "Knowledge");
-    expect(
-      (await page.locator(".left-panel-knowledge-active-filters").getByRole("button", { name: "Remove status · stable", exact: true }).count()) === 1 &&
-        (await page.locator(".left-panel-knowledge-toolbar").getByRole("button", { name: "Filters", exact: true }).count()) === 1,
-      "Applied Knowledge filters should survive switching to another workspace section and back.",
-    );
-    await page.locator(".left-panel-utilities").getByRole("button", { name: "Checks", exact: true }).click();
-    await waitForLeftPanel(page, "Checks");
-    expect(
-      (await page.locator('.left-panel-checks[aria-label="Checks"]').count()) === 1 &&
-        (await page.locator(".left-panel-tabs").getByRole("button", { name: "Checks", exact: true }).count()) === 0 &&
+      (await page.locator('.left-panel-checks[aria-label="Review"]').count()) === 1 &&
+        (await page.locator(".left-panel-tabs").getByRole("button", { name: "Review", exact: true }).count()) === 1 &&
+        (await page.locator(".left-panel-utilities").getByRole("button", { name: "Review", exact: true }).count()) === 0 &&
         (await page.locator(".left-panel-knowledge").count()) === 0,
-      "Checks should be a separate workspace maintenance tool below the primary navigation.",
-    );
-    await page.locator(".left-panel-tabs").getByRole("button", { name: "Libraries", exact: true }).click();
-    await waitForLeftPanel(page, "Libraries");
-    expect(
-      (await page.locator('.left-panel-libraries[aria-label="Libraries"]').count()) === 1,
-      "Libraries should have a dedicated workspace surface ready for future connections.",
+      "Review should be a primary workspace navigation surface for knowledge maintenance.",
     );
     await page.locator(".left-panel-tabs").getByRole("button", { name: "Files", exact: true }).click();
     await waitForLeftPanel(page, "Files");
@@ -726,7 +541,7 @@ export async function run(ctx) {
     await launcher.getByRole("button", { name: "Close search", exact: true }).click();
     await launcher.waitFor({ state: "hidden" });
 
-    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await page.locator(".right-panel-tabs").getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     const emptyOutgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
     const emptyBacklinksSection = page.locator('.right-links-section[aria-label="Backlinks"]');
@@ -880,7 +695,7 @@ export async function run(ctx) {
         (await rootOutlineRow.locator(".right-outline-toggle").getAttribute("aria-expanded")) === "false",
       "Clicking the disclosure control should hide the heading descendants.",
     );
-    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await page.locator(".right-panel-tabs").getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
@@ -2159,7 +1974,7 @@ export async function run(ctx) {
     await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "Start.md" });
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await page.locator(".right-panel-tabs").getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     expect(
       (await page.locator(".right-links-row svg").count()) === 0 &&

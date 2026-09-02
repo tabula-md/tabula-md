@@ -1,4 +1,8 @@
-import { inspectFrontmatterData } from "@tabula-md/tabula";
+import {
+  getOkfFreshness,
+  inspectFrontmatterData,
+  normalizeWorkspaceKnowledgeMetadata,
+} from "@tabula-md/tabula";
 import type { WorkspaceFileSearchEntry } from "../editor/workspaceFileSearchModel";
 import { getWorkspaceFileTabLabels } from "./workspaceDisplayTitles";
 import {
@@ -41,6 +45,7 @@ export const buildWorkspaceSearchIndex = (
     if (presentation.kind === "markdown") {
       const inspection = inspectFrontmatterData(file.text);
       const metadata = inspection.metadata;
+      const knowledgeMetadata = normalizeWorkspaceKnowledgeMetadata(metadata);
       return {
         file,
         fileId: file.id,
@@ -50,6 +55,17 @@ export const buildWorkspaceSearchIndex = (
         type: asString(metadata.type),
         tags: asStringList(metadata.tags),
         resource: asString(metadata.resource),
+        sourceValues: knowledgeMetadata.sources.flatMap((source) => [
+          source.id,
+          source.title,
+          source.resource,
+          source.author,
+        ].filter((value): value is string => Boolean(value))),
+        generatedBy: knowledgeMetadata.generated?.by,
+        verifiedBy: knowledgeMetadata.verified.map(({ by }) => by),
+        status: knowledgeMetadata.status,
+        trustTier: knowledgeMetadata.trustTier,
+        freshness: getOkfFreshness(knowledgeMetadata),
         markdown: file.text,
         metadata,
         body: inspection.body,

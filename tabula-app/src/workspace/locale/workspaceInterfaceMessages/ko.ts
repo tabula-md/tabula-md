@@ -64,7 +64,7 @@ export const koWorkspaceInterfaceMessages = {
     panelKnowledgeFalse: "거짓",
     panelKnowledgeEnterValue: "값 입력",
     panelKnowledgeConnectionCount: "링크 {{count}}개",
-    panelChecks: "점검",
+    panelChecks: "검토",
     panelChecksLoading: "워크스페이스 확인 중…",
     panelChecksHealthy: "발견된 문제 없음",
     panelChecksAttention: "확인할 항목이 있습니다",
